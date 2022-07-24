@@ -1,0 +1,9 @@
+.xmake/
+build/
+out/
+
+.DS_Store
+
+.vs
+.vscode
+.cache
