@@ -6,8 +6,8 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 TODO
 
-[ ] A simple RHI on Vulkan and D3D12
-[ ] Render graph on that RHI
+* [ ] A simple RHI on Vulkan and D3D12
+* [ ] Render graph on that RHI
 ...
 
 ## Build

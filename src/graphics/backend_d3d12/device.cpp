@@ -88,7 +88,7 @@ DeviceD3D12::~DeviceD3D12() {
 }
 
 Ptr<DeviceD3D12> DeviceD3D12::Create(const DeviceDesc &desc) {
-    return std::make_unique<DeviceD3D12>(desc);
+    return Ptr<DeviceD3D12>::Make(desc);
 }
 
 Ptr<Queue> DeviceD3D12::GetQueue(QueueType type) {
@@ -104,19 +104,19 @@ Ptr<Queue> DeviceD3D12::GetQueue(QueueType type) {
             type_dx = D3D12_COMMAND_LIST_TYPE_COPY;
             break;
     }
-    return std::make_unique<QueueD3D12>(this, type_dx);
+    return Ptr<QueueD3D12>::Make(this, type_dx);
 }
 
 Ptr<Buffer> DeviceD3D12::CreateBuffer(const BufferDesc &desc) {
-    return std::make_unique<BufferD3D12>(this, desc);
+    return Ptr<BufferD3D12>::Make(this, desc);
 }
 
 Ptr<Texture> DeviceD3D12::CreateTexture(const TextureDesc &desc) {
-    return std::make_unique<TextureD3D12>(this, desc);
+    return Ptr<TextureD3D12>::Make(this, desc);
 }
 
 Ptr<Sampler> DeviceD3D12::CreateSampler(const SamplerDesc &desc) {
-    return std::make_unique<SamplerD3D12>(this, desc);
+    return Ptr<SamplerD3D12>::Make(this, desc);
 }
 
 BISMUTH_GFX_NAMESPACE_END

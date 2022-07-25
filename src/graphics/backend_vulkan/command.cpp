@@ -122,7 +122,7 @@ CommandEncoderVulkan::~CommandEncoderVulkan() {
 
 Ptr<CommandBuffer> CommandEncoderVulkan::Finish() {
     vkEndCommandBuffer(cmd_buffer_);
-    auto cmd_buffer = std::make_unique<CommandBufferVulkan>(device_, cmd_buffer_);
+    auto cmd_buffer = Ptr<CommandBufferVulkan>::Make(device_, cmd_buffer_);
     cmd_buffer_ = VK_NULL_HANDLE;
     return cmd_buffer;
 }
@@ -136,36 +136,36 @@ void CommandEncoderVulkan::PopLabel() {
     vkCmdEndDebugUtilsLabelEXT(cmd_buffer_);
 }
 
-void CommandEncoderVulkan::CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer,
+void CommandEncoderVulkan::CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
     Span<BufferCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer);
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer);
+    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
+    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferCopy(regions);
     vkCmdCopyBuffer(cmd_buffer_, src_buffer_vk->Raw(), dst_buffer_vk->Raw(), regions_vk.size(), regions_vk.data());
 }
 
-void CommandEncoderVulkan::CopyTextureToTexture(Texture *src_texture, Texture *dst_texture,
+void CommandEncoderVulkan::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
     Span<TextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture);
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture);
+    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
+    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkImageCopy(src_texture_vk, dst_texture_vk, regions);
     vkCmdCopyImage(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_texture_vk->Raw(),
         dst_texture_vk->Layout(), regions_vk.size(), regions_vk.data());
 }
 
-void CommandEncoderVulkan::CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture,
+void CommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer);
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture);
+    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
+    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkBufferImageCopy(dst_texture_vk, regions);
     vkCmdCopyBufferToImage(cmd_buffer_, src_buffer_vk->Raw(), dst_texture_vk->Raw(), dst_texture_vk->Layout(),
         regions_vk.size(), regions_vk.data());
 }
 
-void CommandEncoderVulkan::CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer,
+void CommandEncoderVulkan::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture);
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer);
+    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
+    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferImageCopy(src_texture_vk, regions);
     vkCmdCopyImageToBuffer(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_buffer_vk->Raw(),
         regions_vk.size(), regions_vk.data());
@@ -177,7 +177,7 @@ Ptr<RenderCommandEncoder> CommandEncoderVulkan::BeginRenderPass(const CommandLab
         PushLabel(label);
     }
     
-    auto render_encoder = std::make_unique<RenderCommandEncoderVulkan>(device_, desc, this, label.label);
+    auto render_encoder = Ptr<RenderCommandEncoderVulkan>::Make(device_, desc, this, label.label);
     cmd_buffer_ = VK_NULL_HANDLE;
     return render_encoder;
 }
@@ -186,7 +186,7 @@ Ptr<ComputeCommandEncoder> CommandEncoderVulkan::BeginComputePass(const CommandL
     if (!label.label.empty()) {
         PushLabel(label);
     }
-    auto compute_encoder = std::make_unique<ComputeCommandEncoderVulkan>(device_, this, label.label);
+    auto compute_encoder = Ptr<ComputeCommandEncoderVulkan>::Make(device_, this, label.label);
     cmd_buffer_ = VK_NULL_HANDLE;
     return compute_encoder;
 }
@@ -199,23 +199,16 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(DeviceVulkan *device, con
     label_ = label;
     cmd_buffer_ = base_encoder->cmd_buffer_;
 
+    // TODO - use dynamic rendering
     std::vector<const TextureVulkan *> color_textures_vk;
-    color_textures_vk.reserve(kMaxRenderTargetsCount);
-    for (uint32_t i = 0; i < kMaxRenderTargetsCount; i++) {
-        if (desc.colors[i].texture.texture == nullptr) {
-            break;
-        }
-
-        color_textures_vk.push_back(static_cast<const TextureVulkan *>(desc.colors[i].texture.texture));
+    color_textures_vk.reserve(desc.colors.size());
+    for (size_t i = 0; i < desc.colors.size(); i++) {
+        color_textures_vk.push_back(static_cast<const TextureVulkan *>(desc.colors[i].texture.texture.Get()));
     }
 
     std::vector<VkAttachmentDescription> attachments_vk;
-    attachments_vk.reserve(kMaxRenderTargetsCount + 1);
-    for (uint32_t i = 0; i < kMaxRenderTargetsCount; i++) {
-        if (desc.colors[i].texture.texture == nullptr) {
-            break;
-        }
-
+    attachments_vk.reserve(desc.colors.size() + 1);
+    for (size_t i = 0; i < desc.colors.size(); i++) {
         VkAttachmentDescription attachment {
             .flags = 0,
             .format = color_textures_vk[i]->Format(),
@@ -238,20 +231,21 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(DeviceVulkan *device, con
     }
 
     const TextureVulkan *depth_stencil_texture_vk = nullptr;
-    bool has_depth_stencil_target = desc.depth_stencil.texture.texture;
+    bool has_depth_stencil_target = desc.depth_stencil.has_value();
     VkAttachmentReference depth_stencil_attachment_ref;
     if (has_depth_stencil_target) {
-        depth_stencil_texture_vk = static_cast<const TextureVulkan *>(desc.depth_stencil.texture.texture);
+        const auto &depth_stencil = desc.depth_stencil.value();
+        depth_stencil_texture_vk = static_cast<const TextureVulkan *>(depth_stencil.texture.texture.Get());
         bool has_stencil = IsDepthStencilFormat(depth_stencil_texture_vk->Desc().format);
         VkAttachmentDescription attachment {
             .flags = 0,
             .format = depth_stencil_texture_vk->Format(),
             .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = desc.depth_stencil.clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = desc.depth_stencil.store ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .stencilLoadOp = (has_stencil && desc.depth_stencil.clear)
+            .loadOp = depth_stencil.clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = depth_stencil.store ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp = (has_stencil && depth_stencil.clear)
                 ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-            .stencilStoreOp = (has_stencil && desc.depth_stencil.store)
+            .stencilStoreOp = (has_stencil && depth_stencil.store)
                 ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
             .initialLayout = depth_stencil_texture_vk->Layout(),
             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -314,7 +308,6 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(DeviceVulkan *device, con
         .dependencyCount = 2,
         .pDependencies = subpass_dependencies.data(),
     };
-    // TODO - cache render pass
     vkCreateRenderPass(device_->Raw(), &render_pass_ci, nullptr, &render_pass_);
 
     std::vector<VkImageView> image_views(attachments_vk.size());
@@ -327,11 +320,12 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(DeviceVulkan *device, con
         });
     }
     if (has_depth_stencil_target) {
+        const auto &depth_stencil = desc.depth_stencil.value();
         image_views[color_attachments_ref.size()] = depth_stencil_texture_vk->GetView(TextureViewVulkanDesc {
-            .base_layer = desc.depth_stencil.texture.base_layer,
-            .layers = desc.depth_stencil.texture.layers,
-            .base_level = desc.depth_stencil.texture.base_level,
-            .levels = desc.depth_stencil.texture.levels,
+            .base_layer = depth_stencil.texture.base_layer,
+            .layers = depth_stencil.texture.layers,
+            .base_level = depth_stencil.texture.base_level,
+            .levels = depth_stencil.texture.levels,
         });
     }
 
@@ -349,7 +343,6 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(DeviceVulkan *device, con
         .height = extent.height,
         .layers = 1,
     };
-    // TODO - cache frame buffer
     vkCreateFramebuffer(device_->Raw(), &frame_buffer_ci, nullptr, &frame_buffer_);
 
     std::vector<VkClearValue> clear_values(attachments_vk.size());
@@ -362,10 +355,11 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(DeviceVulkan *device, con
         };
     }
     if (has_depth_stencil_target) {
+        const auto &depth_stencil = desc.depth_stencil.value();
         clear_values[color_attachments_ref.size()] = VkClearValue {
             .depthStencil = VkClearDepthStencilValue {
-                .depth = desc.depth_stencil.clear_depth,
-                .stencil = desc.depth_stencil.clear_stencil,
+                .depth = depth_stencil.clear_depth,
+                .stencil = depth_stencil.clear_stencil,
             },
         };
     }
@@ -396,7 +390,7 @@ RenderCommandEncoderVulkan::~RenderCommandEncoderVulkan() {
 
 Ptr<CommandBuffer> RenderCommandEncoderVulkan::Finish() {
     vkEndCommandBuffer(cmd_buffer_);
-    auto cmd_buffer = std::make_unique<CommandBufferVulkan>(device_, cmd_buffer_);
+    auto cmd_buffer = Ptr<CommandBufferVulkan>::Make(device_, cmd_buffer_);
     cmd_buffer_ = VK_NULL_HANDLE;
     return cmd_buffer;
 }
@@ -410,36 +404,36 @@ void RenderCommandEncoderVulkan::PopLabel() {
     vkCmdEndDebugUtilsLabelEXT(cmd_buffer_);
 }
 
-void RenderCommandEncoderVulkan::CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer,
+void RenderCommandEncoderVulkan::CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
     Span<BufferCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer);
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer);
+    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
+    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferCopy(regions);
     vkCmdCopyBuffer(cmd_buffer_, src_buffer_vk->Raw(), dst_buffer_vk->Raw(), regions_vk.size(), regions_vk.data());
 }
 
-void RenderCommandEncoderVulkan::CopyTextureToTexture(Texture *src_texture, Texture *dst_texture,
+void RenderCommandEncoderVulkan::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
     Span<TextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture);
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture);
+    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
+    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkImageCopy(src_texture_vk, dst_texture_vk, regions);
     vkCmdCopyImage(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_texture_vk->Raw(),
         dst_texture_vk->Layout(), regions_vk.size(), regions_vk.data());
 }
 
-void RenderCommandEncoderVulkan::CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture,
+void RenderCommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer);
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture);
+    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
+    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkBufferImageCopy(dst_texture_vk, regions);
     vkCmdCopyBufferToImage(cmd_buffer_, src_buffer_vk->Raw(), dst_texture_vk->Raw(), dst_texture_vk->Layout(),
         regions_vk.size(), regions_vk.data());
 }
 
-void RenderCommandEncoderVulkan::CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer,
+void RenderCommandEncoderVulkan::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture);
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer);
+    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
+    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferImageCopy(src_texture_vk, regions);
     vkCmdCopyImageToBuffer(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_buffer_vk->Raw(),
         regions_vk.size(), regions_vk.data());
@@ -493,7 +487,7 @@ ComputeCommandEncoderVulkan::~ComputeCommandEncoderVulkan() {
 
 Ptr<CommandBuffer> ComputeCommandEncoderVulkan::Finish() {
     vkEndCommandBuffer(cmd_buffer_);
-    auto cmd_buffer = std::make_unique<CommandBufferVulkan>(device_, cmd_buffer_);
+    auto cmd_buffer = Ptr<CommandBufferVulkan>::Make(device_, cmd_buffer_);
     cmd_buffer_ = VK_NULL_HANDLE;
     return cmd_buffer;
 }
@@ -507,36 +501,36 @@ void ComputeCommandEncoderVulkan::PopLabel() {
     vkCmdEndDebugUtilsLabelEXT(cmd_buffer_);
 }
 
-void ComputeCommandEncoderVulkan::CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer,
+void ComputeCommandEncoderVulkan::CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
     Span<BufferCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer);
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer);
+    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
+    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferCopy(regions);
     vkCmdCopyBuffer(cmd_buffer_, src_buffer_vk->Raw(), dst_buffer_vk->Raw(), regions_vk.size(), regions_vk.data());
 }
 
-void ComputeCommandEncoderVulkan::CopyTextureToTexture(Texture *src_texture, Texture *dst_texture,
+void ComputeCommandEncoderVulkan::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
     Span<TextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture);
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture);
+    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
+    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkImageCopy(src_texture_vk, dst_texture_vk, regions);
     vkCmdCopyImage(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_texture_vk->Raw(),
         dst_texture_vk->Layout(), regions_vk.size(), regions_vk.data());
 }
 
-void ComputeCommandEncoderVulkan::CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture,
+void ComputeCommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer);
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture);
+    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
+    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkBufferImageCopy(dst_texture_vk, regions);
     vkCmdCopyBufferToImage(cmd_buffer_, src_buffer_vk->Raw(), dst_texture_vk->Raw(), dst_texture_vk->Layout(),
         regions_vk.size(), regions_vk.data());
 }
 
-void ComputeCommandEncoderVulkan::CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer,
+void ComputeCommandEncoderVulkan::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture);
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer);
+    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
+    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferImageCopy(src_texture_vk, regions);
     vkCmdCopyImageToBuffer(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_buffer_vk->Raw(),
         regions_vk.size(), regions_vk.data());

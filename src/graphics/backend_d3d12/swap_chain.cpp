@@ -7,9 +7,9 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-SwapChainD3D12::SwapChainD3D12(DeviceD3D12 *device, QueueD3D12 *queue, uint32_t width, uint32_t height) {
+SwapChainD3D12::SwapChainD3D12(DeviceD3D12 *device, Ref<QueueD3D12> queue, uint32_t width, uint32_t height)
+    : queue_(queue) {
     device_ = device;
-    queue_ = queue;
 
     CreateSwapChain(width, height);
 }
@@ -61,11 +61,11 @@ void SwapChainD3D12::CreateSwapChain(uint32_t width, uint32_t height) {
     for (uint32_t i = 0; i < kNumSwapChainBuffers; i++) {
         ComPtr<ID3D12Resource> buffer;
         swap_chain_->GetBuffer(i, IID_PPV_ARGS(&buffer));
-        textures_[i] = std::make_unique<TextureD3D12>(device_, std::move(buffer), texture_desc);
+        textures_[i] = Ptr<TextureD3D12>::Make(device_, std::move(buffer), texture_desc);
     }
 }
 
-bool SwapChainD3D12::AcquireNextTexture(Semaphore *acquired_semaphore) {
+bool SwapChainD3D12::AcquireNextTexture(Ref<Semaphore> acquired_semaphore) {
     curr_texture_ = swap_chain_->GetCurrentBackBufferIndex();
     return true;
 }

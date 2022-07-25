@@ -4,7 +4,7 @@
 
 BISMUTH_NAMESPACE_BEGIN
 
-template <Enum E>
+template <EnumT E>
 class BitFlags {
     using ValueType = std::underlying_type_t<E>;
 

@@ -35,13 +35,13 @@ public:
 
     void PopLabel() override;
 
-    void CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer, Span<BufferCopyDesc> regions) override;
+    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) override;
 
-    void CopyTextureToTexture(Texture *src_texture, Texture *dst_texture, Span<TextureCopyDesc> regions) override;
+    void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) override;
 
-    void CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture, Span<BufferTextureCopyDesc> regions) override;
+    void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) override;
 
-    void CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer, Span<BufferTextureCopyDesc> regions) override;
+    void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) override;
 
     Ptr<RenderCommandEncoder> BeginRenderPass(const CommandLabel &label, const RenderTargetDesc &desc) override;
 
@@ -67,13 +67,13 @@ public:
 
     void PopLabel() override;
 
-    void CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer, Span<BufferCopyDesc> regions) override;
+    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) override;
 
-    void CopyTextureToTexture(Texture *src_texture, Texture *dst_texture, Span<TextureCopyDesc> regions) override;
+    void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) override;
 
-    void CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture, Span<BufferTextureCopyDesc> regions) override;
+    void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) override;
 
-    void CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer, Span<BufferTextureCopyDesc> regions) override;
+    void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) override;
 
     void BindVertexBuffer(Span<std::pair<Buffer *, uint64_t>> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Buffer *buffer, uint64_t offset, IndexType index_type) override;
@@ -104,13 +104,13 @@ public:
 
     void PopLabel() override;
 
-    void CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer, Span<BufferCopyDesc> regions) override;
+    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) override;
 
-    void CopyTextureToTexture(Texture *src_texture, Texture *dst_texture, Span<TextureCopyDesc> regions) override;
+    void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) override;
 
-    void CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture, Span<BufferTextureCopyDesc> regions) override;
+    void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) override;
 
-    void CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer, Span<BufferTextureCopyDesc> regions) override;
+    void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) override;
 
     void Dispatch(uint32_t x, uint32_t y, uint32_t z) override;
 

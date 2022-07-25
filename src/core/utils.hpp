@@ -25,4 +25,9 @@ size_t Hash(const T &first, Args &&... last) {
     return HashCombine(result, first);
 }
 
+
+[[noreturn]] inline void Unreachable() {
+    abort();
+}
+
 BISMUTH_NAMESPACE_END

@@ -19,7 +19,7 @@ Ptr<Device> Device::CreateDevice(const DeviceDesc &desc) {
         case DeviceBackend::eD3D12: return nullptr;
 #endif
     }
-    return nullptr;
+    Unreachable();
 }
 
 BISMUTH_GFX_NAMESPACE_END

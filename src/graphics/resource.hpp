@@ -44,7 +44,7 @@ protected:
 };
 
 struct BufferRange {
-    const Buffer *buffer = nullptr;
+    Ref<Buffer> buffer;
     uint64_t offset = 0;
     uint64_t length = ~0ull;
 };
@@ -85,7 +85,7 @@ protected:
 };
 
 struct TextureRange {
-    const Texture *texture = nullptr;
+    Ref<Texture> texture;
     uint32_t base_level = 0;
     uint32_t levels = ~0u;
     uint32_t base_layer = 0;

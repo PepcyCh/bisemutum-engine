@@ -10,9 +10,9 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-SwapChainVulkan::SwapChainVulkan(DeviceVulkan *device, QueueVulkan *queue, uint32_t width, uint32_t height) {
+SwapChainVulkan::SwapChainVulkan(DeviceVulkan *device, Ref<QueueVulkan> queue, uint32_t width, uint32_t height)
+    : queue_(queue) {
     device_ = device;
-    queue_ = queue;
     surface_ = device_->RawSurface();
 
     VkSurfaceCapabilitiesKHR surface_caps {};
@@ -62,7 +62,7 @@ void SwapChainVulkan::CreateSwapChain(uint32_t width, uint32_t height, VkSurface
     };
     textures_.resize(num_textures_);
     for (uint32_t i = 0; i < num_textures_; i++) {
-        textures_[i] = std::make_unique<TextureVulkan>(device_, images[i], texture_desc);
+        textures_[i] = Ptr<TextureVulkan>::Make(device_, images[i], texture_desc);
     }
 
     width_ = width;
@@ -71,8 +71,8 @@ void SwapChainVulkan::CreateSwapChain(uint32_t width, uint32_t height, VkSurface
     BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", num_textures_, width_, height_);
 }
 
-bool SwapChainVulkan::AcquireNextTexture(Semaphore *acquired_semaphore) {
-    auto acquired_semaphore_vk = static_cast<SemaphoreVulkan *>(acquired_semaphore)->Raw();
+bool SwapChainVulkan::AcquireNextTexture(Ref<Semaphore> acquired_semaphore) {
+    auto acquired_semaphore_vk = static_cast<SemaphoreVulkan *>(acquired_semaphore.Get())->Raw();
 
     VkResult result = vkAcquireNextImageKHR(device_->Raw(), swap_chain_, ~0ull,
         acquired_semaphore_vk, VK_NULL_HANDLE, &curr_texture_);

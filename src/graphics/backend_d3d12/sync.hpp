@@ -28,9 +28,7 @@ private:
     UINT64 fence_value_;
 };
 
-class SemaphoreD3D12 : public Semaphore {
-    SemaphoreD3D12() = delete;
-};
+class SemaphoreD3D12 : public Semaphore {};
 
 BISMUTH_GFX_NAMESPACE_END
 

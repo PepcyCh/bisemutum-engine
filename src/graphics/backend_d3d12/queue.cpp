@@ -34,8 +34,8 @@ void QueueD3D12::WaitIdle() const {
     }
 }
 
-void QueueD3D12::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Semaphore *> wait_semaphores,
-    Span<Semaphore *> signal_semaphores, Fence *signal_fence) const {
+void QueueD3D12::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Ref<Semaphore>> wait_semaphores,
+    Span<Ref<Semaphore>> signal_semaphores, Fence *signal_fence) const {
     // TODO
 }
 

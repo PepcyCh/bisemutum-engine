@@ -62,8 +62,8 @@ struct ColorAttachmentDesc {
 };
 inline constexpr uint32_t kMaxRenderTargetsCount = 8;
 struct RenderTargetDesc {
-    ColorAttachmentDesc colors[kMaxRenderTargetsCount];
-    DepthStencilAttachmentDesc depth_stencil;
+    Vec<ColorAttachmentDesc> colors;
+    std::optional<DepthStencilAttachmentDesc> depth_stencil;
 };
 
 class CommandEncoder;
@@ -87,13 +87,13 @@ public:
     virtual void PushLabel(const CommandLabel &label) = 0;
     virtual void PopLabel() = 0;
 
-    virtual void CopyBufferToBuffer(Buffer *src_buffer, Buffer *dst_buffer, Span<BufferCopyDesc> regions) = 0;
+    virtual void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) = 0;
 
-    virtual void CopyTextureToTexture(Texture *src_texture, Texture *dst_texture, Span<TextureCopyDesc> regions) = 0;
+    virtual void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) = 0;
 
-    virtual void CopyBufferToTexture(Buffer *src_buffer, Texture *dst_texture, Span<BufferTextureCopyDesc> regions) = 0;
+    virtual void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) = 0;
 
-    virtual void CopyTextureToBuffer(Texture *src_texture, Buffer *dst_buffer, Span<BufferTextureCopyDesc> regions) = 0;
+    virtual void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) = 0;
 
 protected:
     CommandEncoderBase() = default;

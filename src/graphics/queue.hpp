@@ -19,8 +19,8 @@ public:
 
     virtual void WaitIdle() const = 0;
 
-    virtual void SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Semaphore *> wait_semaphores = {},
-        Span<Semaphore *> signal_semaphores = {}, Fence *signal_fence = nullptr) const = 0;
+    virtual void SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Ref<Semaphore>> wait_semaphores = {},
+        Span<Ref<Semaphore>> signal_semaphores = {}, Fence *signal_fence = nullptr) const = 0;
 
 protected:
     Queue() = default;

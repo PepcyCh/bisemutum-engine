@@ -26,7 +26,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBits
 }
 
 Ptr<DeviceVulkan> DeviceVulkan::Create(const DeviceDesc &desc) {
-    return std::make_unique<DeviceVulkan>(desc);
+    return Ptr<DeviceVulkan>::Make(desc);
 }
 
 DeviceVulkan::DeviceVulkan(const DeviceDesc &desc) {
@@ -286,19 +286,19 @@ void DeviceVulkan::InitializeAllocator() {
 }
 
 Ptr<Queue> DeviceVulkan::GetQueue(QueueType type) {
-    return std::make_unique<QueueVulkan>(this, queue_family_indices[static_cast<uint8_t>(type)]);
+    return Ptr<QueueVulkan>::Make(this, queue_family_indices[static_cast<uint8_t>(type)]);
 }
 
 Ptr<Buffer> DeviceVulkan::CreateBuffer(const BufferDesc &desc) {
-    return std::make_unique<BufferVulkan>(this, desc);
+    return Ptr<BufferVulkan>::Make(this, desc);
 }
 
 Ptr<Texture> DeviceVulkan::CreateTexture(const TextureDesc &desc) {
-    return std::make_unique<TextureVulkan>(this, desc);
+    return Ptr<TextureVulkan>::Make(this, desc);
 }
 
 Ptr<Sampler> DeviceVulkan::CreateSampler(const SamplerDesc &desc) {
-    return std::make_unique<SamplerVulkan>(this, desc);
+    return Ptr<SamplerVulkan>::Make(this, desc);
 }
 
 BISMUTH_GFX_NAMESPACE_END

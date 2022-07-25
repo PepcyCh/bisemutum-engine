@@ -21,20 +21,20 @@ void QueueVulkan::WaitIdle() const {
     vkQueueWaitIdle(queue_);
 }
 
-void QueueVulkan::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Semaphore *> wait_semaphores,
-    Span<Semaphore *> signal_semaphores, Fence *signal_fence) const {
+void QueueVulkan::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Ref<Semaphore>> wait_semaphores,
+    Span<Ref<Semaphore>> signal_semaphores, Fence *signal_fence) const {
     Vec<VkCommandBuffer> cmd_buffers_vk(cmd_buffers.Size());
     for (size_t i = 0; i < cmd_buffers.Size(); i++) {
-        cmd_buffers_vk[i] = static_cast<CommandBufferVulkan *>(cmd_buffers[i].get())->Raw();
+        cmd_buffers_vk[i] = static_cast<CommandBufferVulkan *>(cmd_buffers[i].Get())->Raw();
     }
 
     Vec<VkSemaphore> wait_semaphores_vk(wait_semaphores.Size());
     for (size_t i = 0; i < wait_semaphores.Size(); i++) {
-        wait_semaphores_vk[i] = static_cast<SemaphoreVulkan *>(wait_semaphores[i])->Raw();
+        wait_semaphores_vk[i] = static_cast<SemaphoreVulkan *>(wait_semaphores[i].Get())->Raw();
     }
     Vec<VkSemaphore> signal_semaphores_vk(wait_semaphores.Size());
     for (size_t i = 0; i < signal_semaphores.Size(); i++) {
-        signal_semaphores_vk[i] = static_cast<SemaphoreVulkan *>(signal_semaphores[i])->Raw();
+        signal_semaphores_vk[i] = static_cast<SemaphoreVulkan *>(signal_semaphores[i].Get())->Raw();
     }
     VkFence signal_fence_vk = signal_fence ? static_cast<FenceVulkan *>(signal_fence)->Raw() : VK_NULL_HANDLE;
 
