@@ -7,9 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-FenceD3D12::FenceD3D12(class DeviceD3D12 *device) {
-    device_ = device;
-
+FenceD3D12::FenceD3D12(Ref<DeviceD3D12> device) : device_(device) {
     fence_value_ = 0;
     device_->Raw()->CreateFence(fence_value_, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
 }

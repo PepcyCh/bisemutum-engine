@@ -4,6 +4,8 @@
 
 #include "defines.hpp"
 #include "queue.hpp"
+#include "swap_chain.hpp"
+#include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
 
@@ -32,6 +34,15 @@ public:
     static Ptr<Device> CreateDevice(const DeviceDesc &desc);
 
     virtual Ptr<Queue> GetQueue(QueueType type) = 0;
+
+    virtual Ptr<SwapChain> CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) = 0;
+
+    virtual Ptr<Fence> CreateFence() = 0;
+
+#ifdef CreateSemaphore
+#undef CreateSemaphore
+#endif
+    virtual Ptr<Semaphore> CreateSemaphore() = 0;
 
     virtual Ptr<Buffer> CreateBuffer(const struct BufferDesc &desc) = 0;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/ptr.hpp"
 #include "utils.hpp"
 #include "graphics/sync.hpp"
 
@@ -9,7 +10,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class FenceD3D12 : public Fence {
 public:
-    FenceD3D12(class DeviceD3D12 *device);
+    FenceD3D12(Ref<class DeviceD3D12> device);
     ~FenceD3D12() override;
 
     void Reset() override;
@@ -23,7 +24,7 @@ public:
     ID3D12Fence *Raw() const { return fence_.Get(); }
 
 private:
-    DeviceD3D12 *device_;
+    Ref<DeviceD3D12> device_;
     ComPtr<ID3D12Fence> fence_;
     UINT64 fence_value_;
 };

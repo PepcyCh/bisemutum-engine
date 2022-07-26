@@ -10,7 +10,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class QueueVulkan : public Queue {
 public:
-    QueueVulkan(class DeviceVulkan *device, uint32_t family_index);
+    QueueVulkan(Ref<class DeviceVulkan> device, uint32_t family_index);
     ~QueueVulkan() override;
 
     void WaitIdle() const override;
@@ -23,7 +23,7 @@ public:
     uint32_t RawFamilyIndex() const { return family_index_; }
 
 private:
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     VkQueue queue_;
     uint32_t family_index_;
 };

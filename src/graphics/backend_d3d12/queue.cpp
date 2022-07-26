@@ -6,12 +6,10 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-QueueD3D12::QueueD3D12(DeviceD3D12 *device, D3D12_COMMAND_LIST_TYPE type) {
-    device_ = device;
-
+QueueD3D12::QueueD3D12(Ref<DeviceD3D12> device, D3D12_COMMAND_LIST_TYPE type) : device_(device) {
     D3D12_COMMAND_QUEUE_DESC queue_desc {
         .Type = type,
-        .Priority = 1,
+        .Priority = 0,
         .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
         .NodeMask = 0,
     };

@@ -10,9 +10,8 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-SwapChainVulkan::SwapChainVulkan(DeviceVulkan *device, Ref<QueueVulkan> queue, uint32_t width, uint32_t height)
-    : queue_(queue) {
-    device_ = device;
+SwapChainVulkan::SwapChainVulkan(Ref<DeviceVulkan> device, Ref<QueueVulkan> queue, uint32_t width, uint32_t height)
+    : device_(device), queue_(queue) {
     surface_ = device_->RawSurface();
 
     VkSurfaceCapabilitiesKHR surface_caps {};
@@ -20,6 +19,8 @@ SwapChainVulkan::SwapChainVulkan(DeviceVulkan *device, Ref<QueueVulkan> queue, u
     swap_chain_ = VK_NULL_HANDLE;
 
     CreateSwapChain(width, height, surface_caps.currentTransform);
+
+    BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", num_textures_, width_, height_);
 }
 
 SwapChainVulkan::~SwapChainVulkan() {
@@ -67,8 +68,15 @@ void SwapChainVulkan::CreateSwapChain(uint32_t width, uint32_t height, VkSurface
 
     width_ = width;
     height_ = height;
+    transform_ = transform;
+}
 
-    BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", num_textures_, width_, height_);
+void SwapChainVulkan::Resize(uint32_t width, uint32_t height) {
+    if (width != width_ || height != height_) {
+        CreateSwapChain(width, height, transform_);
+        
+        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures,", width_, height_, kNumSwapChainBuffers);
+    }
 }
 
 bool SwapChainVulkan::AcquireNextTexture(Ref<Semaphore> acquired_semaphore) {

@@ -2,6 +2,7 @@
 
 #include <volk.h>
 
+#include "core/ptr.hpp"
 #include "graphics/sync.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -10,7 +11,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class FenceVulkan : public Fence {
 public:
-    FenceVulkan(class DeviceVulkan *device);
+    FenceVulkan(Ref<class DeviceVulkan> device);
     ~FenceVulkan() override;
 
     void Reset() override;
@@ -24,19 +25,19 @@ public:
     VkFence Raw() const { return fence_; }
 
 private:
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     VkFence fence_;
 };
 
 class SemaphoreVulkan : public Semaphore {
 public:
-    SemaphoreVulkan(class DeviceVulkan *device);
+    SemaphoreVulkan(Ref<class DeviceVulkan> device);
     ~SemaphoreVulkan() override;
 
     VkSemaphore Raw() const { return semaphore_; }
 
 private:
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     VkSemaphore semaphore_;
 };
 

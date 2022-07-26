@@ -9,7 +9,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class QueueD3D12 : public Queue {
 public:
-    QueueD3D12(class DeviceD3D12 *device, D3D12_COMMAND_LIST_TYPE type);
+    QueueD3D12(Ref<class DeviceD3D12> device, D3D12_COMMAND_LIST_TYPE type);
     ~QueueD3D12() override;
 
     void WaitIdle() const override;
@@ -20,7 +20,7 @@ public:
     ID3D12CommandQueue *Raw() const { return queue_.Get(); }
 
 private:
-    DeviceD3D12 *device_;
+    Ref<DeviceD3D12> device_;
     ComPtr<ID3D12CommandQueue> queue_;
 
     mutable UINT64 fence_value_ = 0;

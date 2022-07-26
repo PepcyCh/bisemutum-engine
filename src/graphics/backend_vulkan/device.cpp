@@ -7,6 +7,8 @@
 
 #include "core/logger.hpp"
 #include "utils.hpp"
+#include "swap_chain.hpp"
+#include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
 
@@ -286,19 +288,31 @@ void DeviceVulkan::InitializeAllocator() {
 }
 
 Ptr<Queue> DeviceVulkan::GetQueue(QueueType type) {
-    return Ptr<QueueVulkan>::Make(this, queue_family_indices[static_cast<uint8_t>(type)]);
+    return Ptr<QueueVulkan>::Make(RefThis(), queue_family_indices[static_cast<uint8_t>(type)]);
+}
+
+Ptr<SwapChain> DeviceVulkan::CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) {
+    return Ptr<SwapChainVulkan>::Make(RefThis(), queue.CastTo<QueueVulkan>(), width, height);
+}
+
+Ptr<Fence> DeviceVulkan::CreateFence() {
+    return Ptr<FenceVulkan>::Make(RefThis());
+}
+
+Ptr<Semaphore> DeviceVulkan::CreateSemaphore() {
+    return Ptr<SemaphoreVulkan>::Make(RefThis());
 }
 
 Ptr<Buffer> DeviceVulkan::CreateBuffer(const BufferDesc &desc) {
-    return Ptr<BufferVulkan>::Make(this, desc);
+    return Ptr<BufferVulkan>::Make(RefThis(), desc);
 }
 
 Ptr<Texture> DeviceVulkan::CreateTexture(const TextureDesc &desc) {
-    return Ptr<TextureVulkan>::Make(this, desc);
+    return Ptr<TextureVulkan>::Make(RefThis(), desc);
 }
 
 Ptr<Sampler> DeviceVulkan::CreateSampler(const SamplerDesc &desc) {
-    return Ptr<SamplerVulkan>::Make(this, desc);
+    return Ptr<SamplerVulkan>::Make(RefThis(), desc);
 }
 
 BISMUTH_GFX_NAMESPACE_END

@@ -27,9 +27,7 @@ VkBorderColor ToVkBorderColor(SamplerBorderColor border) {
 
 }
 
-SamplerVulkan::SamplerVulkan(DeviceVulkan *device, const SamplerDesc &desc) {
-    device_ = device;
-
+SamplerVulkan::SamplerVulkan(Ref<DeviceVulkan> device, const SamplerDesc &desc) : device_(device) {
     VkSamplerCreateInfo sampler_ci {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .pNext = nullptr,

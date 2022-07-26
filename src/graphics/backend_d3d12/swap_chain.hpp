@@ -10,17 +10,19 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class SwapChainD3D12 : public SwapChain {
 public:
-    SwapChainD3D12(class DeviceD3D12 *device, Ref<class QueueD3D12> queue, uint32_t width, uint32_t height);
+    SwapChainD3D12(Ref<class DeviceD3D12> device, Ref<class QueueD3D12> queue, uint32_t width, uint32_t height);
     ~SwapChainD3D12() override;
+
+    void Resize(uint32_t width, uint32_t height) override;
 
     bool AcquireNextTexture(Ref<Semaphore> acquired_semaphore) override;
 
     Ref<Texture> GetCurrentTexture() override { return textures_[curr_texture_].AsRef(); }
 
 private:
-    void CreateSwapChain(uint32_t width, uint32_t height);
+    void CreateSwapChainTexture();
 
-    DeviceD3D12 *device_;
+    Ref<DeviceD3D12> device_;
     Ref<QueueD3D12> queue_;
 
     ComPtr<IDXGISwapChain3> swap_chain_;

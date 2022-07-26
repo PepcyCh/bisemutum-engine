@@ -5,8 +5,9 @@
 #include <GLFW/glfw3native.h>
 
 #include "core/container.hpp"
-#include "core/logger.hpp"
 #include "queue.hpp"
+#include "swap_chain.hpp"
+#include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
 
@@ -104,19 +105,31 @@ Ptr<Queue> DeviceD3D12::GetQueue(QueueType type) {
             type_dx = D3D12_COMMAND_LIST_TYPE_COPY;
             break;
     }
-    return Ptr<QueueD3D12>::Make(this, type_dx);
+    return Ptr<QueueD3D12>::Make(RefThis(), type_dx);
+}
+
+Ptr<SwapChain> DeviceD3D12::CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) {
+    return Ptr<SwapChainD3D12>::Make(RefThis(), queue.CastTo<QueueD3D12>(), width, height);
+}
+
+Ptr<Fence> DeviceD3D12::CreateFence() {
+    return Ptr<FenceD3D12>::Make(RefThis());
+}
+
+Ptr<Semaphore> DeviceD3D12::CreateSemaphore() {
+    return Ptr<SemaphoreD3D12>::Make();
 }
 
 Ptr<Buffer> DeviceD3D12::CreateBuffer(const BufferDesc &desc) {
-    return Ptr<BufferD3D12>::Make(this, desc);
+    return Ptr<BufferD3D12>::Make(RefThis(), desc);
 }
 
 Ptr<Texture> DeviceD3D12::CreateTexture(const TextureDesc &desc) {
-    return Ptr<TextureD3D12>::Make(this, desc);
+    return Ptr<TextureD3D12>::Make(RefThis(), desc);
 }
 
 Ptr<Sampler> DeviceD3D12::CreateSampler(const SamplerDesc &desc) {
-    return Ptr<SamplerD3D12>::Make(this, desc);
+    return Ptr<SamplerD3D12>::Make(RefThis(), desc);
 }
 
 BISMUTH_GFX_NAMESPACE_END

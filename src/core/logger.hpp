@@ -70,7 +70,7 @@ inline Logger gGeneralLogger;
 } while (false)
 #define BI_ASSERT_MSG(expr, msg) do { \
     if (!(expr)) { \
-        BI_CRTICAL(gGeneralLogger, msg); \
+        BI_CRTICAL(gGeneralLogger, "{} (file '{}' line {})", msg, __FILE__, __LINE__); \
     } \
 } while (false)
 

@@ -2,6 +2,7 @@
 
 #include <volk.h>
 
+#include "core/ptr.hpp"
 #include "graphics/sampler.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -10,11 +11,11 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class SamplerVulkan : public Sampler {
 public:
-    SamplerVulkan(class DeviceVulkan *device, const SamplerDesc &desc);
+    SamplerVulkan(Ref<class DeviceVulkan> device, const SamplerDesc &desc);
     ~SamplerVulkan() override;
 
 private:
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     VkSampler sampler_ = VK_NULL_HANDLE;
 };
 

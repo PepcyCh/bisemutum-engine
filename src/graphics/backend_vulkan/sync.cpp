@@ -7,8 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-FenceVulkan::FenceVulkan(DeviceVulkan *device) {
-    device_ = device;
+FenceVulkan::FenceVulkan(Ref<DeviceVulkan> device) : device_(device) {
     VkFenceCreateInfo fenc_ci {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .pNext = nullptr,
@@ -38,8 +37,7 @@ bool FenceVulkan::IsFinished() {
     return vkGetFenceStatus(device_->Raw(), fence_) == VK_SUCCESS;
 }
 
-SemaphoreVulkan::SemaphoreVulkan(DeviceVulkan *device) {
-    device_ = device;
+SemaphoreVulkan::SemaphoreVulkan(Ref<DeviceVulkan> device) : device_(device) {
     VkSemaphoreCreateInfo semaphore_ci {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .pNext = nullptr,

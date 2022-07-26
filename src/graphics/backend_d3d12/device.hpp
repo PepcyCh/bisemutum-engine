@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class DeviceD3D12 : public Device {
+class DeviceD3D12 : public Device, public RefFromThis<DeviceD3D12> {
 public:
     DeviceD3D12(const DeviceDesc &desc);
     ~DeviceD3D12() override;
@@ -17,6 +17,12 @@ public:
     static Ptr<DeviceD3D12> Create(const DeviceDesc &desc);
 
     Ptr<Queue> GetQueue(QueueType type) override;
+
+    Ptr<SwapChain> CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) override;
+
+    Ptr<Fence> CreateFence() override;
+
+    Ptr<Semaphore> CreateSemaphore() override;
 
     Ptr<Buffer> CreateBuffer(const BufferDesc &desc) override;
 

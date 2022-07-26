@@ -47,7 +47,7 @@ D3D12_TEXTURE_ADDRESS_MODE ToDxAddressMode(SamplerAddressMode address) {
         case SamplerAddressMode::eClampToBorder: return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
         case SamplerAddressMode::eMirrorClampToEdge: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
     }
-    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    Unreachable();
 }
 
 void ToDxBorderColor(SamplerBorderColor border, float color[4]) {
@@ -78,9 +78,7 @@ void ToDxBorderColor(SamplerBorderColor border, float color[4]) {
 
 }
 
-SamplerD3D12::SamplerD3D12(DeviceD3D12 *device, const SamplerDesc &desc) {
-    device_ = device;
-
+SamplerD3D12::SamplerD3D12(Ref<DeviceD3D12> device, const SamplerDesc &desc) : device_(device) {
     sampler_desc_ = D3D12_SAMPLER_DESC {
         .Filter = ToDxFilterMode(desc.min_filter, desc.mag_filter, desc.mipmap_mode),
         .AddressU = ToDxAddressMode(desc.address_mode_u),

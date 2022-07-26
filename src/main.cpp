@@ -10,19 +10,25 @@
 using namespace bismuth;
 
 int main(int argc, char **argv) {
+    uint32_t width = 1280;
+    uint32_t height = 720;
+
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow *window = glfwCreateWindow(1280, 720, "Bismuth", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(width, height, "Bismuth", nullptr, nullptr);
 
     gfx::Initialize();
 
     gfx::DeviceDesc device_desc {
-        .backend = gfx::DeviceBackend::eVulkan,
-        // .backend = gfx::DeviceBackend::eD3D12,
+        // .backend = gfx::DeviceBackend::eVulkan,
+        .backend = gfx::DeviceBackend::eD3D12,
         .enable_validation = true,
         .window = window,
     };
     auto device = gfx::Device::CreateDevice(device_desc);
+
+    auto graphics_queue = device->GetQueue(gfx::QueueType::eGraphics);
+    auto swap_chain = device->CreateSwapChain(graphics_queue, width, height);
 
     {
         gfx::BufferDesc buffer_desc {

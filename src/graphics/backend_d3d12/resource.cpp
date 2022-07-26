@@ -21,7 +21,7 @@ D3D12_RESOURCE_DIMENSION ToDxDimension(TextureDimension dim) {
         case TextureDimension::e3D:
             return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
     }
-    return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    Unreachable();
 }
 
 D3D12_RESOURCE_FLAGS ToDxResourceFlags(BitFlags<BufferUsage> usage) {
@@ -52,14 +52,12 @@ D3D12_HEAP_TYPE ToDxHeapType(BufferMemoryProperty prop) {
         case BufferMemoryProperty::eCpuToGpu: return D3D12_HEAP_TYPE_UPLOAD;
         case BufferMemoryProperty::eGpuToCpu: return D3D12_HEAP_TYPE_READBACK;
     }
-    return D3D12_HEAP_TYPE_DEFAULT;
+    Unreachable();
 }
 
 }
 
-BufferD3D12::BufferD3D12(DeviceD3D12 *device, const BufferDesc &desc) {
-    device_ = device;
-
+BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : device_(device) {
     D3D12_RESOURCE_DESC resource_desc {
         .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
@@ -98,9 +96,7 @@ BufferD3D12::~BufferD3D12() {
     }
 }
 
-TextureD3D12::TextureD3D12(DeviceD3D12 *device, const TextureDesc &desc) {
-    device_ = device;
-
+TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, const TextureDesc &desc) : device_(device) {
     D3D12_RESOURCE_DESC resource_desc {
         .Dimension = ToDxDimension(desc.dim),
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
@@ -124,8 +120,8 @@ TextureD3D12::TextureD3D12(DeviceD3D12 *device, const TextureDesc &desc) {
     }
 }
 
-TextureD3D12::TextureD3D12(DeviceD3D12 *device, ComPtr<ID3D12Resource> &&raw_resource, const TextureDesc &desc) {
-    device_ = device;
+TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12Resource> &&raw_resource, const TextureDesc &desc)
+    : device_(device) {
     resource_ = raw_resource;
     allocation_ = nullptr;
 }

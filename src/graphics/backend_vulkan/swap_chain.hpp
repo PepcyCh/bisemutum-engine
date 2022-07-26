@@ -11,8 +11,10 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class SwapChainVulkan : public SwapChain {
 public:
-    SwapChainVulkan(class DeviceVulkan *device, Ref<class QueueVulkan> queue, uint32_t width, uint32_t height);
+    SwapChainVulkan(Ref<class DeviceVulkan> device, Ref<class QueueVulkan> queue, uint32_t width, uint32_t height);
     ~SwapChainVulkan();
+
+    void Resize(uint32_t width, uint32_t height) override;
 
     bool AcquireNextTexture(Ref<Semaphore> acquired_semaphore) override;
 
@@ -23,7 +25,7 @@ public:
 private:
     void CreateSwapChain(uint32_t width, uint32_t height, VkSurfaceTransformFlagBitsKHR transform);
 
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     Ref<QueueVulkan> queue_;
     
     VkSwapchainKHR swap_chain_;
@@ -31,6 +33,7 @@ private:
 
     uint32_t width_;
     uint32_t height_;
+    VkSurfaceTransformFlagBitsKHR transform_;
 
     uint32_t num_textures_;
     uint32_t curr_texture_ = 0;

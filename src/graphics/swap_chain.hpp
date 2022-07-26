@@ -11,6 +11,8 @@ class SwapChain {
 public:
     virtual ~SwapChain() = default;
 
+    virtual void Resize(uint32_t width, uint32_t height) = 0;
+
     virtual bool AcquireNextTexture(Ref<Semaphore> acquired_semaphore) = 0;
 
     virtual class Ref<class Texture> GetCurrentTexture() = 0;

@@ -6,6 +6,7 @@
 #include <dxgi1_6.h>
 #include <d3d12.h>
 
+#include "core/utils.hpp"
 #include "graphics/defines.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -138,7 +139,7 @@ inline DXGI_FORMAT ToDxFormat(ResourceFormat format) {
         case ResourceFormat::eBc7UNorm: return DXGI_FORMAT_BC7_UNORM;
         case ResourceFormat::eBc7Srgb: return DXGI_FORMAT_BC7_UNORM_SRGB;
     }
-    return DXGI_FORMAT_UNKNOWN;
+    Unreachable();
 }
 
 BISMUTH_GFX_NAMESPACE_END

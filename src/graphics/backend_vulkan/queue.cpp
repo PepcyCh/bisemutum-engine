@@ -8,8 +8,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-QueueVulkan::QueueVulkan(DeviceVulkan *device, uint32_t family_index) {
-    device_ = device;
+QueueVulkan::QueueVulkan(Ref<DeviceVulkan> device, uint32_t family_index) : device_(device) {
     family_index_ = family_index;
     vkGetDeviceQueue(device_->Raw(), family_index, 0, &queue_);
 }
@@ -25,16 +24,16 @@ void QueueVulkan::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Sp
     Span<Ref<Semaphore>> signal_semaphores, Fence *signal_fence) const {
     Vec<VkCommandBuffer> cmd_buffers_vk(cmd_buffers.Size());
     for (size_t i = 0; i < cmd_buffers.Size(); i++) {
-        cmd_buffers_vk[i] = static_cast<CommandBufferVulkan *>(cmd_buffers[i].Get())->Raw();
+        cmd_buffers_vk[i] = cmd_buffers[i].AsRef().CastTo<CommandBufferVulkan>()->Raw();
     }
 
     Vec<VkSemaphore> wait_semaphores_vk(wait_semaphores.Size());
     for (size_t i = 0; i < wait_semaphores.Size(); i++) {
-        wait_semaphores_vk[i] = static_cast<SemaphoreVulkan *>(wait_semaphores[i].Get())->Raw();
+        wait_semaphores_vk[i] = wait_semaphores[i].CastTo<SemaphoreVulkan>()->Raw();
     }
     Vec<VkSemaphore> signal_semaphores_vk(wait_semaphores.Size());
     for (size_t i = 0; i < signal_semaphores.Size(); i++) {
-        signal_semaphores_vk[i] = static_cast<SemaphoreVulkan *>(signal_semaphores[i].Get())->Raw();
+        signal_semaphores_vk[i] = signal_semaphores[i].CastTo<SemaphoreVulkan>()->Raw();
     }
     VkFence signal_fence_vk = signal_fence ? static_cast<FenceVulkan *>(signal_fence)->Raw() : VK_NULL_HANDLE;
 

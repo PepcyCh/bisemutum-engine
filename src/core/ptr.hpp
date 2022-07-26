@@ -44,7 +44,7 @@ struct PtrInner<PT, D, false> {
 
 }
 
-// reference to unique_ptr that cannot be null, use raw ptr when it is nullable
+// a pointer that cannot be null, use raw pointer when it is nullable
 template <NonArrayT T>
 class Ref final {
 public:
@@ -79,6 +79,11 @@ public:
         return ptr_;
     }
 
+    template <NonArrayT T2> requires requires { static_cast<T2 *>(std::declval<T *>()); }
+    Ref<T2> CastTo() const {
+        return Ref<T2>(static_cast<T2 *>(ptr_));
+    }
+
 private:
     Ref(T *ptr) noexcept : ptr_(ptr) {}
 
@@ -87,6 +92,9 @@ private:
 
     template <NonArrayT T2, typename D>
     friend class Ptr;
+
+    template <NonArrayT T2>
+    friend class RefFromThis;
 
     T *ptr_;
 };
@@ -114,7 +122,6 @@ public:
     Ptr(Ptr<T2, D2> &&rhs) noexcept : ptr_(rhs.Release(), rhs.ptr_.Deleter()) {}
 
     Ptr &operator=(Ptr &&rhs) noexcept {
-        BI_ASSERT_MSG(ptr_.ptr != nullptr, "use uninitialized / moved Ptr");
         if (this != std::addressof(rhs)) {
             Reset(rhs.Release());
             ptr_.Deleter() = rhs.ptr_.Deleter();
@@ -124,7 +131,6 @@ public:
 
     template <NonArrayT T2, typename D2> requires std::convertible_to<T2 *, T *>
     Ptr &operator=(Ptr<T2, D2> &&rhs) noexcept {
-        BI_ASSERT_MSG(ptr_.ptr != nullptr, "use uninitialized / moved Ptr");
         Reset(rhs.Release());
         ptr_.Deleter() = rhs.ptr_.Deleter();
         return *this;
@@ -160,8 +166,9 @@ private:
     explicit Ptr(T *ptr) noexcept : ptr_(ptr) {}
 
     void Reset(T *ptr) {
-        BI_ASSERT_MSG(ptr_.ptr != nullptr, "use uninitialized / moved Ptr");
-        ptr_.Deleter()(ptr_.ptr);
+        if (ptr_.ptr) {
+            ptr_.Deleter()(ptr_.ptr);
+        }
         ptr_.ptr = ptr;
     }
 
@@ -174,6 +181,14 @@ private:
     friend class Ptr;
 
     detail::PtrInner<T *, D> ptr_;
+};
+
+template <NonArrayT T>
+class RefFromThis {
+public:
+    Ref<T> RefThis() noexcept {
+        return Ref<T>(static_cast<T *>(this));
+    }
 };
 
 BISMUTH_NAMESPACE_END

@@ -46,7 +46,7 @@ VmaMemoryUsage ToVmaMemoruUsage(BufferMemoryProperty prop) {
         case BufferMemoryProperty::eCpuToGpu: return VMA_MEMORY_USAGE_CPU_TO_GPU;
         case BufferMemoryProperty::eGpuToCpu: return VMA_MEMORY_USAGE_GPU_TO_CPU;
     }
-    return VMA_MEMORY_USAGE_AUTO;
+    Unreachable();
 }
 
 bool IsCubeTexture(TextureDimension dim) {
@@ -66,7 +66,7 @@ VkImageType ToVkImageType(TextureDimension dim) {
         case TextureDimension::e3D:
             return VK_IMAGE_TYPE_3D;
     }
-    return VK_IMAGE_TYPE_2D;
+    Unreachable();
 }
 
 VkImageViewType ToVkImageViewType(TextureDimension dim) {
@@ -98,9 +98,7 @@ VkImageAspectFlags ToVkImageAspect(ResourceFormat format) {
 
 }
 
-BufferVulkan::BufferVulkan(DeviceVulkan *device, const BufferDesc &desc) {
-    device_ = device;
-
+BufferVulkan::BufferVulkan(Ref<DeviceVulkan> device, const BufferDesc &desc) : device_(device) {
     VkBufferCreateInfo buffer_ci {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
@@ -138,8 +136,7 @@ BufferVulkan::~BufferVulkan() {
 }
 
 
-TextureVulkan::TextureVulkan(DeviceVulkan *device, const TextureDesc &desc) {
-    device_ = device;
+TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, const TextureDesc &desc) : device_(device) {
     desc_ = desc;
 
     VkImageCreateInfo image_ci {
@@ -185,8 +182,8 @@ TextureVulkan::TextureVulkan(DeviceVulkan *device, const TextureDesc &desc) {
     }
 }
 
-TextureVulkan::TextureVulkan(DeviceVulkan *device, VkImage raw_image, const TextureDesc &desc) {
-    device_ = device;
+TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, VkImage raw_image, const TextureDesc &desc)
+    : device_(device) {
     image_ = raw_image;
     allocation_ = nullptr;
     desc_ = desc;

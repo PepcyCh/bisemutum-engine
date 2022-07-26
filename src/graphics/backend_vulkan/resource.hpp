@@ -12,13 +12,13 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class BufferVulkan : public Buffer {
 public:
-    BufferVulkan(class DeviceVulkan *device, const BufferDesc &desc);
+    BufferVulkan(Ref<class DeviceVulkan> device, const BufferDesc &desc);
     ~BufferVulkan() override;
 
     VkBuffer Raw() const { return buffer_; }
 
 private:
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     VkBuffer buffer_;
     VmaAllocation allocation_;
 
@@ -51,9 +51,9 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class TextureVulkan : public Texture {
 public:
-    TextureVulkan(class DeviceVulkan *device, const TextureDesc &desc);
+    TextureVulkan(Ref<class DeviceVulkan> device, const TextureDesc &desc);
     // external image
-    TextureVulkan(class DeviceVulkan *device, VkImage raw_image, const TextureDesc &desc);
+    TextureVulkan(Ref<class DeviceVulkan> device, VkImage raw_image, const TextureDesc &desc);
     ~TextureVulkan() override;
 
     VkImage Raw() const { return image_; }
@@ -71,7 +71,7 @@ public:
     void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers);
 
 private:
-    DeviceVulkan *device_;
+    Ref<DeviceVulkan> device_;
     VkImage image_;
     VmaAllocation allocation_;
     TextureDesc desc_;

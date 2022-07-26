@@ -12,13 +12,13 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class BufferD3D12 : public Buffer {
 public:
-    BufferD3D12(class DeviceD3D12 *device, const BufferDesc &desc);
+    BufferD3D12(Ref<class DeviceD3D12> device, const BufferDesc &desc);
     ~BufferD3D12() override;
 
     ID3D12Resource *Raw() const { return resource_.Get(); }
 
 private:
-    DeviceD3D12 *device_;
+    Ref<DeviceD3D12> device_;
     ComPtr<ID3D12Resource> resource_;
     D3D12MA::Allocation *allocation_ = nullptr;
 
@@ -27,15 +27,15 @@ private:
 
 class TextureD3D12 : public Texture {
 public:
-    TextureD3D12(class DeviceD3D12 *device, const TextureDesc &desc);
+    TextureD3D12(Ref<class DeviceD3D12> device, const TextureDesc &desc);
     // external image
-    TextureD3D12(class DeviceD3D12 *device, ComPtr<ID3D12Resource> &&raw_resource, const TextureDesc &desc);
+    TextureD3D12(Ref<class DeviceD3D12> device, ComPtr<ID3D12Resource> &&raw_resource, const TextureDesc &desc);
     ~TextureD3D12() override;
 
     ID3D12Resource *Raw() const { return resource_.Get(); }
 
 private:
-    DeviceD3D12 *device_;
+    Ref<DeviceD3D12> device_;
     ComPtr<ID3D12Resource> resource_;
     D3D12MA::Allocation *allocation_ = nullptr;
 };

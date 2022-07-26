@@ -7,22 +7,26 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-SwapChainD3D12::SwapChainD3D12(DeviceD3D12 *device, Ref<QueueD3D12> queue, uint32_t width, uint32_t height)
-    : queue_(queue) {
-    device_ = device;
+namespace {
 
-    CreateSwapChain(width, height);
+DXGI_FORMAT FormatRemoveSrgb(DXGI_FORMAT format) {
+    if (format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB) {
+        return DXGI_FORMAT_B8G8R8A8_UNORM;
+    } else if (format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB) {
+        return DXGI_FORMAT_R8G8B8A8_UNORM;
+    } else {
+        return format;
+    }
 }
 
-SwapChainD3D12::~SwapChainD3D12() {}
+}
 
-void SwapChainD3D12::CreateSwapChain(uint32_t width, uint32_t height) {
-    swap_chain_.Reset();
-
+SwapChainD3D12::SwapChainD3D12(Ref<DeviceD3D12> device, Ref<QueueD3D12> queue, uint32_t width, uint32_t height)
+    : device_(device), queue_(queue), width_(width), height_(height) {
     DXGI_SWAP_CHAIN_DESC1 swap_chain_desc {
         .Width = width,
         .Height = height,
-        .Format = device_->RawSurfaceFormat(),
+        .Format = FormatRemoveSrgb(device_->RawSurfaceFormat()),
         .Stereo = false,
         .SampleDesc = { .Count = 1, .Quality = 0 },
         .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
@@ -33,7 +37,7 @@ void SwapChainD3D12::CreateSwapChain(uint32_t width, uint32_t height) {
         .Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH,
     };
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_desc {
-        .RefreshRate = { 60, 1 },
+        .RefreshRate = { .Numerator = 60, .Denominator = 1 },
         .ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED,
         .Scaling = DXGI_MODE_SCALING_UNSPECIFIED,
         .Windowed = true,
@@ -49,9 +53,17 @@ void SwapChainD3D12::CreateSwapChain(uint32_t width, uint32_t height) {
     swap_chain_temp->Release();
     swap_chain_temp = nullptr;
 
+    CreateSwapChainTexture();
+
+    BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", kNumSwapChainBuffers, width_, height_);
+}
+
+SwapChainD3D12::~SwapChainD3D12() {}
+
+void SwapChainD3D12::CreateSwapChainTexture() {
     TextureDesc texture_desc {
         .name = "",
-        .extent = { width, height },
+        .extent = { width_, height_ },
         .levels = 1,
         .format = device_->SurfaceFormat(),
         .dim = TextureDimension::e2D,
@@ -62,6 +74,18 @@ void SwapChainD3D12::CreateSwapChain(uint32_t width, uint32_t height) {
         ComPtr<ID3D12Resource> buffer;
         swap_chain_->GetBuffer(i, IID_PPV_ARGS(&buffer));
         textures_[i] = Ptr<TextureD3D12>::Make(device_, std::move(buffer), texture_desc);
+    }
+}
+
+void SwapChainD3D12::Resize(uint32_t width, uint32_t height) {
+    if (width != width_ || height != height_) {
+        width_ = width;
+        height_ = height;
+        swap_chain_->ResizeBuffers(kNumSwapChainBuffers, width, height,
+            FormatRemoveSrgb(device_->RawSurfaceFormat()), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+        CreateSwapChainTexture();
+
+        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures,", width_, height_, kNumSwapChainBuffers);
     }
 }
 
