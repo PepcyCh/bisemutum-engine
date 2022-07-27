@@ -1,33 +1,32 @@
 #pragma once
 
-#include <volk.h>
-
+#include "utils.hpp"
 #include "graphics/command.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class DeviceVulkan;
+class DeviceD3D12;
 
-class CommandBufferVulkan : public CommandBuffer {
+class CommandBufferD3D12 : public CommandBuffer {
 public:
-    CommandBufferVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer);
+    CommandBufferD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list);
 
-    VkCommandBuffer Raw() const { return cmd_buffer_; }
+    ID3D12GraphicsCommandList4 *Raw() const { return cmd_list_.Get(); }
 
 private:
-    Ref<DeviceVulkan> device_;
-    VkCommandBuffer cmd_buffer_;
+    Ref<DeviceD3D12> device_;
+    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
 };
 
-class RenderCommandEncoderVulkan;
-class ComputeCommandEncoderVulkan;
+class RenderCommandEncoderD3D12;
+class ComputeCommandEncoderD3D12;
 
-class CommandEncoderVulkan : public CommandEncoder, public RefFromThis<CommandEncoderVulkan> {
+class CommandEncoderD3D12 : public CommandEncoder, public RefFromThis<CommandEncoderD3D12> {
 public:
-    CommandEncoderVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer);
-    ~CommandEncoderVulkan();
+    CommandEncoderD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list);
+    ~CommandEncoderD3D12();
 
     Ptr<CommandBuffer> Finish() override;
 
@@ -48,18 +47,18 @@ public:
     Ptr<ComputeCommandEncoder> BeginComputePass(const CommandLabel &label) override;
 
 private:
-    friend RenderCommandEncoderVulkan;
-    friend ComputeCommandEncoderVulkan;
+    friend RenderCommandEncoderD3D12;
+    friend ComputeCommandEncoderD3D12;
 
-    Ref<DeviceVulkan> device_;
-    VkCommandBuffer cmd_buffer_;
+    Ref<DeviceD3D12> device_;
+    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
 };
 
-class RenderCommandEncoderVulkan : public RenderCommandEncoder {
+class RenderCommandEncoderD3D12 : public RenderCommandEncoder {
 public:
-    RenderCommandEncoderVulkan(Ref<DeviceVulkan> device, const RenderTargetDesc &desc,
-        Ref<CommandEncoderVulkan> base_encoder, const std::string &label);
-    ~RenderCommandEncoderVulkan();
+    RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, const RenderTargetDesc &desc,
+        Ref<CommandEncoderD3D12> base_encoder, const std::string &label);
+    ~RenderCommandEncoderD3D12();
 
     Ptr<CommandBuffer> Finish() override;
 
@@ -76,19 +75,16 @@ public:
         uint32_t first_index = 0, uint32_t vertex_offset = 0, uint32_t first_instance = 0) override;
 
 private:
-    Ref<DeviceVulkan> device_;
-    Ref<CommandEncoderVulkan> base_encoder_;
+    Ref<DeviceD3D12> device_;
+    Ref<CommandEncoderD3D12> base_encoder_;
     std::string label_;
-    VkCommandBuffer cmd_buffer_;
-
-    VkRenderPass render_pass_;
-    VkFramebuffer frame_buffer_;
+    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
 };
 
-class ComputeCommandEncoderVulkan : public ComputeCommandEncoder {
+class ComputeCommandEncoderD3D12 : public ComputeCommandEncoder {
 public:
-    ComputeCommandEncoderVulkan(Ref<DeviceVulkan> device, Ref<CommandEncoderVulkan> base_encoder, const std::string &label);
-    ~ComputeCommandEncoderVulkan();
+    ComputeCommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<CommandEncoderD3D12> base_encoder, const std::string &label);
+    ~ComputeCommandEncoderD3D12();
 
     Ptr<CommandBuffer> Finish() override;
 
@@ -99,10 +95,10 @@ public:
     void Dispatch(uint32_t x, uint32_t y, uint32_t z) override;
 
 private:
-    Ref<DeviceVulkan> device_;
-    Ref<CommandEncoderVulkan> base_encoder_;
+    Ref<DeviceD3D12> device_;
+    Ref<CommandEncoderD3D12> base_encoder_;
     std::string label_;
-    VkCommandBuffer cmd_buffer_;
+    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

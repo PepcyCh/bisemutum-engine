@@ -142,6 +142,10 @@ inline DXGI_FORMAT ToDxFormat(ResourceFormat format) {
     Unreachable();
 }
 
+inline DXGI_FORMAT ToDxIndexFormat(IndexType type) {
+    return type == IndexType::eUInt16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+}
+
 BISMUTH_GFX_NAMESPACE_END
 
 BISMUTH_NAMESPACE_END

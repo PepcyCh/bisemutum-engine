@@ -55,9 +55,13 @@ D3D12_HEAP_TYPE ToDxHeapType(BufferMemoryProperty prop) {
     Unreachable();
 }
 
+bool IsCubeTexture(TextureDimension dim) {
+    return dim == TextureDimension::eCube || dim == TextureDimension::eCubeArray;
 }
 
-BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : device_(device) {
+}
+
+BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : device_(device), size_(desc.size) {
     D3D12_RESOURCE_DESC resource_desc {
         .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
@@ -96,13 +100,13 @@ BufferD3D12::~BufferD3D12() {
     }
 }
 
-TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, const TextureDesc &desc) : device_(device) {
+TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, const TextureDesc &desc) : device_(device), desc_(desc) {
     D3D12_RESOURCE_DESC resource_desc {
         .Dimension = ToDxDimension(desc.dim),
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
         .Width = desc.extent.width,
         .Height = desc.extent.height,
-        .DepthOrArraySize = static_cast<UINT16>(desc.extent.depth_or_layers),
+        .DepthOrArraySize = static_cast<UINT16>(desc.extent.depth_or_layers * (IsCubeTexture(desc.dim) ? 6 : 1)),
         .MipLevels = static_cast<UINT16>(desc.levels),
         .Format = ToDxFormat(desc.format),
         .SampleDesc = { .Count = 1, .Quality = 0 },
@@ -121,7 +125,7 @@ TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, const TextureDesc &desc) : d
 }
 
 TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12Resource> &&raw_resource, const TextureDesc &desc)
-    : device_(device) {
+    : device_(device), desc_(desc) {
     resource_ = raw_resource;
     allocation_ = nullptr;
 }
@@ -131,6 +135,25 @@ TextureD3D12::~TextureD3D12() {
         allocation_->Release();
         allocation_ = nullptr;
     }
+}
+
+void TextureD3D12::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const {
+    if (desc_.dim == TextureDimension::e3D) {
+        depth = depth_or_layers;
+        layers = 1;
+    } else if (desc_.dim == TextureDimension::eCube || desc_.dim == TextureDimension::eCubeArray) {
+        depth = 1;
+        layers = depth_or_layers * 6;
+    } else {
+        depth = 1;
+        layers = depth_or_layers;
+    }
+}
+
+UINT TextureD3D12::SubresourceIndex(uint32_t level, uint32_t layer, uint32_t plane) const {
+    uint32_t layers = desc_.dim == TextureDimension::e3D ? 1
+        : desc_.extent.depth_or_layers * (IsCubeTexture(desc_.dim) ? 6 : 1);
+    return level + layer * desc_.levels + plane * layers * desc_.levels;
 }
 
 BISMUTH_GFX_NAMESPACE_END

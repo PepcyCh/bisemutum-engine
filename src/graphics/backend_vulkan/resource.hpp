@@ -15,12 +15,15 @@ public:
     BufferVulkan(Ref<class DeviceVulkan> device, const BufferDesc &desc);
     ~BufferVulkan() override;
 
+    uint64_t Size() const { return size_; }
+
     VkBuffer Raw() const { return buffer_; }
 
 private:
     Ref<DeviceVulkan> device_;
     VkBuffer buffer_;
     VmaAllocation allocation_;
+    uint64_t size_;
 
     void *mapped_ptr_ = nullptr;
 };
@@ -68,7 +71,7 @@ public:
 
     VkImageAspectFlags GetAspect() const;
 
-    void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers);
+    void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const;
 
 private:
     Ref<DeviceVulkan> device_;

@@ -87,14 +87,6 @@ public:
     virtual void PushLabel(const CommandLabel &label) = 0;
     virtual void PopLabel() = 0;
 
-    virtual void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) = 0;
-
-    virtual void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) = 0;
-
-    virtual void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) = 0;
-
-    virtual void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) = 0;
-
 protected:
     CommandEncoderBase() = default;
 };
@@ -102,6 +94,14 @@ protected:
 class CommandEncoder : public CommandEncoderBase {
 public:
     virtual ~CommandEncoder() = default;
+
+    virtual void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) = 0;
+
+    virtual void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) = 0;
+
+    virtual void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) = 0;
+
+    virtual void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) = 0;
 
     virtual Ptr<RenderCommandEncoder> BeginRenderPass(const CommandLabel &label, const RenderTargetDesc &desc) = 0;
 
@@ -111,12 +111,18 @@ protected:
     CommandEncoder() = default;
 };
 
+struct VertexBufferDesc {
+    Ref<Buffer> buffer;
+    uint64_t offset = 0;
+    uint32_t stride = 0;
+};
+
 class RenderCommandEncoder : public CommandEncoderBase {
 public:
     virtual ~RenderCommandEncoder() = default;
 
-    virtual void BindVertexBuffer(Span<std::pair<Buffer *, uint64_t>> buffers, uint32_t first_binding = 0) = 0;
-    virtual void BindIndexBuffer(Buffer *buffer, uint64_t offset, IndexType index_type) = 0;
+    virtual void BindVertexBuffer(Span<VertexBufferDesc> buffers, uint32_t first_binding = 0) = 0;
+    virtual void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) = 0;
 
     virtual void Draw(uint32_t num_vertices, uint32_t num_instance = 1,
         uint32_t first_vertex = 0, uint32_t first_instance = 0) = 0;

@@ -98,7 +98,7 @@ VkImageAspectFlags ToVkImageAspect(ResourceFormat format) {
 
 }
 
-BufferVulkan::BufferVulkan(Ref<DeviceVulkan> device, const BufferDesc &desc) : device_(device) {
+BufferVulkan::BufferVulkan(Ref<DeviceVulkan> device, const BufferDesc &desc) : device_(device), size_(desc.size) {
     VkBufferCreateInfo buffer_ci {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
@@ -236,7 +236,7 @@ VkImageAspectFlags TextureVulkan::GetAspect() const {
     return ToVkImageAspect(desc_.format);
 }
 
-void TextureVulkan::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) {
+void TextureVulkan::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const {
     if (desc_.dim == TextureDimension::e3D) {
         depth = depth_or_layers;
         layers = 1;
