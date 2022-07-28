@@ -21,14 +21,8 @@ VkBufferUsageFlags ToVkBufferUsage(BitFlags<BufferUsage> usage) {
     if (usage.Contains(BufferUsage::eUniform)) {
         vk_usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    if (usage.Contains(BufferUsage::eUnorderedAccess)) {
+    if (usage.Contains(BufferUsage::eUnorderedAccess) || usage.Contains(BufferUsage::eShaderResource)) {
         vk_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    }
-    if (usage.Contains(BufferUsage::eShaderResource)) {
-        vk_usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-        if (usage.Contains(BufferUsage::eUnorderedAccess)) {
-            vk_usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-        }
     }
     if (usage.Contains(BufferUsage::eIndirect)) {
         vk_usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;

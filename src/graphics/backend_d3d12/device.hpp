@@ -2,8 +2,8 @@
 
 #include <D3D12MemAlloc.h>
 
-#include "utils.hpp"
 #include "graphics/device.hpp"
+#include "descriptor.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -40,7 +40,15 @@ public:
     DXGI_FORMAT RawSurfaceFormat() const { return raw_surface_format_; }
     ResourceFormat SurfaceFormat() const { return surface_format_; }
 
+    Ref<DescriptorHeapD3D12> RtvHeap() const { return rtv_heap_.AsRef(); }
+    Ref<DescriptorHeapD3D12> DsvHeap() const { return dsv_heap_.AsRef(); }
+    Ref<DescriptorHeapD3D12> CbvSrvUavHeap() const { return cbv_srv_uav_heap_.AsRef(); }
+    Ref<DescriptorHeapD3D12> SamplerHeap() const { return sampler_heap_.AsRef(); }
+    Ref<DescriptorHeapD3D12> Heap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+
 private:
+    void CreateDescriptorHeap();
+
     ComPtr<ID3D12Debug3> debug_;
     ComPtr<IDXGIFactory6> factory_;
     ComPtr<ID3D12Device2> device_;
@@ -50,6 +58,11 @@ private:
     HWND window_;
     ResourceFormat surface_format_;
     DXGI_FORMAT raw_surface_format_;
+
+    Ptr<DescriptorHeapD3D12> rtv_heap_;
+    Ptr<DescriptorHeapD3D12> dsv_heap_;
+    Ptr<DescriptorHeapD3D12> cbv_srv_uav_heap_;
+    Ptr<DescriptorHeapD3D12> sampler_heap_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

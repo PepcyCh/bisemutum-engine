@@ -81,6 +81,8 @@ DeviceD3D12::DeviceD3D12(const DeviceDesc &desc) {
         .pAdapter = selected_adapter,
     };
     D3D12MA::CreateAllocator(&allocator_desc, &allocator_);
+
+    CreateDescriptorHeap();
 }
 
 DeviceD3D12::~DeviceD3D12() {
@@ -90,6 +92,23 @@ DeviceD3D12::~DeviceD3D12() {
 
 Ptr<DeviceD3D12> DeviceD3D12::Create(const DeviceDesc &desc) {
     return Ptr<DeviceD3D12>::Make(desc);
+}
+
+void DeviceD3D12::CreateDescriptorHeap() {
+    rtv_heap_ = Ptr<DescriptorHeapD3D12>::Make(RefThis(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 512);
+    dsv_heap_ = Ptr<DescriptorHeapD3D12>::Make(RefThis(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 512);
+    cbv_srv_uav_heap_ = Ptr<DescriptorHeapD3D12>::Make(RefThis(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 65536);
+    sampler_heap_ = Ptr<DescriptorHeapD3D12>::Make(RefThis(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 2048);
+}
+
+Ref<DescriptorHeapD3D12> DeviceD3D12::Heap(D3D12_DESCRIPTOR_HEAP_TYPE type) const {
+    switch (type) {
+        case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV: return cbv_srv_uav_heap_.AsRef();
+        case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER: return sampler_heap_.AsRef();
+        case D3D12_DESCRIPTOR_HEAP_TYPE_RTV: return rtv_heap_.AsRef();
+        case D3D12_DESCRIPTOR_HEAP_TYPE_DSV: return dsv_heap_.AsRef();
+        default: Unreachable();
+    }
 }
 
 Ptr<Queue> DeviceD3D12::GetQueue(QueueType type) {

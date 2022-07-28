@@ -137,15 +137,15 @@ void CommandEncoderD3D12::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buff
     auto src_texture_dx = src_texture.CastTo<TextureD3D12>();
     auto dst_buffer_dx = dst_buffer.CastTo<BufferD3D12>();
     for (const auto &region : regions) {
-        uint32_t dst_base_depth, dst_base_layer;
-        src_texture_dx->GetDepthAndLayer(region.texture_offset.z, dst_base_depth, dst_base_layer);
+        uint32_t src_base_depth, src_base_layer;
+        src_texture_dx->GetDepthAndLayer(region.texture_offset.z, src_base_depth, src_base_layer);
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
         for (uint32_t array = 0; array < layers; array++) {
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_texture_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-                .SubresourceIndex = src_texture_dx->SubresourceIndex(region.texture_level, array + dst_base_layer),
+                .SubresourceIndex = src_texture_dx->SubresourceIndex(region.texture_level, array + src_base_layer),
             };
             D3D12_TEXTURE_COPY_LOCATION dst_loc {
                 .pResource = dst_buffer_dx->Raw(),
@@ -162,15 +162,14 @@ void CommandEncoderD3D12::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buff
                 },
             };
             D3D12_BOX copy_box {
-                .left = 0,
-                .top = 0,
-                .front = 0,
-                .right = region.texture_extent.width,
-                .bottom = region.texture_extent.height,
-                .back = depth,
+                .left = region.texture_offset.x,
+                .top = region.texture_offset.y,
+                .front = src_base_depth,
+                .right = region.texture_offset.x + region.texture_extent.width,
+                .bottom = region.texture_offset.y + region.texture_extent.height,
+                .back = src_base_depth + depth,
             };
-            cmd_list_->CopyTextureRegion(&dst_loc, region.texture_offset.x, region.texture_offset.y, dst_base_depth,
-                &src_loc, &copy_box);
+            cmd_list_->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &copy_box);
         }
     }
 }
@@ -199,7 +198,88 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
     : device_(device), base_encoder_(base_encoder), label_(label) {
     cmd_list_ = base_encoder->cmd_list_;
 
-    // TODO - begin render pass
+    Vec<D3D12_RENDER_PASS_RENDER_TARGET_DESC> colors_desc(desc.colors.size());
+    for (size_t i = 0; i < desc.colors.size(); i++) {
+        auto texture_dx = desc.colors[i].texture.texture.CastTo<TextureD3D12>();
+        colors_desc[i] = D3D12_RENDER_PASS_RENDER_TARGET_DESC {
+            .cpuDescriptor = texture_dx->GetView(TextureViewD3D12Desc {
+                .base_layer = 0,
+                .layers = 1,
+                .base_level = 0,
+                .levels = 1,
+                .type = TextureViewTypeD3D12::eRtv,
+            }).cpu,
+            .BeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
+                .Type = desc.colors[i].clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
+                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD,
+                .Clear = D3D12_RENDER_PASS_BEGINNING_ACCESS_CLEAR_PARAMETERS {
+                    .ClearValue = D3D12_CLEAR_VALUE {
+                        .Format = ToDxFormat(texture_dx->Desc().format),
+                        .Color = {desc.colors[i].clear_color.r, desc.colors[i].clear_color.g,
+                            desc.colors[i].clear_color.b, desc.colors[i].clear_color.a}
+                    }
+                }
+            },
+            .EndingAccess = D3D12_RENDER_PASS_ENDING_ACCESS {
+                .Type = desc.colors[i].store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE
+                    : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD,
+                .Resolve = {}, // TODO - support resolve
+            }
+        };
+    }
+
+    D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depth_stencil_desc;
+    bool has_depth_stencil = desc.depth_stencil.has_value();
+    if (has_depth_stencil) {
+        const auto &depth_stencil = desc.depth_stencil.value();
+        auto texture_dx = depth_stencil.texture.texture.CastTo<TextureD3D12>();
+        depth_stencil_desc = D3D12_RENDER_PASS_DEPTH_STENCIL_DESC {
+            .cpuDescriptor = texture_dx->GetView(TextureViewD3D12Desc {
+                .base_layer = 0,
+                .layers = 1,
+                .base_level = 0,
+                .levels = 1,
+                .type = TextureViewTypeD3D12::eRtv,
+            }).cpu,
+            .DepthBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
+                .Type = depth_stencil.clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
+                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD,
+                .Clear = D3D12_RENDER_PASS_BEGINNING_ACCESS_CLEAR_PARAMETERS {
+                    .ClearValue = D3D12_CLEAR_VALUE {
+                        .Format = ToDxFormat(texture_dx->Desc().format),
+                        .DepthStencil = D3D12_DEPTH_STENCIL_VALUE {
+                            .Depth = depth_stencil.clear_depth,
+                        }
+                    }
+                }
+            },
+            .StencilBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
+                .Type = depth_stencil.clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
+                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD,
+                .Clear = D3D12_RENDER_PASS_BEGINNING_ACCESS_CLEAR_PARAMETERS {
+                    .ClearValue = D3D12_CLEAR_VALUE {
+                        .Format = ToDxFormat(texture_dx->Desc().format),
+                        .DepthStencil = D3D12_DEPTH_STENCIL_VALUE {
+                            .Stencil = static_cast<UINT8>(depth_stencil.clear_stencil),
+                        }
+                    }
+                }
+            },
+            .DepthEndingAccess = D3D12_RENDER_PASS_ENDING_ACCESS {
+                .Type = depth_stencil.store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE
+                    : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD,
+                .Resolve = {}, // TODO - support resolve
+            },
+            .StencilEndingAccess = D3D12_RENDER_PASS_ENDING_ACCESS {
+                .Type = depth_stencil.store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE
+                    : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD,
+                .Resolve = {},
+            }
+        };
+    }
+
+    cmd_list_->BeginRenderPass(colors_desc.size(), colors_desc.data(),
+        has_depth_stencil ? &depth_stencil_desc : nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
 }
 
 RenderCommandEncoderD3D12::~RenderCommandEncoderD3D12() {
