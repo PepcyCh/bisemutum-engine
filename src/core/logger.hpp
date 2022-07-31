@@ -40,8 +40,9 @@ public:
         loggers_[logger.index_]->error(fmt, std::forward<Args>(args)...);
     }
 
+    // TODO - use exception instead ?
     template <typename... Args>
-    void Critical(Logger logger, spdlog::format_string_t<Args...> fmt, Args &&... args) {
+    [[noreturn]] void Critical(Logger logger, spdlog::format_string_t<Args...> fmt, Args &&... args) {
         loggers_[logger.index_]->critical(fmt, std::forward<Args>(args)...);
         std::exit(-1);
     }

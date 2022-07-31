@@ -1,29 +1,19 @@
 #pragma once
 
-#include "resource.hpp"
-#include "sampler.hpp"
+#include "core/ptr.hpp"
+#include "mod.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-struct DescriptorBinding {
-    uint32_t set : 8 = 0;
-    uint32_t binding : 24 = 0;
-};
-
-enum class DescriptorType : uint8_t {
-    eSampler,
-    eUniformBuffer,
-    eStorageBuffer,
-    eAccelerationStructure,
-    eSampledTexture,
-    eStorageTexture,
-};
-
-struct DescriptorLayout {
-    std::unordered_map<uint8_t, std::unordered_map<uint32_t, DescriptorType>> descriptors;
-    uint32_t push_constant_length = 0;
+enum class ShaderStage : uint8_t {
+    eVertex,
+    eTessellationControl,
+    eTessellationEvaluation,
+    eGeometry,
+    eFragment,
+    eCompute,
 };
 
 class ShaderModule {
@@ -31,9 +21,35 @@ public:
     virtual ~ShaderModule() = default;
 
 protected:
-    ShaderModule(uint32_t *spv_data, uint64_t length);
+    ShaderModule() = default;
+};
 
-    DescriptorLayout layout_;
+struct GraphicsProgramDesc {
+    Ref<ShaderModule> vertex;
+    ShaderModule *tessellation_control = nullptr;
+    ShaderModule *tessellation_evaluation = nullptr;
+    ShaderModule *geometry = nullptr;
+    Ref<ShaderModule> fragment;
+};
+
+class GraphicsProgram {
+public:
+    virtual ~GraphicsProgram() = default;
+
+protected:
+    GraphicsProgram() = default;
+};
+
+struct ComputeProgramDesc {
+    Ref<ShaderModule> compute;
+};
+
+class ComputeProgram {
+public:
+    virtual ~ComputeProgram() = default;
+
+protected:
+    ComputeProgram() = default;
 };
 
 BISMUTH_GFX_NAMESPACE_END

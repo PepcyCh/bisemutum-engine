@@ -1,0 +1,13 @@
+target("test-graphics-resource_creation")
+    set_kind("binary")
+    add_files("graphics/resource_creation.cpp")
+    add_includedirs("../src/")
+    add_deps("bismuth-graphics")
+    add_packages("glfw")
+
+target("test-graphics-shader_compilation")
+    set_kind("binary")
+    add_files("graphics/shader_compilation.cpp")
+    add_includedirs("../src/")
+    add_deps("bismuth-graphics")
+    add_packages("glfw")

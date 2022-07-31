@@ -8,6 +8,11 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
+enum class GraphicsBackend : uint8_t {
+    eVulkan,
+    eD3D12,
+};
+
 struct Extent3D {
     uint32_t width = 1;
     uint32_t height = 1;

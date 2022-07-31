@@ -19,7 +19,10 @@ This project use [Xmake](https://xmake.io/) to build.
 
 * spdlog
 * glfw
+* glm
 * volk
 * Vulkan Memory Allocator
 * SPIRV-reflect
-* D3D12 Memory Allocator (through vcpkg)
+* DirectXShaderCompiler (Windows only)
+* glslang (through vcpkg)
+* D3D12 Memory Allocator (through vcpkg) (Windows only)

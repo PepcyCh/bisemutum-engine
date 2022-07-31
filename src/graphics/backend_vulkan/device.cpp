@@ -11,6 +11,7 @@
 #include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
+#include "shader.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -55,11 +56,11 @@ DeviceVulkan::DeviceVulkan(const DeviceDesc &desc) {
         .pUserData = nullptr,
     };
 
-    std::vector<const char *> enabled_layers = {};
+    Vec<const char *> enabled_layers = {};
     if (desc.enable_validation) {
         enabled_layers.push_back("VK_LAYER_KHRONOS_validation");
     }
-    std::vector<const char *> enabled_instance_extensions = {
+    Vec<const char *> enabled_instance_extensions = {
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
     };
@@ -112,7 +113,7 @@ DeviceVulkan::~DeviceVulkan() {
 void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
     uint32_t num_physical_device;
     vkEnumeratePhysicalDevices(instance_, &num_physical_device, nullptr);
-    std::vector<VkPhysicalDevice> physical_devices(num_physical_device);
+    Vec<VkPhysicalDevice> physical_devices(num_physical_device);
     vkEnumeratePhysicalDevices(instance_, &num_physical_device, physical_devices.data());
 
     VkPhysicalDevice available_device = VK_NULL_HANDLE;
@@ -122,7 +123,7 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
         if (num_surface_format == 0) {
             continue;
         }
-        std::vector<VkSurfaceFormatKHR> surface_formats(num_surface_format);
+        Vec<VkSurfaceFormatKHR> surface_formats(num_surface_format);
         vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface_, &num_surface_format, surface_formats.data());
         bool surface_format_ok = std::find_if(surface_formats.begin(), surface_formats.end(),
             [&](const VkSurfaceFormatKHR &surface_format) {
@@ -152,7 +153,7 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
 
     uint32_t num_queue_family;
     vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &num_queue_family, nullptr);
-    std::vector<VkQueueFamilyProperties> queue_family_props(num_queue_family);
+    Vec<VkQueueFamilyProperties> queue_family_props(num_queue_family);
     vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &num_queue_family, queue_family_props.data());
     
     uint32_t graphics_queue_family = ~0u;
@@ -173,14 +174,14 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
     queue_family_indices[static_cast<uint8_t>(QueueType::eTransfer)] = transfer_queue_family;
 
     float queue_priority = 1.0f;
-    std::vector<uint32_t> created_queue_family = { graphics_queue_family };
+    Vec<uint32_t> created_queue_family = { graphics_queue_family };
     if (transfer_queue_family != ~0u) {
         created_queue_family.push_back(transfer_queue_family);
     }
     if (compute_queue_family != ~0u) {
         created_queue_family.push_back(compute_queue_family);
     }
-    std::vector<VkDeviceQueueCreateInfo> queue_ci(created_queue_family.size());
+    Vec<VkDeviceQueueCreateInfo> queue_ci(created_queue_family.size());
     for (size_t i = 0; i < queue_ci.size(); i++) {
         queue_ci[i] = VkDeviceQueueCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -192,7 +193,7 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
         };
     }
 
-    std::vector<const char *> enabled_device_extensions = {
+    Vec<const char *> enabled_device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 #if BISMUTH_VULKAN_VERSION_MINOR < 3
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
@@ -313,6 +314,10 @@ Ptr<Texture> DeviceVulkan::CreateTexture(const TextureDesc &desc) {
 
 Ptr<Sampler> DeviceVulkan::CreateSampler(const SamplerDesc &desc) {
     return Ptr<SamplerVulkan>::Make(RefThis(), desc);
+}
+
+Ptr<ShaderModule> DeviceVulkan::CreateShaderModule(const Vec<uint8_t> &src_bytes) {
+    return Ptr<ShaderModuleVulkan>::Make(RefThis(), src_bytes);
 }
 
 BISMUTH_GFX_NAMESPACE_END

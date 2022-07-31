@@ -32,6 +32,8 @@ public:
 
     Ptr<Sampler> CreateSampler(const SamplerDesc &desc) override;
 
+    Ptr<ShaderModule> CreateShaderModule(const Vec<uint8_t> &src_bytes) override;
+
     VkDevice Raw() const { return device_; }
     VkPhysicalDevice RawPhysicalDevice() const { return physical_device_; }
 

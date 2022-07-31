@@ -8,6 +8,7 @@
 #include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
+#include "shader.hpp"
 
 struct GLFWwindow;
 
@@ -15,13 +16,8 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-enum class DeviceBackend : uint8_t {
-    eVulkan,
-    eD3D12,
-};
-
 struct DeviceDesc {
-    DeviceBackend backend = DeviceBackend::eVulkan;
+    GraphicsBackend backend = GraphicsBackend::eVulkan;
     bool enable_validation = false;
     GLFWwindow *window = nullptr;
     ResourceFormat surface_format = ResourceFormat::eBgra8Srgb;
@@ -31,7 +27,7 @@ class Device {
 public:
     virtual ~Device() = default;
 
-    static Ptr<Device> CreateDevice(const DeviceDesc &desc);
+    static Ptr<Device> Create(const DeviceDesc &desc);
 
     virtual Ptr<Queue> GetQueue(QueueType type) = 0;
 
@@ -49,6 +45,8 @@ public:
     virtual Ptr<Texture> CreateTexture(const struct TextureDesc &desc) = 0;
 
     virtual Ptr<Sampler> CreateSampler(const struct SamplerDesc &desc) = 0;
+
+    virtual Ptr<ShaderModule> CreateShaderModule(const Vec<uint8_t> &src_bytes) = 0;
 
 protected:
     Device() = default;

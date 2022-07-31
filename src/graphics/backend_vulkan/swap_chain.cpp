@@ -51,7 +51,7 @@ void SwapChainVulkan::CreateSwapChain(uint32_t width, uint32_t height, VkSurface
     vkCreateSwapchainKHR(device_->Raw(), &swap_chain_ci, nullptr, &swap_chain_);
 
     vkGetSwapchainImagesKHR(device_->Raw(), swap_chain_, &num_textures_, nullptr);
-    std::vector<VkImage> images(num_textures_);
+    Vec<VkImage> images(num_textures_);
     vkGetSwapchainImagesKHR(device_->Raw(), swap_chain_, &num_textures_, images.data());
     TextureDesc texture_desc {
         .name = "",

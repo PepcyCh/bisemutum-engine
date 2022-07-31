@@ -10,6 +10,7 @@
 #include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
+#include "shader.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -149,6 +150,10 @@ Ptr<Texture> DeviceD3D12::CreateTexture(const TextureDesc &desc) {
 
 Ptr<Sampler> DeviceD3D12::CreateSampler(const SamplerDesc &desc) {
     return Ptr<SamplerD3D12>::Make(RefThis(), desc);
+}
+
+Ptr<ShaderModule> DeviceD3D12::CreateShaderModule(const Vec<uint8_t> &src_bytes) {
+    return Ptr<ShaderModuleD3D12>::Make(RefThis(), src_bytes);
 }
 
 BISMUTH_GFX_NAMESPACE_END

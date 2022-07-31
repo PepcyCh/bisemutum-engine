@@ -3,9 +3,9 @@ add_rules("mode.debug", "mode.release")
 set_languages("cxx20")
 
 add_requires("spdlog")
-add_requires("volk", "vulkan-memory-allocator", "spirv-reflect", "glfw", "glm")
+add_requires("volk", "vulkan-memory-allocator", "vcpkg::glslang", "spirv-reflect", "glfw", "glm")
 if is_plat("windows") then
-    add_requires("vcpkg::d3d12-memory-allocator")
+    add_requires("vcpkg::d3d12-memory-allocator", "directxshadercompiler")
 
     target("pix")
         set_kind("static")
@@ -38,16 +38,12 @@ target("bismuth-graphics")
     end
     add_includedirs("src/")
     add_deps("bismuth-core", {public = true})
-    add_packages("volk", "vulkan-memory-allocator", "spirv-reflect", "glfw")
+    add_packages("volk", "vulkan-memory-allocator", "vcpkg::glslang", "spirv-reflect", "glfw")
     if is_plat("windows") then
         add_defines("VK_USE_PLATFORM_WIN32_KHR")
         add_deps("pix")
-        add_packages("vcpkg::d3d12-memory-allocator")
+        add_packages("vcpkg::d3d12-memory-allocator", "directxshadercompiler")
         add_syslinks("d3d12", "dxgi", "dxguid")
     end
 
-target("bismuth")
-    set_kind("binary")
-    add_files("src/main.cpp")
-    add_deps("bismuth-graphics")
-    add_packages("glfw")
+includes("test/xmake.lua")

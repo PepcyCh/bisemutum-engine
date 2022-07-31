@@ -15,7 +15,8 @@ struct DescriptorHandle {
 
 class DescriptorHeapD3D12 {
 public:
-    DescriptorHeapD3D12(Ref<class DeviceD3D12> device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT max_count);
+    DescriptorHeapD3D12(Ref<class DeviceD3D12> device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT max_count,
+        bool shader_visible = false);
     ~DescriptorHeapD3D12();
 
     DescriptorHandle AllocateDecriptor();
@@ -28,6 +29,7 @@ private:
     ComPtr<ID3D12DescriptorHeap> heap_;
     D3D12_DESCRIPTOR_HEAP_TYPE type_;
     DescriptorHandle start_handle_;
+    bool shader_visible_;
     UINT descriptor_size_;
     UINT max_count_;
     UINT used_count_;

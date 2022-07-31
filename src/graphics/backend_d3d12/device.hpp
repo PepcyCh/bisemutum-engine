@@ -30,6 +30,8 @@ public:
 
     Ptr<Sampler> CreateSampler(const SamplerDesc &desc) override;
 
+    Ptr<ShaderModule> CreateShaderModule(const Vec<uint8_t> &src_bytes) override;
+
     ID3D12Device2 *Raw() const { return device_.Get(); }
 
     IDXGIFactory6 *RawFactory() const { return factory_.Get(); }

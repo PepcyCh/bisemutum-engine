@@ -24,6 +24,15 @@ inline std::string WCharsToString(const WCHAR *wchars) {
     return str;
 }
 
+inline std::wstring CharsToWString(const CHAR *chars) {
+    int size = MultiByteToWideChar(CP_OEMCP, 0, chars, -1, nullptr, 0);
+    WCHAR *temp  = new WCHAR[size];
+    MultiByteToWideChar(CP_OEMCP, 0, chars, -1, temp, size);
+    std::wstring str(temp, temp + size - 1);
+    delete[] temp;
+    return str;
+}
+
 inline D3D12_COMPARISON_FUNC ToDxCompareFunc(CompareOp op) {
     return static_cast<D3D12_COMPARISON_FUNC>(static_cast<uint8_t>(op) + 1);
 }

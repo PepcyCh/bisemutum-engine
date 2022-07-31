@@ -3,7 +3,7 @@
 #include <optional>
 
 #include "core/span.hpp"
-#include "shader.hpp"
+#include "resource.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 

@@ -132,7 +132,7 @@ DescriptorHandle BufferD3D12::GetView(const BufferViewD3D12Desc &view_desc) cons
         case BufferViewTypeD3D12::eSrv: {
             D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc {
                 .Format = DXGI_FORMAT_UNKNOWN,
-                .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+                .ViewDimension = D3D12_SRV_DIMENSION_BUFFER, // TODO - ray tracing acceleration structure
                 .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                 .Buffer = D3D12_BUFFER_SRV {
                     .FirstElement = view_desc.offset,

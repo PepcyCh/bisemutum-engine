@@ -20,12 +20,12 @@ int main(int argc, char **argv) {
     gfx::Initialize();
 
     gfx::DeviceDesc device_desc {
-        // .backend = gfx::DeviceBackend::eVulkan,
-        .backend = gfx::DeviceBackend::eD3D12,
+        // .backend = gfx::GraphicsBackend::eVulkan,
+        .backend = gfx::GraphicsBackend::eD3D12,
         .enable_validation = true,
         .window = window,
     };
-    auto device = gfx::Device::CreateDevice(device_desc);
+    auto device = gfx::Device::Create(device_desc);
 
     auto graphics_queue = device->GetQueue(gfx::QueueType::eGraphics);
     auto swap_chain = device->CreateSwapChain(graphics_queue, width, height);

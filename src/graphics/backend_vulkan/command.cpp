@@ -21,8 +21,8 @@ VkDebugUtilsLabelEXT ToVkDebugLabel(const CommandLabel &label) {
     };
 }
 
-std::vector<VkBufferCopy> ToVkBufferCopy(Span<BufferCopyDesc> regions) {
-    std::vector<VkBufferCopy> regions_vk(regions.size());
+Vec<VkBufferCopy> ToVkBufferCopy(Span<BufferCopyDesc> regions) {
+    Vec<VkBufferCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
         regions_vk[i] = VkBufferCopy {
             .srcOffset = regions[i].src_offset,
@@ -33,9 +33,9 @@ std::vector<VkBufferCopy> ToVkBufferCopy(Span<BufferCopyDesc> regions) {
     return regions_vk;
 }
 
-std::vector<VkImageCopy> ToVkImageCopy(TextureVulkan *src_texture_vk, TextureVulkan *dst_texture_vk,
+Vec<VkImageCopy> ToVkImageCopy(TextureVulkan *src_texture_vk, TextureVulkan *dst_texture_vk,
     Span<TextureCopyDesc> regions) {
-    std::vector<VkImageCopy> regions_vk(regions.size());
+    Vec<VkImageCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
         uint32_t src_base_depth, src_base_layer;
         src_texture_vk->GetDepthAndLayer(regions[i].src_offset.z, src_base_depth, src_base_layer);
@@ -76,8 +76,8 @@ std::vector<VkImageCopy> ToVkImageCopy(TextureVulkan *src_texture_vk, TextureVul
     return regions_vk;
 }
 
-std::vector<VkBufferImageCopy> ToVkBufferImageCopy(TextureVulkan *texture_vk, Span<BufferTextureCopyDesc> regions) {
-    std::vector<VkBufferImageCopy> regions_vk(regions.size());
+Vec<VkBufferImageCopy> ToVkBufferImageCopy(TextureVulkan *texture_vk, Span<BufferTextureCopyDesc> regions) {
+    Vec<VkBufferImageCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
         uint32_t base_depth, base_layer;
         texture_vk->GetDepthAndLayer(regions[i].texture_offset.z, base_depth, base_layer);
@@ -201,7 +201,7 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
 
     Extent3D extent;
 
-    std::vector<VkRenderingAttachmentInfoKHR> color_attachments_vk(desc.colors.size());
+    Vec<VkRenderingAttachmentInfoKHR> color_attachments_vk(desc.colors.size());
     for (size_t i = 0; i < desc.colors.size(); i++) {
         auto texture_vk = desc.colors[i].texture.texture.CastTo<TextureVulkan>();
         const auto &clear_color = desc.colors[i].clear_color;
@@ -309,8 +309,8 @@ void RenderCommandEncoderVulkan::PopLabel() {
 
 void RenderCommandEncoderVulkan::BindVertexBuffer(Span<VertexBufferDesc> buffers,
     uint32_t first_binding) {
-    std::vector<VkBuffer> buffers_vk(buffers.size());
-    std::vector<uint64_t> offsets_vk(buffers.size());
+    Vec<VkBuffer> buffers_vk(buffers.size());
+    Vec<uint64_t> offsets_vk(buffers.size());
     for (size_t i = 0; i < buffers.size(); i++) {
         buffers_vk[i] = buffers[i].buffer.CastTo<BufferVulkan>()->Raw();
         offsets_vk[i] = buffers[i].offset;
