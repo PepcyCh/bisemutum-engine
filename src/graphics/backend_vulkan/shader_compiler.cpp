@@ -4,6 +4,7 @@
 
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
+#include <spirv_cross/spirv_glsl.hpp>
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -171,9 +172,25 @@ Vec<uint8_t> ShaderCompilerVulkan::Compile(const fs::path &src_path, const std::
         BI_CRTICAL(gGraphicsLogger, "Shader file '{}' doesn't exist", src_filename);
     }
 
+    // glslang may generate invalid SPIR-V 1.5/1.6 codes (see https://github.com/KhronosGroup/glslang/issues/2411)
+    // hlsl -> spir-v 1.3 -> glsl -> spir-v 1.5/1.6 is used
+
+    Vec<uint32_t> spv_temp = HlslToSpirv(src_filename, entry, stage, defines);
+
+    std::string glsl_temp = SpirvToGlsl(spv_temp);
+
+    Vec<uint32_t> spv_binary = GlslToSpirv(glsl_temp, entry, stage);
+    Vec<uint8_t> spv_binary_bytes(spv_binary.size() * 4);
+    memcpy(spv_binary_bytes.data(), spv_binary.data(), spv_binary.size() * 4);
+
+    return spv_binary_bytes;
+}
+
+Vec<uint32_t> ShaderCompilerVulkan::HlslToSpirv(const std::string &src_filename, const std::string &entry,
+    ShaderStage stage, const HashMap<std::string, std::string> &defines) const {
     std::string shader_source;
     {
-        std::ifstream fin(src_path);
+        std::ifstream fin(src_filename);
         fin.seekg(0, std::ios::end);
         size_t size = fin.tellg();
         shader_source.resize(size);
@@ -185,9 +202,9 @@ Vec<uint8_t> ShaderCompilerVulkan::Compile(const fs::path &src_path, const std::
     glslang::TShader shader(glslang_stage);
     const char *shader_source_str = shader_source.c_str();
     shader.setStrings(&shader_source_str, 1);
-    shader.setEnvInput(glslang::EShSourceHlsl, glslang_stage, glslang::EShClientVulkan, ToGlslangVulkanVersion());
-    shader.setEnvClient(glslang::EShClientVulkan, ToGlslangVulkanVersion());
-    shader.setEnvTarget(glslang::EShTargetSpv, ToGlslangSpvVersion());
+    shader.setEnvInput(glslang::EShSourceHlsl, glslang_stage, glslang::EShClientVulkan, glslang::EShTargetVulkan_1_1);
+    shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_1);
+    shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_3);
     shader.setEntryPoint(entry.c_str());
 
     std::string preamble;
@@ -207,7 +224,7 @@ Vec<uint8_t> ShaderCompilerVulkan::Compile(const fs::path &src_path, const std::
     if (!program.link(EShMsgHlslLegalization)) {
         const std::string log(program.getInfoLog());
         const std::string debug_log(program.getInfoDebugLog());
-        BI_CRTICAL(gGraphicsLogger, "Failed to link shader '{}', info:\n{}\n{}", src_path.string(), log, debug_log);
+        BI_CRTICAL(gGraphicsLogger, "Failed to link shader '{}', info:\n{}\n{}", src_filename, log, debug_log);
     }
 
     glslang::TIntermediate *intermediate = program.getIntermediate(glslang_stage);
@@ -217,9 +234,46 @@ Vec<uint8_t> ShaderCompilerVulkan::Compile(const fs::path &src_path, const std::
     Vec<uint32_t> spv_binary;
     glslang::GlslangToSpv(*intermediate, spv_binary, &logger, &options);
 
-    Vec<uint8_t> spv_binary_bytes(spv_binary.size() * 4);
-    memcpy(spv_binary_bytes.data(), spv_binary.data(), spv_binary.size() * 4);
-    return spv_binary_bytes;
+    return spv_binary;
+}
+
+std::string ShaderCompilerVulkan::SpirvToGlsl(const Vec<uint32_t> &spv) const {
+    spirv_cross::CompilerGLSL spv_to_glsl(spv.data(), spv.size());
+
+    spirv_cross::CompilerGLSL::Options options {};
+    options.vulkan_semantics = true;
+    options.version = 460;
+    spv_to_glsl.set_common_options(options);
+
+    std::string glsl_src = spv_to_glsl.compile();
+    return glsl_src;
+}
+
+Vec<uint32_t> ShaderCompilerVulkan::GlslToSpirv(const std::string &glsl_src, const std::string &entry,
+    ShaderStage stage) const {
+    auto glslang_stage = ToGlslangStage(stage);
+    glslang::TShader shader(glslang_stage);
+    const char *shader_source_str = glsl_src.c_str();
+    shader.setStrings(&shader_source_str, 1);
+    shader.setEnvInput(glslang::EShSourceGlsl, glslang_stage, glslang::EShClientVulkan, ToGlslangVulkanVersion());
+    shader.setEnvClient(glslang::EShClientVulkan, ToGlslangVulkanVersion());
+    shader.setEnvTarget(glslang::EShTargetSpv, ToGlslangSpvVersion());
+    shader.setEntryPoint(entry.c_str());
+
+    BI_ASSERT(shader.parse(&kDefaultTBuiltInResource, 100, false, EShMsgDefault));
+
+    glslang::TProgram program {};
+    program.addShader(&shader);
+    BI_ASSERT(program.link(EShMsgDefault));
+
+    glslang::TIntermediate *intermediate = program.getIntermediate(glslang_stage);
+    spv::SpvBuildLogger logger;
+    glslang::SpvOptions options {};
+    options.disableOptimizer = false;
+    Vec<uint32_t> spv_binary;
+    glslang::GlslangToSpv(*intermediate, spv_binary, &logger, &options);
+
+    return spv_binary;
 }
 
 BISMUTH_GFX_NAMESPACE_END

@@ -10,12 +10,12 @@ namespace {
 
 const wchar_t *ToDxShaderStage(ShaderStage stage) {
     switch (stage) {
-        case ShaderStage::eVertex: return L"vs_6_0";
-        case ShaderStage::eTessellationControl: return L"hs_6_0";
-        case ShaderStage::eTessellationEvaluation: return L"ds_6_0";
-        case ShaderStage::eGeometry: return L"gs_6_0";
-        case ShaderStage::eFragment: return L"ps_6_0";
-        case ShaderStage::eCompute: return L"cs_6_0";
+        case ShaderStage::eVertex: return L"vs_6_5";
+        case ShaderStage::eTessellationControl: return L"hs_6_5";
+        case ShaderStage::eTessellationEvaluation: return L"ds_6_5";
+        case ShaderStage::eGeometry: return L"gs_6_5";
+        case ShaderStage::eFragment: return L"ps_6_5";
+        case ShaderStage::eCompute: return L"cs_6_5";
     }
     Unreachable();
 }

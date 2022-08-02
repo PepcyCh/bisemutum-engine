@@ -32,6 +32,8 @@ int main(int argc, char **argv) {
 
     const char *shader_file = "test/graphics/simple_compute.hlsl";
     auto shader_binary_bytes = shader_compiler->Compile(shader_file, "SimpleCompute", gfx::ShaderStage::eCompute);
+    // const char *shader_file = "test/graphics/ray_query_compute.hlsl";
+    // auto shader_binary_bytes = shader_compiler->Compile(shader_file, "RayQueryCompute", gfx::ShaderStage::eCompute);
     BI_INFO(gGeneralLogger, "Succeeded to compile shader, {} bytes in total", shader_binary_bytes.size());
 
     {
