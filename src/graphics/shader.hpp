@@ -1,6 +1,7 @@
 #pragma once
 
-#include "core/ptr.hpp"
+#include <cstdint>
+
 #include "mod.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -22,34 +23,6 @@ public:
 
 protected:
     ShaderModule() = default;
-};
-
-struct GraphicsProgramDesc {
-    Ref<ShaderModule> vertex;
-    ShaderModule *tessellation_control = nullptr;
-    ShaderModule *tessellation_evaluation = nullptr;
-    ShaderModule *geometry = nullptr;
-    Ref<ShaderModule> fragment;
-};
-
-class GraphicsProgram {
-public:
-    virtual ~GraphicsProgram() = default;
-
-protected:
-    GraphicsProgram() = default;
-};
-
-struct ComputeProgramDesc {
-    Ref<ShaderModule> compute;
-};
-
-class ComputeProgram {
-public:
-    virtual ~ComputeProgram() = default;
-
-protected:
-    ComputeProgram() = default;
 };
 
 BISMUTH_GFX_NAMESPACE_END

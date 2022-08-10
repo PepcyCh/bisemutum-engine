@@ -121,6 +121,8 @@ class RenderCommandEncoder : public CommandEncoderBase {
 public:
     virtual ~RenderCommandEncoder() = default;
 
+    virtual void SetPipeline(Ref<class RenderPipeline> pipeline) = 0;
+
     virtual void BindVertexBuffer(Span<VertexBufferDesc> buffers, uint32_t first_binding = 0) = 0;
     virtual void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) = 0;
 
@@ -137,7 +139,9 @@ class ComputeCommandEncoder : public CommandEncoderBase {
 public:
     virtual ~ComputeCommandEncoder() = default;
 
-    virtual void Dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
+    virtual void SetPipeline(Ref<class ComputePipeline> pipeline) = 0;
+
+    virtual void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) = 0;
 
 protected:
     ComputeCommandEncoder() = default;

@@ -5,6 +5,7 @@
 
 #include "device.hpp"
 #include "resource.hpp"
+#include "shader.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -300,6 +301,10 @@ void RenderCommandEncoderD3D12::PopLabel() {
     PIXEndEvent(cmd_list_.Get());
 }
 
+void RenderCommandEncoderD3D12::SetPipeline(Ref<RenderPipeline> pipeline) {
+    // TODO
+}
+
 void RenderCommandEncoderD3D12::BindVertexBuffer(Span<VertexBufferDesc> buffers, uint32_t first_binding) {
     Vec<D3D12_VERTEX_BUFFER_VIEW> views(buffers.Size());
     for (size_t i = 0; i < buffers.Size(); i++) {
@@ -355,7 +360,15 @@ void ComputeCommandEncoderD3D12::PopLabel() {
     PIXEndEvent(cmd_list_.Get());
 }
 
-void ComputeCommandEncoderD3D12::Dispatch(uint32_t x, uint32_t y, uint32_t z) {
+void ComputeCommandEncoderD3D12::SetPipeline(Ref<ComputePipeline> pipeline) {
+    // TODO
+}
+
+void ComputeCommandEncoderD3D12::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {
+    // TODO
+    uint32_t x = size_x;
+    uint32_t y = size_y;
+    uint32_t z = size_z;
     cmd_list_->Dispatch(x, y, z);
 }
 

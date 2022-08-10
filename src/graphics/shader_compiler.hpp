@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "core/container.hpp"
+#include "core/ptr.hpp"
 #include "defines.hpp"
 #include "shader.hpp"
 

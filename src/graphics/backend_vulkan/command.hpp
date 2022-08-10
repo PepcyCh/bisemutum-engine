@@ -67,6 +67,8 @@ public:
 
     void PopLabel() override;
 
+    void SetPipeline(Ref<class RenderPipeline> pipeline) override;
+
     void BindVertexBuffer(Span<VertexBufferDesc> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;
 
@@ -81,8 +83,7 @@ private:
     std::string label_;
     VkCommandBuffer cmd_buffer_;
 
-    VkRenderPass render_pass_;
-    VkFramebuffer frame_buffer_;
+    class RenderPipelineVulkan *curr_pipeline_ = nullptr;
 };
 
 class ComputeCommandEncoderVulkan : public ComputeCommandEncoder {
@@ -96,13 +97,17 @@ public:
 
     void PopLabel() override;
 
-    void Dispatch(uint32_t x, uint32_t y, uint32_t z) override;
+    void SetPipeline(Ref<class ComputePipeline> pipeline) override;
+
+    void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) override;
 
 private:
     Ref<DeviceVulkan> device_;
     Ref<CommandEncoderVulkan> base_encoder_;
     std::string label_;
     VkCommandBuffer cmd_buffer_;
+
+    class ComputePipelineVulkan *curr_pipeline_ = nullptr;
 };
 
 BISMUTH_GFX_NAMESPACE_END

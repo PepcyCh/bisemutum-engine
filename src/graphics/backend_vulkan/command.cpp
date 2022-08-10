@@ -5,6 +5,7 @@
 #include "utils.hpp"
 #include "device.hpp"
 #include "resource.hpp"
+#include "pipeline.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -307,8 +308,15 @@ void RenderCommandEncoderVulkan::PopLabel() {
     vkCmdEndDebugUtilsLabelEXT(cmd_buffer_);
 }
 
+void RenderCommandEncoderVulkan::SetPipeline(Ref<RenderPipeline> pipeline) {
+    curr_pipeline_ = pipeline.CastTo<RenderPipelineVulkan>().Get();
+    vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipeline());
+}
+
 void RenderCommandEncoderVulkan::BindVertexBuffer(Span<VertexBufferDesc> buffers,
     uint32_t first_binding) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindVertexBuffer() without setting pipeline");
+
     Vec<VkBuffer> buffers_vk(buffers.size());
     Vec<uint64_t> offsets_vk(buffers.size());
     for (size_t i = 0; i < buffers.size(); i++) {
@@ -320,16 +328,22 @@ void RenderCommandEncoderVulkan::BindVertexBuffer(Span<VertexBufferDesc> buffers
 
 void RenderCommandEncoderVulkan::BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) {
     auto buffer_vk = buffer.CastTo<BufferVulkan>()->Raw();
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindIndexBuffer() without setting pipeline");
+
     vkCmdBindIndexBuffer(cmd_buffer_, buffer_vk, offset, ToVkIndexType(index_type));
 }
 
 void RenderCommandEncoderVulkan::Draw(uint32_t num_vertices, uint32_t num_instance, uint32_t first_vertex,
     uint32_t first_instance) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::Draw() without setting pipeline");
+
     vkCmdDraw(cmd_buffer_, num_vertices, num_instance, first_vertex, first_instance);
 }
 
 void RenderCommandEncoderVulkan::DrawIndexed(uint32_t num_indices, uint32_t num_instance, uint32_t first_index,
     uint32_t vertex_offset, uint32_t first_instance) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::DrawIndexed() without setting pipeline");
+
     vkCmdDrawIndexed(cmd_buffer_, num_indices, num_instance, first_index, vertex_offset, first_instance);
 }
 
@@ -362,7 +376,16 @@ void ComputeCommandEncoderVulkan::PopLabel() {
     vkCmdEndDebugUtilsLabelEXT(cmd_buffer_);
 }
 
-void ComputeCommandEncoderVulkan::Dispatch(uint32_t x, uint32_t y, uint32_t z) {
+void ComputeCommandEncoderVulkan::SetPipeline(Ref<ComputePipeline> pipeline) {
+    curr_pipeline_ = pipeline.CastTo<ComputePipelineVulkan>().Get();
+    vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->RawPipeline());
+}
+
+void ComputeCommandEncoderVulkan::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::Dispatch() without setting pipeline");
+    uint32_t x = (size_x + curr_pipeline_->LocalSizeX() - 1) / curr_pipeline_->LocalSizeX();
+    uint32_t y = (size_y + curr_pipeline_->LocalSizeY() - 1) / curr_pipeline_->LocalSizeY();
+    uint32_t z = (size_z + curr_pipeline_->LocalSizeZ() - 1) / curr_pipeline_->LocalSizeZ();
     vkCmdDispatch(cmd_buffer_, x, y, z);
 }
 

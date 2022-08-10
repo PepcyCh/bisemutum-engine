@@ -38,6 +38,10 @@ public:
         return (value_ & rhs.value_) != 0;
     }
 
+    ValueType RawValue() const {
+        return value_;
+    }
+
 private:
     ValueType value_;
 };

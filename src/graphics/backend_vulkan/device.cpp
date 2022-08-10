@@ -195,6 +195,7 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
 
     Vec<const char *> enabled_device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
 #if BISMUTH_VULKAN_VERSION_MINOR < 3
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 #endif
@@ -223,10 +224,15 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
     };
     ConnectVkPNextChain(&device_features, &vk13_features);
 #endif
+    VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservative_rasterization_features {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT,
+    };
+    ConnectVkPNextChain(&device_features, &conservative_rasterization_features);
 #if BISMUTH_VULKAN_VERSION_MINOR < 3
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
     };
+    ConnectVkPNextChain(&device_features, &dynamic_rendering_features);
 #endif
     vkGetPhysicalDeviceFeatures2(physical_device_, &device_features);
 

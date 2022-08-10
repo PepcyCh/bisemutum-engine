@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/container.hpp"
+#include "core/ptr.hpp"
 #include "utils.hpp"
 #include "graphics/shader.hpp"
 
