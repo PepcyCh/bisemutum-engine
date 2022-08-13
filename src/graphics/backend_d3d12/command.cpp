@@ -5,7 +5,7 @@
 
 #include "device.hpp"
 #include "resource.hpp"
-#include "shader.hpp"
+#include "pipeline.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -302,23 +302,27 @@ void RenderCommandEncoderD3D12::PopLabel() {
 }
 
 void RenderCommandEncoderD3D12::SetPipeline(Ref<RenderPipeline> pipeline) {
-    // TODO
+    curr_pipeline_ = pipeline.CastTo<RenderPipelineD3D12>().Get();
 }
 
-void RenderCommandEncoderD3D12::BindVertexBuffer(Span<VertexBufferDesc> buffers, uint32_t first_binding) {
+void RenderCommandEncoderD3D12::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindVertexBuffer() without setting pipeline");
+
     Vec<D3D12_VERTEX_BUFFER_VIEW> views(buffers.Size());
     for (size_t i = 0; i < buffers.Size(); i++) {
         auto buffer_dx = buffers[i].buffer.CastTo<BufferD3D12>();
         views[i] = D3D12_VERTEX_BUFFER_VIEW {
             .BufferLocation = buffer_dx->Raw()->GetGPUVirtualAddress() + buffers[i].offset,
             .SizeInBytes = static_cast<uint32_t>(buffer_dx->Size() - buffers[i].offset),
-            .StrideInBytes = buffers[i].stride,
+            .StrideInBytes = curr_pipeline_->Desc().vertex_input_buffers[i].stride,
         };
     }
     cmd_list_->IASetVertexBuffers(first_binding, views.size(), views.data());
 }
 
 void RenderCommandEncoderD3D12::BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindIndexBuffer() without setting pipeline");
+
     auto buffer_dx = buffer.CastTo<BufferD3D12>();
     D3D12_INDEX_BUFFER_VIEW view {
         .BufferLocation = buffer_dx->Raw()->GetGPUVirtualAddress() + offset,
@@ -330,11 +334,15 @@ void RenderCommandEncoderD3D12::BindIndexBuffer(Ref<Buffer> buffer, uint64_t off
 
 void RenderCommandEncoderD3D12::Draw(uint32_t num_vertices, uint32_t num_instance, uint32_t first_vertex,
     uint32_t first_instance) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::Draw() without setting pipeline");
+
     cmd_list_->DrawInstanced(num_vertices, num_instance, first_vertex, first_instance);
 }
 
 void RenderCommandEncoderD3D12::DrawIndexed(uint32_t num_indices, uint32_t num_instance,
     uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::DrawIndexed() without setting pipeline");
+        
     cmd_list_->DrawIndexedInstanced(num_indices, num_instance, first_index, vertex_offset, first_instance);
 }
 
@@ -361,14 +369,14 @@ void ComputeCommandEncoderD3D12::PopLabel() {
 }
 
 void ComputeCommandEncoderD3D12::SetPipeline(Ref<ComputePipeline> pipeline) {
-    // TODO
+    curr_pipeline_ = pipeline.CastTo<ComputePipelineD3D12>().Get();
 }
 
 void ComputeCommandEncoderD3D12::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {
-    // TODO
-    uint32_t x = size_x;
-    uint32_t y = size_y;
-    uint32_t z = size_z;
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::Dispatch() without setting pipeline");
+    uint32_t x = (size_x + curr_pipeline_->LocalSizeX() - 1) / curr_pipeline_->LocalSizeX();
+    uint32_t y = (size_y + curr_pipeline_->LocalSizeY() - 1) / curr_pipeline_->LocalSizeY();
+    uint32_t z = (size_z + curr_pipeline_->LocalSizeZ() - 1) / curr_pipeline_->LocalSizeZ();
     cmd_list_->Dispatch(x, y, z);
 }
 

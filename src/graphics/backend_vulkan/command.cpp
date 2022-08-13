@@ -313,8 +313,7 @@ void RenderCommandEncoderVulkan::SetPipeline(Ref<RenderPipeline> pipeline) {
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipeline());
 }
 
-void RenderCommandEncoderVulkan::BindVertexBuffer(Span<VertexBufferDesc> buffers,
-    uint32_t first_binding) {
+void RenderCommandEncoderVulkan::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {
     BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindVertexBuffer() without setting pipeline");
 
     Vec<VkBuffer> buffers_vk(buffers.size());

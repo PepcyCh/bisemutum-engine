@@ -111,19 +111,13 @@ protected:
     CommandEncoder() = default;
 };
 
-struct VertexBufferDesc {
-    Ref<Buffer> buffer;
-    uint64_t offset = 0;
-    uint32_t stride = 0;
-};
-
 class RenderCommandEncoder : public CommandEncoderBase {
 public:
     virtual ~RenderCommandEncoder() = default;
 
     virtual void SetPipeline(Ref<class RenderPipeline> pipeline) = 0;
 
-    virtual void BindVertexBuffer(Span<VertexBufferDesc> buffers, uint32_t first_binding = 0) = 0;
+    virtual void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) = 0;
     virtual void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) = 0;
 
     virtual void Draw(uint32_t num_vertices, uint32_t num_instance = 1,

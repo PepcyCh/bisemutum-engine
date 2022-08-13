@@ -87,15 +87,16 @@ struct StencilFaceState {
     StencilOp depth_fail_op = StencilOp::eKeep;
 };
 struct DepthStencilState {
+    ResourceFormat format = ResourceFormat::eUndefined;
     bool depth_write : 1 = true;
     bool depth_test : 1 = true;
     bool stencil_test : 1 = false;
     CompareOp depth_compare_op = CompareOp::eLess;
     StencilFaceState stencil_front_face;
     StencilFaceState stencil_back_face;
-    uint32_t stencil_compare_mask = ~0u;
-    uint32_t stencil_write_mask = ~0u;
-    uint32_t stencil_reference = 0;
+    uint8_t stencil_compare_mask = 0xff;
+    uint8_t stencil_write_mask = 0xff;
+    uint8_t stencil_reference = 0;
 };
 
 enum class BlendOp : uint8_t {
@@ -128,7 +129,8 @@ enum class ColorWriteComponent : uint8_t {
     eRgb = eR | eG | eB,
     eRgba = eR | eG | eB | eA,
 };
-struct AttachmentColorBlendState {
+struct ColorTargetAttachmentState {
+    ResourceFormat format = ResourceFormat::eUndefined;
     bool blend_enable = false;
     BlendOp blend_op = BlendOp::eAdd;
     BlendFactor src_blend_factor = BlendFactor::eOne;
@@ -138,8 +140,8 @@ struct AttachmentColorBlendState {
     BlendFactor dst_alpha_blend_factor = BlendFactor::eZero;
     BitFlags<ColorWriteComponent> color_write_mask = { ColorWriteComponent::eRgba };
 };
-struct ColorBlendState {
-    Vec<AttachmentColorBlendState> attachments;
+struct ColorTargetState {
+    Vec<ColorTargetAttachmentState> attachments;
     struct {
         float r = 0.0f;
         float g = 0.0f;
@@ -152,7 +154,7 @@ struct RenderPipelineDesc {
     Vec<VertexInputBufferDesc> vertex_input_buffers;
     PrimitiveState primitive_state;
     DepthStencilState depth_stencil_state;
-    ColorBlendState color_blend_state;
+    ColorTargetState color_target_state;
     
     struct {
         Ref<ShaderModule> vertex;

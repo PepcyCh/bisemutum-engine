@@ -13,7 +13,15 @@ void CreateLayout(const ShaderInfoVulkan &shader_info, VkDevice device, Vec<VkDe
     VkPipelineLayout &pipeline_layout) {
     set_layouts.resize(shader_info.bindings.bindings.size());
     for (size_t set = 0; set < set_layouts.size(); set++) {
-        const auto &binding_info = shader_info.bindings.bindings[set];
+        const auto &binding_info_raw = shader_info.bindings.bindings[set];
+        Vec<VkDescriptorSetLayoutBinding> binding_info;
+        binding_info.reserve(binding_info_raw.size());
+        for (const auto &binding : binding_info_raw) {
+            if (binding.descriptorType != VK_DESCRIPTOR_TYPE_MAX_ENUM) {
+                binding_info.push_back(binding);
+            }
+        }
+
         VkDescriptorSetLayoutCreateInfo set_layout_ci {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = nullptr,
@@ -238,7 +246,7 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
     };
     ConnectVkPNextChain(&rasterization_state, &conservative_rasterization);
 
-    VkPipelineMultisampleStateCreateInfo multosample_state {
+    VkPipelineMultisampleStateCreateInfo multisample_state {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
@@ -281,9 +289,9 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
         .maxDepthBounds = 1.0f,
     };
 
-    Vec<VkPipelineColorBlendAttachmentState> color_blend_attachments(desc.color_blend_state.attachments.size());
+    Vec<VkPipelineColorBlendAttachmentState> color_blend_attachments(desc.color_target_state.attachments.size());
     for (size_t i = 0; i < color_blend_attachments.size(); i++) {
-        const auto attachment = desc.color_blend_state.attachments[i];
+        const auto attachment = desc.color_target_state.attachments[i];
         color_blend_attachments[i] = VkPipelineColorBlendAttachmentState {
             .blendEnable = attachment.blend_enable,
             .srcColorBlendFactor = ToVkBlendFactor(attachment.src_blend_factor),
@@ -304,10 +312,10 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
         .attachmentCount = static_cast<uint32_t>(color_blend_attachments.size()),
         .pAttachments = color_blend_attachments.data(),
         .blendConstants = {
-            desc.color_blend_state.blend_constants.r,
-            desc.color_blend_state.blend_constants.g,
-            desc.color_blend_state.blend_constants.b,
-            desc.color_blend_state.blend_constants.a,
+            desc.color_target_state.blend_constants.r,
+            desc.color_target_state.blend_constants.g,
+            desc.color_target_state.blend_constants.b,
+            desc.color_target_state.blend_constants.a,
         }
     };
 
@@ -334,7 +342,7 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
         .pTessellationState = nullptr,
         .pViewportState = &viewport_state,
         .pRasterizationState = &rasterization_state,
-        .pMultisampleState = &multosample_state,
+        .pMultisampleState = &multisample_state,
         .pDepthStencilState = &depth_stencil_state,
         .pColorBlendState = &color_blend_state,
         .pDynamicState = &dynamic_state,

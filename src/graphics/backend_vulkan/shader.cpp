@@ -57,14 +57,12 @@ void ShaderBindingsVulkan::Combine(const ShaderBindingsVulkan &another) {
         bindings.resize(another.bindings.size());
     }
 
-    size_t modified_sets = std::min(bindings.size(), another.bindings.size());
-    for (size_t set = 0; set < modified_sets; set++) {
+    for (size_t set = 0; set < another.bindings.size(); set++) {
         if (another.bindings[set].size() > bindings[set].size()) {
             bindings[set].resize(another.bindings[set].size());
         }
 
-        size_t modified_bindings = std::min(bindings[set].size(), another.bindings[set].size());
-        for (size_t binding = 0; binding < modified_bindings; binding++) {
+        for (size_t binding = 0; binding < another.bindings[set].size(); binding++) {
             auto &this_binding = bindings[set][binding];
             const auto &another_binding = another.bindings[set][binding];
             if (another_binding.descriptorType != VK_DESCRIPTOR_TYPE_MAX_ENUM) {
@@ -111,24 +109,28 @@ ShaderModuleVulkan::ShaderModuleVulkan(Ref<DeviceVulkan> device, const Vec<uint8
         .pSpecializationInfo = nullptr,
     };
 
-    uint32_t num_inputs = 0;
-    reflect_module.EnumerateInputVariables(&num_inputs, nullptr);
-    Vec<SpvReflectInterfaceVariable *> inputs(num_inputs);
-    reflect_module.EnumerateInputVariables(&num_inputs, inputs.data());
+    if (reflect_module.GetShaderStage() == SPV_REFLECT_SHADER_STAGE_VERTEX_BIT) {
+        uint32_t num_inputs = 0;
+        reflect_module.EnumerateInputVariables(&num_inputs, nullptr);
+        Vec<SpvReflectInterfaceVariable *> inputs(num_inputs);
+        reflect_module.EnumerateInputVariables(&num_inputs, inputs.data());
 
-    uint32_t max_location = 0;
-    for (auto input : inputs) {
-        max_location = std::max(max_location, input->location);
-    }
-    info_.vertex_inputs.resize(max_location, ResourceFormat::eUndefined);
-    for (auto input : inputs) {
-        info_.vertex_inputs[input->location] = FromSpvReflectFormat(input->format);
+        uint32_t max_location = 0;
+        for (auto input : inputs) {
+            max_location = std::max(max_location, input->location);
+        }
+        info_.vertex_inputs.resize(max_location, ResourceFormat::eUndefined);
+        for (auto input : inputs) {
+            info_.vertex_inputs[input->location] = FromSpvReflectFormat(input->format);
+        }
     }
 
-    const auto entry_point_info = spvReflectGetEntryPoint(&reflect_module.GetShaderModule(), entry_point_.c_str());
-    info_.compute_local_size_x = entry_point_info->local_size.x;
-    info_.compute_local_size_y = entry_point_info->local_size.y;
-    info_.compute_local_size_z = entry_point_info->local_size.z;
+    if (reflect_module.GetShaderStage() == SPV_REFLECT_SHADER_STAGE_COMPUTE_BIT) {
+        const auto entry_point_info = spvReflectGetEntryPoint(&reflect_module.GetShaderModule(), entry_point_.c_str());
+        info_.compute_local_size_x = entry_point_info->local_size.x;
+        info_.compute_local_size_y = entry_point_info->local_size.y;
+        info_.compute_local_size_z = entry_point_info->local_size.z;
+    }
 
     uint32_t num_bindings = 0;
     reflect_module.EnumerateDescriptorBindings(&num_bindings, nullptr);
