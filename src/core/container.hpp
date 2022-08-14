@@ -50,3 +50,10 @@ template <typename T> requires Hashable<T, ByteHash<T>>
 using ByteHashSet = HashSet<T, ByteHash<T>>;
 
 BISMUTH_NAMESPACE_END
+
+template<typename T1, typename T2> requires bismuth::Hashable<T1, std::hash<T1>> && bismuth::Hashable<T2, std::hash<T2>>
+struct std::hash<std::pair<T1, T2>> {
+    size_t operator()(const std::pair<T1, T2> &v) const noexcept {
+        return bismuth::Hash(v.first, v.second);
+    }
+};

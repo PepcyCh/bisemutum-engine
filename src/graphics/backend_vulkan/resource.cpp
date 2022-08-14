@@ -43,28 +43,13 @@ VmaMemoryUsage ToVmaMemoruUsage(BufferMemoryProperty prop) {
     Unreachable();
 }
 
-bool IsCubeTexture(TextureDimension dim) {
-    return dim == TextureDimension::eCube || dim == TextureDimension::eCubeArray;
-}
-
 VkImageType ToVkImageType(TextureDimension dim) {
     switch (dim) {
-        case TextureDimension::e1D:
-        case TextureDimension::e1DArray:
-            return VK_IMAGE_TYPE_1D;
-        case TextureDimension::e2D:
-        case TextureDimension::e2DArray:
-        case TextureDimension::eCube:
-        case TextureDimension::eCubeArray:
-            return VK_IMAGE_TYPE_2D;
-        case TextureDimension::e3D:
-            return VK_IMAGE_TYPE_3D;
+        case TextureDimension::e1D: return VK_IMAGE_TYPE_1D;
+        case TextureDimension::e2D: return VK_IMAGE_TYPE_2D;
+        case TextureDimension::e3D: return VK_IMAGE_TYPE_3D;
     }
     Unreachable();
-}
-
-VkImageViewType ToVkImageViewType(TextureDimension dim) {
-    return static_cast<VkImageViewType>(dim);
 }
 
 VkImageUsageFlags ToVkImageUsage(BitFlags<TextureUsage> usage) {
@@ -145,8 +130,7 @@ TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, const TextureDesc &desc) 
             desc.dim == TextureDimension::e3D ? desc.extent.depth_or_layers : 1,
         },
         .mipLevels = desc.levels,
-        .arrayLayers =
-            desc.dim == TextureDimension::e3D ? 1 : desc.extent.depth_or_layers * (IsCubeTexture(desc.dim) ? 6 : 1),
+        .arrayLayers = desc.dim == TextureDimension::e3D ? 1 : desc.extent.depth_or_layers,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = ToVkImageUsage(desc.usages),
@@ -204,7 +188,7 @@ VkImageView TextureVulkan::GetView(const TextureViewVulkanDesc &view_desc) const
         .pNext = nullptr,
         .flags = 0,
         .image = image_,
-        .viewType = ToVkImageViewType(desc_.dim),
+        .viewType = view_desc.type,
         .format = ToVkFormat(desc_.format),
         .components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_R },
         .subresourceRange = {
@@ -234,9 +218,6 @@ void TextureVulkan::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, 
     if (desc_.dim == TextureDimension::e3D) {
         depth = depth_or_layers;
         layers = 1;
-    } else if (desc_.dim == TextureDimension::eCube || desc_.dim == TextureDimension::eCubeArray) {
-        depth = 1;
-        layers = depth_or_layers * 6;
     } else {
         depth = 1;
         layers = depth_or_layers;

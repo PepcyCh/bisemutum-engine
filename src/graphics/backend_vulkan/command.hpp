@@ -9,6 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 BISMUTH_GFX_NAMESPACE_BEGIN
 
 class DeviceVulkan;
+class FrameContextVulkan;
 
 class CommandBufferVulkan : public CommandBuffer {
 public:
@@ -26,7 +27,7 @@ class ComputeCommandEncoderVulkan;
 
 class CommandEncoderVulkan : public CommandEncoder, public RefFromThis<CommandEncoderVulkan> {
 public:
-    CommandEncoderVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer);
+    CommandEncoderVulkan(Ref<DeviceVulkan> device, Ref<FrameContextVulkan> context, VkCommandBuffer cmd_buffer);
     ~CommandEncoderVulkan();
 
     Ptr<CommandBuffer> Finish() override;
@@ -52,6 +53,7 @@ private:
     friend ComputeCommandEncoderVulkan;
 
     Ref<DeviceVulkan> device_;
+    Ref<FrameContextVulkan> context_;
     VkCommandBuffer cmd_buffer_;
 };
 
@@ -69,6 +71,10 @@ public:
 
     void SetPipeline(Ref<class RenderPipeline> pipeline) override;
 
+    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
+    void BindTexture(const std::string &name, const TextureRange &texture) override;
+    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+
     void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;
 
@@ -84,6 +90,8 @@ private:
     VkCommandBuffer cmd_buffer_;
 
     class RenderPipelineVulkan *curr_pipeline_ = nullptr;
+    Vec<class DescriptorSetVulkan *> descriptor_sets_;
+    Vec<VkDescriptorSet> raw_descriptor_sets_;
 };
 
 class ComputeCommandEncoderVulkan : public ComputeCommandEncoder {
@@ -99,6 +107,10 @@ public:
 
     void SetPipeline(Ref<class ComputePipeline> pipeline) override;
 
+    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
+    void BindTexture(const std::string &name, const TextureRange &texture) override;
+    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+
     void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) override;
 
 private:
@@ -108,6 +120,8 @@ private:
     VkCommandBuffer cmd_buffer_;
 
     class ComputePipelineVulkan *curr_pipeline_ = nullptr;
+    Vec<class DescriptorSetVulkan *> descriptor_sets_;
+    Vec<VkDescriptorSet> raw_descriptor_sets_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

@@ -14,6 +14,8 @@ public:
     SamplerVulkan(Ref<class DeviceVulkan> device, const SamplerDesc &desc);
     ~SamplerVulkan() override;
 
+    VkSampler Raw() const { return sampler_; }
+
 private:
     Ref<DeviceVulkan> device_;
     VkSampler sampler_ = VK_NULL_HANDLE;

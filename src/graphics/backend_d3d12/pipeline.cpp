@@ -292,6 +292,10 @@ RenderPipelineD3D12::RenderPipelineD3D12(Ref<DeviceD3D12> device, const RenderPi
     pipeline_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
     device->Raw()->CreateGraphicsPipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_));
+
+    if (!desc.name.empty()) {
+        pipeline_->SetPrivateData(WKPDID_D3DDebugObjectName, desc.name.size(), desc.name.data());
+    }
 }
 
 RenderPipelineD3D12::~RenderPipelineD3D12() {}
@@ -315,6 +319,10 @@ ComputePipelineD3D12::ComputePipelineD3D12(Ref<DeviceD3D12> device, const Comput
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
     device->Raw()->CreateComputePipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_));
+
+    if (!desc.name.empty()) {
+        pipeline_->SetPrivateData(WKPDID_D3DDebugObjectName, desc.name.size(), desc.name.data());
+    }
 }
 
 ComputePipelineD3D12::~ComputePipelineD3D12() {}

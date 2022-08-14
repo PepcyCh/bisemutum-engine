@@ -50,6 +50,16 @@ VkDescriptorType FromSpvDescriptorType(SpvReflectDescriptorType type) {
     }
 }
 
+VkImageViewType FromSpvDim(SpvDim dim, bool is_array) {
+    switch (dim) {
+        case SpvDim1D: return is_array ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+        case SpvDim2D: return is_array ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+        case SpvDim3D: return VK_IMAGE_VIEW_TYPE_3D;
+        case SpvDimCube: return is_array ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+        default: Unreachable();
+    }
+}
+
 }
 
 void ShaderBindingsVulkan::Combine(const ShaderBindingsVulkan &another) {
@@ -160,6 +170,13 @@ ShaderModuleVulkan::ShaderModuleVulkan(Ref<DeviceVulkan> device, const Vec<uint8
             .pImmutableSamplers = nullptr,
         };
         info_.bindings.name_map[binding->name] = { binding->set, binding->binding };
+
+        if (binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+            || binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+            info_.bindings.bindings_view_info[binding->set][binding->binding] = ShaderBindingsVulkan::ViewInfo {
+                .image_view_type = FromSpvDim(binding->image.dim, binding->image.arrayed),
+            };
+        }
     }
 
     uint32_t num_push_constants;

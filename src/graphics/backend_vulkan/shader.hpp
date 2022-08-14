@@ -12,7 +12,12 @@ BISMUTH_NAMESPACE_BEGIN
 BISMUTH_GFX_NAMESPACE_BEGIN
 
 struct ShaderBindingsVulkan {
+    struct ViewInfo {
+        VkImageViewType image_view_type;
+    };
+
     Vec<Vec<VkDescriptorSetLayoutBinding>> bindings;
+    Vec<Vec<ViewInfo>> bindings_view_info;
     HashMap<std::string, std::pair<uint8_t, uint16_t>> name_map;
 
     uint32_t push_constant_size;

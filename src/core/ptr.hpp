@@ -56,13 +56,13 @@ public:
     template <NonArrayT T2> requires std::convertible_to<T2 *, T *>
     Ref(Ref<T2> &&rhs) noexcept : ptr_(rhs.ptr_) {}
 
-    Ref &operator=(const Ref &rhs) noexcept { ptr_ = rhs.ptr_; }
-    Ref &operator=(Ref &&rhs) noexcept { ptr_ = rhs.ptr_; }
+    Ref &operator=(const Ref &rhs) noexcept { ptr_ = rhs.ptr_; return *this; }
+    Ref &operator=(Ref &&rhs) noexcept { ptr_ = rhs.ptr_; return *this; }
 
     template <NonArrayT T2> requires std::convertible_to<T2 *, T *>
-    Ref &operator=(const Ref<T2> &rhs) noexcept { ptr_ = rhs.ptr_; }
+    Ref &operator=(const Ref<T2> &rhs) noexcept { ptr_ = rhs.ptr_; return *this; }
     template <NonArrayT T2> requires std::convertible_to<T2 *, T *>
-    Ref &operator=(Ref<T2> &&rhs) noexcept { ptr_ = rhs.ptr_; }
+    Ref &operator=(Ref<T2> &&rhs) noexcept { ptr_ = rhs.ptr_; return *this; }
 
     bool operator==(const Ref &rhs) const = default;
     auto operator<=>(const Ref &rhs) const = default;

@@ -68,6 +68,10 @@ public:
 
     void SetPipeline(Ref<class RenderPipeline> pipeline) override;
 
+    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
+    void BindTexture(const std::string &name, const TextureRange &texture) override;
+    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+
     void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;
 
@@ -97,6 +101,10 @@ public:
     void PopLabel() override;
 
     void SetPipeline(Ref<class ComputePipeline> pipeline) override;
+
+    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
+    void BindTexture(const std::string &name, const TextureRange &texture) override;
+    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
 
     void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) override;
 

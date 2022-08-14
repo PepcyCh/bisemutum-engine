@@ -151,6 +151,8 @@ struct ColorTargetState {
 };
 
 struct RenderPipelineDesc {
+    std::string name = "";
+
     Vec<VertexInputBufferDesc> vertex_input_buffers;
     PrimitiveState primitive_state;
     DepthStencilState depth_stencil_state;
@@ -174,6 +176,7 @@ protected:
 };
 
 struct ComputePipelineDesc {
+    std::string name = "";
     Ref<ShaderModule> compute;
 };
 

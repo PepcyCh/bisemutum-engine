@@ -6,6 +6,7 @@
 #include "device.hpp"
 #include "resource.hpp"
 #include "pipeline.hpp"
+#include "context.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -114,8 +115,8 @@ Vec<VkBufferImageCopy> ToVkBufferImageCopy(TextureVulkan *texture_vk, Span<Buffe
 CommandBufferVulkan::CommandBufferVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer)
     : device_(device), cmd_buffer_(cmd_buffer) {}
 
-CommandEncoderVulkan::CommandEncoderVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer)
-    : device_(device), cmd_buffer_(cmd_buffer) {}
+CommandEncoderVulkan::CommandEncoderVulkan(Ref<DeviceVulkan> device, Ref<FrameContextVulkan> context,
+    VkCommandBuffer cmd_buffer) : device_(device), context_(context), cmd_buffer_(cmd_buffer) {}
 
 CommandEncoderVulkan::~CommandEncoderVulkan() {
     BI_ASSERT(cmd_buffer_ == VK_NULL_HANDLE);
@@ -311,6 +312,39 @@ void RenderCommandEncoderVulkan::PopLabel() {
 void RenderCommandEncoderVulkan::SetPipeline(Ref<RenderPipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<RenderPipelineVulkan>().Get();
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipeline());
+
+    descriptor_sets_.resize(curr_pipeline_->ShaderInfo().bindings.bindings.size(), nullptr);
+    for (size_t set = 0; set < descriptor_sets_.size(); set++) {
+        descriptor_sets_[set] = base_encoder_->context_->GetDescriptorSet(curr_pipeline_, set);
+        raw_descriptor_sets_[set] = descriptor_sets_[set]->Raw();
+    }
+}
+
+void RenderCommandEncoderVulkan::BindBuffer(const std::string &name, const BufferRange &buffer) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindBuffer() without setting pipeline");
+    
+    const auto &name_map = curr_pipeline_->ShaderInfo().bindings.name_map;
+    if (auto it = name_map.find(name); it != name_map.end()) {
+        descriptor_sets_[it->second.first]->BindBuffer(it->second.second, buffer);
+    }
+}
+
+void RenderCommandEncoderVulkan::BindTexture(const std::string &name, const TextureRange &texture) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindTexture() without setting pipeline");
+    
+    const auto &name_map = curr_pipeline_->ShaderInfo().bindings.name_map;
+    if (auto it = name_map.find(name); it != name_map.end()) {
+        descriptor_sets_[it->second.first]->BindTexture(it->second.second, texture);
+    }
+}
+
+void RenderCommandEncoderVulkan::BindSampler(const std::string &name, Ref<Sampler> sampler) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindSampler() without setting pipeline");
+    
+    const auto &name_map = curr_pipeline_->ShaderInfo().bindings.name_map;
+    if (auto it = name_map.find(name); it != name_map.end()) {
+        descriptor_sets_[it->second.first]->BindSampler(it->second.second, sampler);
+    }
 }
 
 void RenderCommandEncoderVulkan::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {
@@ -336,12 +370,24 @@ void RenderCommandEncoderVulkan::Draw(uint32_t num_vertices, uint32_t num_instan
     uint32_t first_instance) {
     BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::Draw() without setting pipeline");
 
+    for (DescriptorSetVulkan *set : descriptor_sets_) {
+        set->Update();
+    }
+    vkCmdBindDescriptorSets(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipelineLayout(), 0,
+        raw_descriptor_sets_.size(), raw_descriptor_sets_.data(), 0, nullptr);
+
     vkCmdDraw(cmd_buffer_, num_vertices, num_instance, first_vertex, first_instance);
 }
 
 void RenderCommandEncoderVulkan::DrawIndexed(uint32_t num_indices, uint32_t num_instance, uint32_t first_index,
     uint32_t vertex_offset, uint32_t first_instance) {
     BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::DrawIndexed() without setting pipeline");
+
+    for (DescriptorSetVulkan *set : descriptor_sets_) {
+        set->Update();
+    }
+    vkCmdBindDescriptorSets(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipelineLayout(), 0,
+        raw_descriptor_sets_.size(), raw_descriptor_sets_.data(), 0, nullptr);
 
     vkCmdDrawIndexed(cmd_buffer_, num_indices, num_instance, first_index, vertex_offset, first_instance);
 }
@@ -378,10 +424,50 @@ void ComputeCommandEncoderVulkan::PopLabel() {
 void ComputeCommandEncoderVulkan::SetPipeline(Ref<ComputePipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<ComputePipelineVulkan>().Get();
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->RawPipeline());
+
+    descriptor_sets_.resize(curr_pipeline_->ShaderInfo().bindings.bindings.size(), nullptr);
+    for (size_t set = 0; set < descriptor_sets_.size(); set++) {
+        descriptor_sets_[set] = base_encoder_->context_->GetDescriptorSet(curr_pipeline_, set);
+        raw_descriptor_sets_[set] = descriptor_sets_[set]->Raw();
+    }
+}
+
+void ComputeCommandEncoderVulkan::BindBuffer(const std::string &name, const BufferRange &buffer) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindBuffer() without setting pipeline");
+    
+    const auto &name_map = curr_pipeline_->ShaderInfo().bindings.name_map;
+    if (auto it = name_map.find(name); it != name_map.end()) {
+        descriptor_sets_[it->second.first]->BindBuffer(it->second.second, buffer);
+    }
+}
+
+void ComputeCommandEncoderVulkan::BindTexture(const std::string &name, const TextureRange &texture) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindTexture() without setting pipeline");
+    
+    const auto &name_map = curr_pipeline_->ShaderInfo().bindings.name_map;
+    if (auto it = name_map.find(name); it != name_map.end()) {
+        descriptor_sets_[it->second.first]->BindTexture(it->second.second, texture);
+    }
+}
+
+void ComputeCommandEncoderVulkan::BindSampler(const std::string &name, Ref<Sampler> sampler) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindSampler() without setting pipeline");
+    
+    const auto &name_map = curr_pipeline_->ShaderInfo().bindings.name_map;
+    if (auto it = name_map.find(name); it != name_map.end()) {
+        descriptor_sets_[it->second.first]->BindSampler(it->second.second, sampler);
+    }
 }
 
 void ComputeCommandEncoderVulkan::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {
     BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::Dispatch() without setting pipeline");
+
+    for (DescriptorSetVulkan *set : descriptor_sets_) {
+        set->Update();
+    }
+    vkCmdBindDescriptorSets(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->RawPipelineLayout(), 0,
+        raw_descriptor_sets_.size(), raw_descriptor_sets_.data(), 0, nullptr);
+
     uint32_t x = (size_x + curr_pipeline_->LocalSizeX() - 1) / curr_pipeline_->LocalSizeX();
     uint32_t y = (size_y + curr_pipeline_->LocalSizeY() - 1) / curr_pipeline_->LocalSizeY();
     uint32_t z = (size_z + curr_pipeline_->LocalSizeZ() - 1) / curr_pipeline_->LocalSizeZ();

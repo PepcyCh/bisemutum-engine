@@ -4,6 +4,7 @@
 
 #include "core/span.hpp"
 #include "resource.hpp"
+#include "sampler.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -117,6 +118,10 @@ public:
 
     virtual void SetPipeline(Ref<class RenderPipeline> pipeline) = 0;
 
+    virtual void BindBuffer(const std::string &name, const BufferRange &buffer);
+    virtual void BindTexture(const std::string &name, const TextureRange &texture);
+    virtual void BindSampler(const std::string &name, Ref<Sampler> sampler);
+
     virtual void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) = 0;
     virtual void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) = 0;
 
@@ -134,6 +139,10 @@ public:
     virtual ~ComputeCommandEncoder() = default;
 
     virtual void SetPipeline(Ref<class ComputePipeline> pipeline) = 0;
+
+    virtual void BindBuffer(const std::string &name, const BufferRange &buffer);
+    virtual void BindTexture(const std::string &name, const TextureRange &texture);
+    virtual void BindSampler(const std::string &name, Ref<Sampler> sampler);
 
     virtual void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) = 0;
 

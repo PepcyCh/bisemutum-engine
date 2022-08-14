@@ -158,6 +158,7 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
         shader_info.bindings.Combine(shader_vk->Info().bindings);
         stages.push_back(shader_vk->RawPipelineShaderStage());
     }
+    shader_info_ = shader_info;
 
     CreateLayout(shader_info, device->Raw(), set_layouts_, pipeline_layout_);
 
@@ -353,6 +354,17 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
         .basePipelineIndex = 0,
     };
     vkCreateGraphicsPipelines(device->Raw(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &pipeline_);
+
+    if (!desc.name.empty()) {
+        VkDebugUtilsObjectNameInfoEXT name_info {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .pNext = nullptr,
+            .objectType = VK_OBJECT_TYPE_PIPELINE,
+            .objectHandle = reinterpret_cast<uint64_t>(pipeline_),
+            .pObjectName = desc.name.c_str(),
+        };
+        vkSetDebugUtilsObjectNameEXT(device_->Raw(), &name_info);
+    }
 }
 
 RenderPipelineVulkan::~RenderPipelineVulkan() {
@@ -367,10 +379,7 @@ ComputePipelineVulkan::ComputePipelineVulkan(Ref<DeviceVulkan> device, const Com
     : device_(device), desc_(desc) {
     auto shader_vk = desc.compute.CastTo<ShaderModuleVulkan>();
     const auto &shader_info = shader_vk->Info();
-
-    local_size_x = shader_info.compute_local_size_x;
-    local_size_y = shader_info.compute_local_size_y;
-    local_size_z = shader_info.compute_local_size_z;
+    shader_info_ = shader_info;
 
     CreateLayout(shader_info, device->Raw(), set_layouts_, pipeline_layout_);
 
@@ -384,6 +393,17 @@ ComputePipelineVulkan::ComputePipelineVulkan(Ref<DeviceVulkan> device, const Com
         .basePipelineIndex = 0,
     };
     vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &pipeline_);
+
+    if (!desc.name.empty()) {
+        VkDebugUtilsObjectNameInfoEXT name_info {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .pNext = nullptr,
+            .objectType = VK_OBJECT_TYPE_PIPELINE,
+            .objectHandle = reinterpret_cast<uint64_t>(pipeline_),
+            .pObjectName = desc.name.c_str(),
+        };
+        vkSetDebugUtilsObjectNameEXT(device_->Raw(), &name_info);
+    }
 }
 
 ComputePipelineVulkan::~ComputePipelineVulkan() {

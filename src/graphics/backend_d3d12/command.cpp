@@ -305,6 +305,24 @@ void RenderCommandEncoderD3D12::SetPipeline(Ref<RenderPipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<RenderPipelineD3D12>().Get();
 }
 
+void RenderCommandEncoderD3D12::BindBuffer(const std::string &name, const BufferRange &buffer) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindBuffer() without setting pipeline");
+    
+    // TODO
+}
+
+void RenderCommandEncoderD3D12::BindTexture(const std::string &name, const TextureRange &texture) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindTexture() without setting pipeline");
+    
+    // TODO
+}
+
+void RenderCommandEncoderD3D12::BindSampler(const std::string &name, Ref<Sampler> sampler) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindSampler() without setting pipeline");
+    
+    // TODO
+}
+
 void RenderCommandEncoderD3D12::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {
     BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindVertexBuffer() without setting pipeline");
 
@@ -370,6 +388,24 @@ void ComputeCommandEncoderD3D12::PopLabel() {
 
 void ComputeCommandEncoderD3D12::SetPipeline(Ref<ComputePipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<ComputePipelineD3D12>().Get();
+}
+
+void ComputeCommandEncoderD3D12::BindBuffer(const std::string &name, const BufferRange &buffer) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindBuffer() without setting pipeline");
+    
+    // TODO
+}
+
+void ComputeCommandEncoderD3D12::BindTexture(const std::string &name, const TextureRange &texture) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindTexture() without setting pipeline");
+    
+    // TODO
+}
+
+void ComputeCommandEncoderD3D12::BindSampler(const std::string &name, Ref<Sampler> sampler) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindSampler() without setting pipeline");
+    
+    // TODO
 }
 
 void ComputeCommandEncoderD3D12::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {

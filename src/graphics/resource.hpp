@@ -47,6 +47,8 @@ struct BufferRange {
     Ref<Buffer> buffer;
     uint64_t offset = 0;
     uint64_t length = ~0ull;
+
+    bool operator==(const BufferRange &rhs) const = default;
 };
 
 enum class TextureUsage : uint8_t {
@@ -61,10 +63,6 @@ enum class TextureDimension : uint8_t {
     e1D,
     e2D,
     e3D,
-    eCube,
-    e1DArray,
-    e2DArray,
-    eCubeArray,
 };
 
 struct TextureDesc {
@@ -90,6 +88,8 @@ struct TextureRange {
     uint32_t levels = ~0u;
     uint32_t base_layer = 0;
     uint32_t layers = ~0u;
+
+    bool operator==(const TextureRange &rhs) const = default;
 };
 
 BISMUTH_GFX_NAMESPACE_END

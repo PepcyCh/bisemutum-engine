@@ -29,6 +29,7 @@ private:
 };
 
 struct TextureViewVulkanDesc {
+    VkImageViewType type;
     uint32_t base_layer = 0;
     uint32_t layers = 0;
     uint32_t base_level = 0;
