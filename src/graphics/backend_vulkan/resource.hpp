@@ -30,6 +30,7 @@ private:
 
 struct TextureViewVulkanDesc {
     VkImageViewType type;
+    VkFormat format;
     uint32_t base_layer = 0;
     uint32_t layers = 0;
     uint32_t base_level = 0;
@@ -45,7 +46,7 @@ BISMUTH_NAMESPACE_END
 template<>
 struct std::hash<bismuth::gfx::TextureViewVulkanDesc> {
     size_t operator()(const bismuth::gfx::TextureViewVulkanDesc &v) const noexcept {
-        return bismuth::Hash(v.base_layer, v.layers, v.base_level, v.levels);
+        return bismuth::Hash(v.type, v.format, v.base_layer, v.layers, v.base_level, v.levels);
     }
 };
 
@@ -66,7 +67,7 @@ public:
 
     const TextureDesc &Desc() const { return desc_; }
 
-    VkFormat Format() const;
+    VkFormat RawFormat() const;
 
     VkImageLayout Layout() const { return layout_; }
 

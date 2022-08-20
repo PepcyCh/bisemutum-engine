@@ -10,16 +10,11 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-enum class BufferViewTypeD3D12 : uint8_t {
-    eCbv,
-    eSrv,
-    eUav,
-};
-
 struct BufferViewD3D12Desc {
     uint64_t offset = 0;
     uint64_t size = 0;
-    BufferViewTypeD3D12 type = BufferViewTypeD3D12::eCbv;
+    DescriptorType descriptor_type = DescriptorType::eNone;
+    uint32_t struct_stride = 0;
 
     bool operator==(const BufferViewD3D12Desc &rhs) const = default;
 };
@@ -31,7 +26,7 @@ BISMUTH_NAMESPACE_END
 template<>
 struct std::hash<bismuth::gfx::BufferViewD3D12Desc> {
     size_t operator()(const bismuth::gfx::BufferViewD3D12Desc &v) const noexcept {
-        return bismuth::Hash(v.offset, v.size, v.type);
+        return bismuth::Hash(v.offset, v.size, v.descriptor_type, v.struct_stride);
     }
 };
 
@@ -61,21 +56,25 @@ private:
     mutable HashMap<BufferViewD3D12Desc, DescriptorHandle> cached_views_;
 };
 
-enum class TextureViewTypeD3D12 : uint8_t {
-    eSrv,
-    eUav,
-    eRtv,
-    eDsv,
-};
-
 struct TextureViewD3D12Desc {
     uint32_t base_layer = 0;
     uint32_t layers = 0;
     uint32_t base_level = 0;
     uint32_t levels = 0;
-    TextureViewTypeD3D12 type = TextureViewTypeD3D12::eSrv;
+    DescriptorType descriptor_type = DescriptorType::eNone;
+    TextureViewDimension dim = TextureViewDimension::e1D;
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
 
     bool operator==(const TextureViewD3D12Desc &rhs) const = default;
+};
+
+struct TextureRenderTargetViewD3D12Desc {
+    uint32_t base_layer = 0;
+    uint32_t layers = 0;
+    uint32_t base_level = 0;
+    uint32_t levels = 0;
+
+    bool operator==(const TextureRenderTargetViewD3D12Desc &rhs) const = default;
 };
 
 BISMUTH_GFX_NAMESPACE_END
@@ -85,7 +84,14 @@ BISMUTH_NAMESPACE_END
 template<>
 struct std::hash<bismuth::gfx::TextureViewD3D12Desc> {
     size_t operator()(const bismuth::gfx::TextureViewD3D12Desc &v) const noexcept {
-        return bismuth::Hash(v.base_layer, v.layers, v.base_level, v.levels, v.type);
+        return bismuth::Hash(v.base_layer, v.layers, v.base_level, v.levels, v.descriptor_type, v.dim, v.format);
+    }
+};
+
+template<>
+struct std::hash<bismuth::gfx::TextureRenderTargetViewD3D12Desc> {
+    size_t operator()(const bismuth::gfx::TextureRenderTargetViewD3D12Desc &v) const noexcept {
+        return bismuth::Hash(v.base_layer, v.layers, v.base_level, v.levels);
     }
 };
 
@@ -105,10 +111,13 @@ public:
     UINT SubresourceIndex(uint32_t level, uint32_t layer, uint32_t plane = 0) const;
 
     DescriptorHandle GetView(const TextureViewD3D12Desc &view_desc) const;
+    DescriptorHandle GetView(const TextureRenderTargetViewD3D12Desc &view_desc) const;
 
     const TextureDesc &Desc() const { return desc_; }
 
     ID3D12Resource *Raw() const { return resource_.Get(); }
+
+    DXGI_FORMAT RawFormat() const;
 
 private:
     Ref<DeviceD3D12> device_;
@@ -117,6 +126,7 @@ private:
     TextureDesc desc_;
 
     mutable HashMap<TextureViewD3D12Desc, DescriptorHandle> cached_views_;
+    mutable HashMap<TextureRenderTargetViewD3D12Desc, DescriptorHandle> cached_render_target_views_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

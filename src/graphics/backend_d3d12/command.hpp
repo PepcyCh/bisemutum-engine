@@ -2,6 +2,7 @@
 
 #include "utils.hpp"
 #include "graphics/command.hpp"
+#include "context.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -25,7 +26,8 @@ class ComputeCommandEncoderD3D12;
 
 class CommandEncoderD3D12 : public CommandEncoder, public RefFromThis<CommandEncoderD3D12> {
 public:
-    CommandEncoderD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list);
+    CommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<FrameContextD3D12> context,
+        ComPtr<ID3D12GraphicsCommandList4> cmd_list);
     ~CommandEncoderD3D12();
 
     Ptr<CommandBuffer> Finish() override;
@@ -51,6 +53,7 @@ private:
     friend ComputeCommandEncoderD3D12;
 
     Ref<DeviceD3D12> device_;
+    Ref<FrameContextD3D12> context_;
     ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
 };
 
@@ -68,9 +71,9 @@ public:
 
     void SetPipeline(Ref<class RenderPipeline> pipeline) override;
 
-    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
-    void BindTexture(const std::string &name, const TextureRange &texture) override;
-    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+    void BindShaderParams(uint32_t set_index, const ShaderParams &values) override;
+
+    void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) override;
 
     void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;
@@ -102,9 +105,9 @@ public:
 
     void SetPipeline(Ref<class ComputePipeline> pipeline) override;
 
-    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
-    void BindTexture(const std::string &name, const TextureRange &texture) override;
-    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+    void BindShaderParams(uint32_t set_index, const ShaderParams &values) override;
+
+    void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) override;
 
     void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) override;
 

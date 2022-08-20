@@ -9,25 +9,53 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 namespace {
 
-void CreateLayout(const ShaderInfoVulkan &shader_info, VkDevice device, Vec<VkDescriptorSetLayout> &set_layouts,
-    VkPipelineLayout &pipeline_layout) {
-    set_layouts.resize(shader_info.bindings.bindings.size());
+VkDescriptorType ToVkDescriptorType(DescriptorType type) {
+    switch (type) {
+        case DescriptorType::eNone:
+            Unreachable();
+        case DescriptorType::eSampler:
+            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorType::eUniformBuffer:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case DescriptorType::eStorageBuffer:
+        case DescriptorType::eRWStorageBuffer:
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case DescriptorType::eSampledTexture:
+            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case DescriptorType::eStorageTexture:
+        case DescriptorType::eRWStorageTexture:
+            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    }
+    Unreachable();
+}
+
+void CreateLayout(const PipelineLayout &rhi_layout, VkShaderStageFlags stage, VkDevice device,
+    Vec<VkDescriptorSetLayout> &set_layouts, VkPipelineLayout &pipeline_layout) {
+    set_layouts.resize(rhi_layout.sets_layout.size());
     for (size_t set = 0; set < set_layouts.size(); set++) {
-        const auto &binding_info_raw = shader_info.bindings.bindings[set];
-        Vec<VkDescriptorSetLayoutBinding> binding_info;
-        binding_info.reserve(binding_info_raw.size());
-        for (const auto &binding : binding_info_raw) {
-            if (binding.descriptorType != VK_DESCRIPTOR_TYPE_MAX_ENUM) {
-                binding_info.push_back(binding);
+        const auto &rhi_bindings = rhi_layout.sets_layout[set];
+        Vec<VkDescriptorSetLayoutBinding> bindings_info;
+        bindings_info.reserve(rhi_bindings.bindings.size());
+        for (size_t binding = 0; binding < bindings_info.size(); binding++) {
+            const auto &rhi_binding = rhi_bindings.bindings[binding];
+            if (rhi_binding.type == DescriptorType::eNone) {
+                continue;
             }
+            bindings_info.push_back(VkDescriptorSetLayoutBinding {
+                .binding = static_cast<uint32_t>(binding),
+                .descriptorType = ToVkDescriptorType(rhi_binding.type),
+                .descriptorCount = rhi_binding.count,
+                .stageFlags = stage,
+                .pImmutableSamplers = nullptr,
+            });
         }
 
         VkDescriptorSetLayoutCreateInfo set_layout_ci {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
-            .bindingCount = static_cast<uint32_t>(binding_info.size()),
-            .pBindings = binding_info.data(),
+            .bindingCount = static_cast<uint32_t>(bindings_info.size()),
+            .pBindings = bindings_info.data(),
         };
         vkCreateDescriptorSetLayout(device, &set_layout_ci, nullptr, &set_layouts[set]);
     }
@@ -35,7 +63,7 @@ void CreateLayout(const ShaderInfoVulkan &shader_info, VkDevice device, Vec<VkDe
     VkPushConstantRange push_constant {
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         .offset = 0,
-        .size = shader_info.bindings.push_constant_size,
+        .size = rhi_layout.push_constants_size,
     };
     VkPipelineLayoutCreateInfo pipeline_layout_ci {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -43,8 +71,8 @@ void CreateLayout(const ShaderInfoVulkan &shader_info, VkDevice device, Vec<VkDe
         .flags = 0,
         .setLayoutCount = static_cast<uint32_t>(set_layouts.size()),
         .pSetLayouts = set_layouts.data(),
-        .pushConstantRangeCount = shader_info.bindings.push_constant_size > 0 ? 1u : 0u,
-        .pPushConstantRanges = shader_info.bindings.push_constant_size > 0 ? &push_constant : nullptr,
+        .pushConstantRangeCount = rhi_layout.push_constants_size > 0 ? 1u : 0u,
+        .pPushConstantRanges = rhi_layout.push_constants_size > 0 ? &push_constant : nullptr,
     };
     vkCreatePipelineLayout(device, &pipeline_layout_ci, nullptr, &pipeline_layout);
 }
@@ -131,51 +159,37 @@ VkColorComponentFlags ToVkColorWriteMask(BitFlags<ColorWriteComponent> mask) {
 RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const RenderPipelineDesc &desc)
     : device_(device), desc_(desc) {
 
-    ShaderInfoVulkan shader_info {};
     Vec<VkPipelineShaderStageCreateInfo> stages {};
+    VkShaderStageFlags stages_flag = 0;
     {
         auto shader_vk = desc.shaders.vertex.CastTo<ShaderModuleVulkan>();
-        shader_info = shader_vk->Info();
         stages.push_back(shader_vk->RawPipelineShaderStage());
+        stages_flag |= VK_SHADER_STAGE_VERTEX_BIT;
     }
     if (desc.shaders.tessellation_control) {
         auto shader_vk = static_cast<ShaderModuleVulkan *>(desc.shaders.tessellation_control);
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         stages.push_back(shader_vk->RawPipelineShaderStage());
+        stages_flag |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
     }
     if (desc.shaders.tessellation_evaluation) {
         auto shader_vk = static_cast<ShaderModuleVulkan *>(desc.shaders.tessellation_evaluation);
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         stages.push_back(shader_vk->RawPipelineShaderStage());
+        stages_flag |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
     }
     if (desc.shaders.geometry) {
         auto shader_vk = static_cast<ShaderModuleVulkan *>(desc.shaders.geometry);
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         stages.push_back(shader_vk->RawPipelineShaderStage());
+        stages_flag |= VK_SHADER_STAGE_GEOMETRY_BIT;
     }
     {
         auto shader_vk = desc.shaders.fragment.CastTo<ShaderModuleVulkan>();
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         stages.push_back(shader_vk->RawPipelineShaderStage());
+        stages_flag |= VK_SHADER_STAGE_FRAGMENT_BIT;
     }
-    shader_info_ = shader_info;
 
-    CreateLayout(shader_info, device->Raw(), set_layouts_, pipeline_layout_);
+    CreateLayout(desc.layout, stages_flag, device->Raw(), set_layouts_, pipeline_layout_);
 
     Vec<VkVertexInputAttributeDescription> vertex_input_attribute_descs;
-    Vec<size_t> vertex_input_attributes_map(shader_info.vertex_inputs.size(), -1);
-    vertex_input_attribute_descs.reserve(shader_info.vertex_inputs.size());
-    for (size_t i = 0; i < shader_info.vertex_inputs.size(); i++) {
-        const auto &input_attribute = shader_info.vertex_inputs[i];
-        if (input_attribute == ResourceFormat::eUndefined) {
-            continue;
-        }
-        vertex_input_attributes_map[i] = vertex_input_attribute_descs.size();
-        vertex_input_attribute_descs.push_back(VkVertexInputAttributeDescription {
-            .location = static_cast<uint32_t>(i),
-            .format = ToVkFormat(input_attribute),
-        });
-    }
     Vec<VkVertexInputBindingDescription> vertex_input_binding_descs(desc.vertex_input_buffers.size());
     for (size_t i = 0; i < desc.vertex_input_buffers.size(); i++) {
         const auto &input_buffer = desc.vertex_input_buffers[i];
@@ -186,11 +200,12 @@ RenderPipelineVulkan::RenderPipelineVulkan(Ref<DeviceVulkan> device, const Rende
         };
         for (const auto &attribute : input_buffer.attributes) {
             uint32_t location = static_cast<uint32_t>(attribute.semantics);
-            if (vertex_input_attributes_map[location] != -1) {
-                size_t index = vertex_input_attributes_map[location];
-                vertex_input_attribute_descs[index].binding = static_cast<uint32_t>(i);
-                vertex_input_attribute_descs[index].offset = attribute.offset;
-            }
+            vertex_input_attribute_descs.push_back(VkVertexInputAttributeDescription {
+                .location = location,
+                .binding = static_cast<uint32_t>(i),
+                .format = ToVkFormat(attribute.format),
+                .offset = attribute.offset,
+            });
         }
     }
     VkPipelineVertexInputStateCreateInfo vertex_input_state {
@@ -378,10 +393,8 @@ RenderPipelineVulkan::~RenderPipelineVulkan() {
 ComputePipelineVulkan::ComputePipelineVulkan(Ref<DeviceVulkan> device, const ComputePipelineDesc &desc)
     : device_(device), desc_(desc) {
     auto shader_vk = desc.compute.CastTo<ShaderModuleVulkan>();
-    const auto &shader_info = shader_vk->Info();
-    shader_info_ = shader_info;
 
-    CreateLayout(shader_info, device->Raw(), set_layouts_, pipeline_layout_);
+    CreateLayout(desc.layout, VK_SHADER_STAGE_COMPUTE_BIT, device->Raw(), set_layouts_, pipeline_layout_);
 
     VkComputePipelineCreateInfo pipeline_ci {
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,

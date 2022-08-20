@@ -82,14 +82,24 @@ protected:
     Texture() = default;
 };
 
-struct TextureRange {
+enum class TextureViewDimension : uint8_t {
+    e1D,
+    e1DArray,
+    e2D,
+    e2DArray,
+    eCube,
+    eCubeArray,
+    e3D,
+};
+
+struct TextureView {
     Ref<Texture> texture;
     uint32_t base_level = 0;
     uint32_t levels = ~0u;
     uint32_t base_layer = 0;
     uint32_t layers = ~0u;
 
-    bool operator==(const TextureRange &rhs) const = default;
+    bool operator==(const TextureView &rhs) const = default;
 };
 
 BISMUTH_GFX_NAMESPACE_END

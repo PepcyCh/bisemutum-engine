@@ -1,8 +1,7 @@
 #pragma once
 
-#include "core/ptr.hpp"
 #include "graphics/sampler.hpp"
-#include "utils.hpp"
+#include "descriptor.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -13,9 +12,11 @@ public:
     SamplerD3D12(Ref<class DeviceD3D12> device, const SamplerDesc &desc);
     ~SamplerD3D12() override;
 
+    DescriptorHandle GetDescriptorHandle() const { return descriptor_handle_; }
+
 private:
     Ref<DeviceD3D12> device_;
-    D3D12_SAMPLER_DESC sampler_desc_;
+    DescriptorHandle descriptor_handle_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

@@ -32,6 +32,10 @@ public:
 
     Ptr<ShaderModule> CreateShaderModule(const Vec<uint8_t> &src_bytes) override;
 
+    Ptr<RenderPipeline> CreateRenderPipeline(const RenderPipelineDesc &desc) override;
+
+    Ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineDesc &desc) override;
+
     ID3D12Device2 *Raw() const { return device_.Get(); }
 
     IDXGIFactory6 *RawFactory() const { return factory_.Get(); }

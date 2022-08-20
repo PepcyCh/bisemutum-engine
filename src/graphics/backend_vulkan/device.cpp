@@ -12,6 +12,7 @@
 #include "resource.hpp"
 #include "sampler.hpp"
 #include "shader.hpp"
+#include "pipeline.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -324,6 +325,14 @@ Ptr<Sampler> DeviceVulkan::CreateSampler(const SamplerDesc &desc) {
 
 Ptr<ShaderModule> DeviceVulkan::CreateShaderModule(const Vec<uint8_t> &src_bytes) {
     return Ptr<ShaderModuleVulkan>::Make(RefThis(), src_bytes);
+}
+
+Ptr<RenderPipeline> DeviceVulkan::CreateRenderPipeline(const RenderPipelineDesc &desc) {
+    return Ptr<RenderPipelineVulkan>::Make(RefThis(), desc);
+}
+
+Ptr<ComputePipeline> DeviceVulkan::CreateComputePipeline(const ComputePipelineDesc &desc) {
+    return Ptr<ComputePipelineVulkan>::Make(RefThis(), desc);
 }
 
 BISMUTH_GFX_NAMESPACE_END

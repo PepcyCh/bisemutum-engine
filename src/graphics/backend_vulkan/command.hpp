@@ -71,9 +71,9 @@ public:
 
     void SetPipeline(Ref<class RenderPipeline> pipeline) override;
 
-    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
-    void BindTexture(const std::string &name, const TextureRange &texture) override;
-    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+    void BindShaderParams(uint32_t set_index, const ShaderParams &values) override;
+
+    void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) override;
 
     void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;
@@ -90,8 +90,6 @@ private:
     VkCommandBuffer cmd_buffer_;
 
     class RenderPipelineVulkan *curr_pipeline_ = nullptr;
-    Vec<class DescriptorSetVulkan *> descriptor_sets_;
-    Vec<VkDescriptorSet> raw_descriptor_sets_;
 };
 
 class ComputeCommandEncoderVulkan : public ComputeCommandEncoder {
@@ -107,9 +105,9 @@ public:
 
     void SetPipeline(Ref<class ComputePipeline> pipeline) override;
 
-    void BindBuffer(const std::string &name, const BufferRange &buffer) override;
-    void BindTexture(const std::string &name, const TextureRange &texture) override;
-    void BindSampler(const std::string &name, Ref<Sampler> sampler) override;
+    void BindShaderParams(uint32_t set_index, const ShaderParams &values) override;
+
+    void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) override;
 
     void Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) override;
 
@@ -120,8 +118,6 @@ private:
     VkCommandBuffer cmd_buffer_;
 
     class ComputePipelineVulkan *curr_pipeline_ = nullptr;
-    Vec<class DescriptorSetVulkan *> descriptor_sets_;
-    Vec<VkDescriptorSet> raw_descriptor_sets_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

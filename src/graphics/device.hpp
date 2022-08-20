@@ -9,6 +9,7 @@
 #include "resource.hpp"
 #include "sampler.hpp"
 #include "shader.hpp"
+#include "pipeline.hpp"
 
 struct GLFWwindow;
 
@@ -40,13 +41,17 @@ public:
 #endif
     virtual Ptr<Semaphore> CreateSemaphore() = 0;
 
-    virtual Ptr<Buffer> CreateBuffer(const struct BufferDesc &desc) = 0;
+    virtual Ptr<Buffer> CreateBuffer(const BufferDesc &desc) = 0;
 
-    virtual Ptr<Texture> CreateTexture(const struct TextureDesc &desc) = 0;
+    virtual Ptr<Texture> CreateTexture(const TextureDesc &desc) = 0;
 
-    virtual Ptr<Sampler> CreateSampler(const struct SamplerDesc &desc) = 0;
+    virtual Ptr<Sampler> CreateSampler(const SamplerDesc &desc) = 0;
 
     virtual Ptr<ShaderModule> CreateShaderModule(const Vec<uint8_t> &src_bytes) = 0;
+
+    virtual Ptr<RenderPipeline> CreateRenderPipeline(const RenderPipelineDesc &desc) = 0;
+
+    virtual Ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineDesc &desc) = 0;
 
 protected:
     Device() = default;

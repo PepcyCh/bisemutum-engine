@@ -1,12 +1,8 @@
 #pragma once
 
-#include <variant>
+#include <volk.h>
 
-#include "core/ptr.hpp"
-#include "graphics/mod.hpp"
-#include "pipeline.hpp"
-#include "resource.hpp"
-#include "sampler.hpp"
+#include "graphics/descriptor.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -21,42 +17,14 @@ struct DescriptorPoolSizesVulkan {
     uint32_t num_sets = 0;
 };
 
-class DescriptorSetVulkan {
+class DescriptorSetPoolVulkan {
 public:
-    DescriptorSetVulkan(Ref<class DeviceVulkan> device, VkDescriptorSet set, const ShaderInfoVulkan &shader_info,
-        uint32_t set_index);
+    DescriptorSetPoolVulkan(Ref<class DeviceVulkan> device,
+        const DescriptorPoolSizesVulkan &max_sizes = DescriptorPoolSizesVulkan::kDefault);
+    ~DescriptorSetPoolVulkan();
 
-    void BindBuffer(uint32_t binding_index, const BufferRange &buffer);
-    void BindTexture(uint32_t binding_index, const TextureRange &texture);
-    void BindSampler(uint32_t binding_index, Ref<Sampler> sampler);
-
-    void Update();
-    
-    VkDescriptorSet Raw() const { return set_; }
-
-private:
-    Ref<DeviceVulkan> device_;
-    VkDescriptorSet set_;
-
-    const ShaderInfoVulkan &shader_info_;
-    uint32_t set_index_;
-
-    using BindingResource = std::variant<std::monostate, BufferRange, TextureRange, Ref<Sampler>>;
-    Vec<BindingResource> binding_resources_;
-
-    HashSet<uint32_t> dirty_bindings_;
-    uint32_t num_dirty_buffers_ = 0;
-    uint32_t num_dirty_textures_ = 0;
-    uint32_t num_dirty_samplers_ = 0;
-};
-
-class DescriptorPoolVulkan {
-public:
-    DescriptorPoolVulkan(Ref<class DeviceVulkan> device, const DescriptorPoolSizesVulkan &max_sizes);
-    ~DescriptorPoolVulkan();
-
-    DescriptorSetVulkan AllocateSet(RenderPipeline *pipeline, uint32_t set_index);
-    DescriptorSetVulkan AllocateSet(ComputePipeline *pipeline, uint32_t set_index);
+    VkDescriptorSet AllocateAndWriteSet(VkDescriptorSetLayout layout_vk, const DescriptorSetLayout &layout,
+        const ShaderParams &values);
 
 private:
     Ref<DeviceVulkan> device_;

@@ -23,8 +23,8 @@ CommandBufferD3D12::CommandBufferD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12Gra
     : device_(device), cmd_list_(cmd_list) {}
 
 
-CommandEncoderD3D12::CommandEncoderD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list)
-    : device_(device), cmd_list_(cmd_list) {}
+CommandEncoderD3D12::CommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<FrameContextD3D12> context,
+    ComPtr<ID3D12GraphicsCommandList4> cmd_list) : device_(device), context_(context), cmd_list_(cmd_list) {}
 
 CommandEncoderD3D12::~CommandEncoderD3D12() {
     BI_ASSERT(cmd_list_ == nullptr);
@@ -203,12 +203,11 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
     for (size_t i = 0; i < desc.colors.size(); i++) {
         auto texture_dx = desc.colors[i].texture.texture.CastTo<TextureD3D12>();
         colors_desc[i] = D3D12_RENDER_PASS_RENDER_TARGET_DESC {
-            .cpuDescriptor = texture_dx->GetView(TextureViewD3D12Desc {
+            .cpuDescriptor = texture_dx->GetView(TextureRenderTargetViewD3D12Desc {
                 .base_layer = 0,
                 .layers = 1,
                 .base_level = 0,
                 .levels = 1,
-                .type = TextureViewTypeD3D12::eRtv,
             }).cpu,
             .BeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
                 .Type = desc.colors[i].clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
@@ -235,12 +234,11 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
         const auto &depth_stencil = desc.depth_stencil.value();
         auto texture_dx = depth_stencil.texture.texture.CastTo<TextureD3D12>();
         depth_stencil_desc = D3D12_RENDER_PASS_DEPTH_STENCIL_DESC {
-            .cpuDescriptor = texture_dx->GetView(TextureViewD3D12Desc {
+            .cpuDescriptor = texture_dx->GetView(TextureRenderTargetViewD3D12Desc {
                 .base_layer = 0,
                 .layers = 1,
                 .base_level = 0,
                 .levels = 1,
-                .type = TextureViewTypeD3D12::eRtv,
             }).cpu,
             .DepthBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
                 .Type = depth_stencil.clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
@@ -305,22 +303,20 @@ void RenderCommandEncoderD3D12::SetPipeline(Ref<RenderPipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<RenderPipelineD3D12>().Get();
 }
 
-void RenderCommandEncoderD3D12::BindBuffer(const std::string &name, const BufferRange &buffer) {
-    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindBuffer() without setting pipeline");
-    
-    // TODO
+void RenderCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const ShaderParams &values) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindShaderParams() without setting pipeline");
+
+    DescriptorHandle descriptor_set =
+        base_encoder_->context_->GetDescriptorSet(curr_pipeline_->Desc().layout.sets_layout[set_index], values);
+
+    cmd_list_->SetGraphicsRootDescriptorTable(set_index, descriptor_set.gpu);
 }
 
-void RenderCommandEncoderD3D12::BindTexture(const std::string &name, const TextureRange &texture) {
-    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindTexture() without setting pipeline");
-    
-    // TODO
-}
+void RenderCommandEncoderD3D12::PushConstants(const void *data, uint32_t size, uint32_t offset) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::PushConstants() without setting pipeline");
 
-void RenderCommandEncoderD3D12::BindSampler(const std::string &name, Ref<Sampler> sampler) {
-    BI_ASSERT_MSG(curr_pipeline_, "Call RenderCommandEncoder::BindSampler() without setting pipeline");
-    
-    // TODO
+    cmd_list_->SetGraphicsRoot32BitConstants(curr_pipeline_->Desc().layout.sets_layout.size(),
+        size / 4, data, offset / 4);
 }
 
 void RenderCommandEncoderD3D12::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {
@@ -390,22 +386,20 @@ void ComputeCommandEncoderD3D12::SetPipeline(Ref<ComputePipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<ComputePipelineD3D12>().Get();
 }
 
-void ComputeCommandEncoderD3D12::BindBuffer(const std::string &name, const BufferRange &buffer) {
-    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindBuffer() without setting pipeline");
-    
-    // TODO
+void ComputeCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const ShaderParams &values) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindShaderParams() without setting pipeline");
+
+    DescriptorHandle descriptor_set =
+        base_encoder_->context_->GetDescriptorSet(curr_pipeline_->Desc().layout.sets_layout[set_index], values);
+
+    cmd_list_->SetComputeRootDescriptorTable(set_index, descriptor_set.gpu);
 }
 
-void ComputeCommandEncoderD3D12::BindTexture(const std::string &name, const TextureRange &texture) {
-    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindTexture() without setting pipeline");
-    
-    // TODO
-}
+void ComputeCommandEncoderD3D12::PushConstants(const void *data, uint32_t size, uint32_t offset) {
+    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::PushConstants() without setting pipeline");
 
-void ComputeCommandEncoderD3D12::BindSampler(const std::string &name, Ref<Sampler> sampler) {
-    BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::BindSampler() without setting pipeline");
-    
-    // TODO
+    cmd_list_->SetGraphicsRoot32BitConstants(curr_pipeline_->Desc().layout.sets_layout.size(),
+        size / 4, data, offset / 4);
 }
 
 void ComputeCommandEncoderD3D12::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {

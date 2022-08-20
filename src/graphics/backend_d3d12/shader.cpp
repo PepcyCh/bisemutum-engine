@@ -90,38 +90,6 @@ D3D12_DESCRIPTOR_RANGE_TYPE FromReflectBindType(D3D_SHADER_INPUT_TYPE type) {
 
 }
 
-void ShaderBindingsD3D12::Combine(const ShaderBindingsD3D12 &another) {
-    if (another.bindings.size() > bindings.size()) {
-        bindings.resize(another.bindings.size());
-    }
-
-    for (size_t set = 0; set < another.bindings.size(); set++) {
-        if (another.bindings[set].size() > bindings[set].size()) {
-            bindings[set].resize(another.bindings[set].size());
-        }
-
-        for (size_t binding = 0; binding < another.bindings[set].size(); binding++) {
-            auto &this_binding = bindings[set][binding];
-            const auto &another_binding = another.bindings[set][binding];
-            if (another_binding.NumDescriptors != 0) {
-                if (this_binding.NumDescriptors == 0) {
-                    this_binding = another_binding;
-                } else {
-                    this_binding.NumDescriptors =
-                        std::max(this_binding.NumDescriptors, another_binding.NumDescriptors);
-                }
-            }
-        }
-    }
-
-    name_map.reserve(name_map.size() + another.name_map.size());
-    for (const auto &[name, set_binding] : another.name_map) {
-        name_map[name] = set_binding;
-    }
-
-    // push_constant_size = std::max(push_constant_size, another.push_constant_size);
-}
-
 #define DXIL_FOURCC(ch0, ch1, ch2, ch3) (                            \
     (uint32_t)(uint8_t)(ch0)        | (uint32_t)(uint8_t)(ch1) << 8  | \
     (uint32_t)(uint8_t)(ch2) << 16  | (uint32_t)(uint8_t)(ch3) << 24   \
@@ -129,6 +97,7 @@ void ShaderBindingsD3D12::Combine(const ShaderBindingsD3D12 &another) {
 
 ShaderModuleD3D12::ShaderModuleD3D12(Ref<DeviceD3D12> device, const Vec<uint8_t> &src_bytes)
     : device_(device), shader_bytes_(src_bytes) {
+    /*
     ComPtr<IDxcBlobEncoding> shader_blob;
     DxcHelper::Instance().Utils()->CreateBlob(src_bytes.data(), src_bytes.size(), DXC_CP_ACP, &shader_blob);
 
@@ -194,6 +163,7 @@ ShaderModuleD3D12::ShaderModuleD3D12(Ref<DeviceD3D12> device, const Vec<uint8_t>
         };
         info_.bindings.name_map[binding.Name] = { binding.Space, binding.BindPoint };
     }
+    */
 }
 
 ShaderModuleD3D12::~ShaderModuleD3D12() {}

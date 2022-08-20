@@ -34,6 +34,10 @@ public:
 
     Ptr<ShaderModule> CreateShaderModule(const Vec<uint8_t> &src_bytes) override;
 
+    Ptr<RenderPipeline> CreateRenderPipeline(const RenderPipelineDesc &desc) override;
+
+    Ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineDesc &desc) override;
+
     VkDevice Raw() const { return device_; }
     VkPhysicalDevice RawPhysicalDevice() const { return physical_device_; }
 
@@ -43,7 +47,6 @@ public:
     VkFormat RawSurfaceFormat() const { return surface_format_; }
 
 private:
-
     void PickDevice(const DeviceDesc &desc);
     void InitializeAllocator();
 

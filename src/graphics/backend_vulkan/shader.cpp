@@ -62,39 +62,6 @@ VkImageViewType FromSpvDim(SpvDim dim, bool is_array) {
 
 }
 
-void ShaderBindingsVulkan::Combine(const ShaderBindingsVulkan &another) {
-    if (another.bindings.size() > bindings.size()) {
-        bindings.resize(another.bindings.size());
-    }
-
-    for (size_t set = 0; set < another.bindings.size(); set++) {
-        if (another.bindings[set].size() > bindings[set].size()) {
-            bindings[set].resize(another.bindings[set].size());
-        }
-
-        for (size_t binding = 0; binding < another.bindings[set].size(); binding++) {
-            auto &this_binding = bindings[set][binding];
-            const auto &another_binding = another.bindings[set][binding];
-            if (another_binding.descriptorType != VK_DESCRIPTOR_TYPE_MAX_ENUM) {
-                if (this_binding.descriptorType == VK_DESCRIPTOR_TYPE_MAX_ENUM) {
-                    this_binding = another_binding;
-                } else {
-                    this_binding.stageFlags |= another_binding.stageFlags;
-                    this_binding.descriptorCount =
-                        std::max(this_binding.descriptorCount, another_binding.descriptorCount);
-                }
-            }
-        }
-    }
-
-    name_map.reserve(name_map.size() + another.name_map.size());
-    for (const auto &[name, set_binding] : another.name_map) {
-        name_map[name] = set_binding;
-    }
-
-    push_constant_size = std::max(push_constant_size, another.push_constant_size);
-}
-
 ShaderModuleVulkan::ShaderModuleVulkan(Ref<DeviceVulkan> device, const Vec<uint8_t> &src_bytes)
     : device_(device) {
     VkShaderModuleCreateInfo shader_module_ci {
@@ -119,6 +86,7 @@ ShaderModuleVulkan::ShaderModuleVulkan(Ref<DeviceVulkan> device, const Vec<uint8
         .pSpecializationInfo = nullptr,
     };
 
+    /*
     if (reflect_module.GetShaderStage() == SPV_REFLECT_SHADER_STAGE_VERTEX_BIT) {
         uint32_t num_inputs = 0;
         reflect_module.EnumerateInputVariables(&num_inputs, nullptr);
@@ -188,6 +156,7 @@ ShaderModuleVulkan::ShaderModuleVulkan(Ref<DeviceVulkan> device, const Vec<uint8
         info_.bindings.push_constant_size =
             std::max(info_.bindings.push_constant_size, push_c->offset + push_c->size);
     }
+    */
 }
 
 ShaderModuleVulkan::~ShaderModuleVulkan() {

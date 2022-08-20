@@ -189,14 +189,14 @@ VkImageView TextureVulkan::GetView(const TextureViewVulkanDesc &view_desc) const
         .flags = 0,
         .image = image_,
         .viewType = view_desc.type,
-        .format = ToVkFormat(desc_.format),
+        .format = view_desc.format,
         .components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_R },
         .subresourceRange = {
             .aspectMask = ToVkImageAspect(desc_.format),
             .baseMipLevel = view_desc.base_level,
-            .levelCount = view_desc.levels == 0 ? VK_REMAINING_MIP_LEVELS : view_desc.levels,
+            .levelCount = view_desc.levels,
             .baseArrayLayer = view_desc.base_layer,
-            .layerCount = view_desc.layers == 0 ? VK_REMAINING_ARRAY_LAYERS : view_desc.layers,
+            .layerCount = view_desc.layers,
         },
     };
 
@@ -206,7 +206,7 @@ VkImageView TextureVulkan::GetView(const TextureViewVulkanDesc &view_desc) const
     return image_view;
 }
 
-VkFormat TextureVulkan::Format() const {
+VkFormat TextureVulkan::RawFormat() const {
     return ToVkFormat(desc_.format);
 }
 

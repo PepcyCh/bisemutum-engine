@@ -79,7 +79,7 @@ void ToDxBorderColor(SamplerBorderColor border, float color[4]) {
 }
 
 SamplerD3D12::SamplerD3D12(Ref<DeviceD3D12> device, const SamplerDesc &desc) : device_(device) {
-    sampler_desc_ = D3D12_SAMPLER_DESC {
+    D3D12_SAMPLER_DESC sampler_desc {
         .Filter = ToDxFilterMode(desc.min_filter, desc.mag_filter, desc.mipmap_mode),
         .AddressU = ToDxAddressMode(desc.address_mode_u),
         .AddressV = ToDxAddressMode(desc.address_mode_v),
@@ -90,7 +90,10 @@ SamplerD3D12::SamplerD3D12(Ref<DeviceD3D12> device, const SamplerDesc &desc) : d
         .MinLOD = desc.lod_min,
         .MaxLOD = desc.lod_max,
     };
-    ToDxBorderColor(desc.border_color, sampler_desc_.BorderColor);
+    ToDxBorderColor(desc.border_color, sampler_desc.BorderColor);
+
+    descriptor_handle_ = device->Heap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->AllocateDecriptor();
+    device->Raw()->CreateSampler(&sampler_desc, descriptor_handle_.cpu);
 }
 
 SamplerD3D12::~SamplerD3D12() {}

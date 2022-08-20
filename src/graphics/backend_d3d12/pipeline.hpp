@@ -29,19 +29,17 @@ public:
     ComputePipelineD3D12(Ref<class DeviceD3D12> device, const ComputePipelineDesc &desc);
     ~ComputePipelineD3D12() override;
 
-    uint32_t LocalSizeX() const { return local_size_x; }
-    uint32_t LocalSizeY() const { return local_size_y; }
-    uint32_t LocalSizeZ() const { return local_size_z; }
+    uint32_t LocalSizeX() const { return desc_.thread_group.x; }
+    uint32_t LocalSizeY() const { return desc_.thread_group.y; }
+    uint32_t LocalSizeZ() const { return desc_.thread_group.z; }
 
     ID3D12PipelineState *RawPipeline() const { return pipeline_.Get(); }
+
+    const ComputePipelineDesc &Desc() const { return desc_; }
 
 private:
     Ref<DeviceD3D12> device_;
     ComputePipelineDesc desc_;
-
-    uint32_t local_size_x;
-    uint32_t local_size_y;
-    uint32_t local_size_z;
 
     ComPtr<ID3D12RootSignature> root_signature_;
     ComPtr<ID3D12PipelineState> pipeline_;

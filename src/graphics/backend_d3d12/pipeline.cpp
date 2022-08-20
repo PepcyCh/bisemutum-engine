@@ -8,29 +8,68 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 namespace {
 
-void CreateSignature(const ShaderInfoD3D12 &shader_info, ID3D12Device2 *device, ComPtr<ID3D12RootSignature> &signature) {
-    Vec<D3D12_ROOT_PARAMETER1> root_params(shader_info.bindings.bindings.size());
-    for (size_t set = 0; set < shader_info.bindings.bindings.size(); set++) {
-        const auto &binding_info_raw = shader_info.bindings.bindings[set];
-        Vec<D3D12_DESCRIPTOR_RANGE1> binding_info;
-        binding_info.reserve(binding_info_raw.size());
-        for (const auto &binding : binding_info_raw) {
-            if (binding.NumDescriptors != 0) {
-                binding_info.push_back(binding);
+D3D12_DESCRIPTOR_RANGE_TYPE ToDxDescriptorRangeType(DescriptorType type) {
+    switch (type) {
+        case DescriptorType::eNone:
+            Unreachable();
+        case DescriptorType::eSampler:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        case DescriptorType::eUniformBuffer:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+        case DescriptorType::eStorageBuffer:
+        case DescriptorType::eSampledTexture:
+        case DescriptorType::eStorageTexture:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        case DescriptorType::eRWStorageBuffer:
+        case DescriptorType::eRWStorageTexture:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    }
+    Unreachable();
+}
+
+void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, ComPtr<ID3D12RootSignature> &signature) {
+    Vec<D3D12_ROOT_PARAMETER1> root_params(rhi_layout.sets_layout.size()
+        + (rhi_layout.push_constants_size > 0 ? 1 : 0));
+    for (size_t set = 0; set < rhi_layout.sets_layout.size(); set++) {
+        const auto &rhi_bindings = rhi_layout.sets_layout[set];
+        Vec<D3D12_DESCRIPTOR_RANGE1> bindings_info;
+        bindings_info.reserve(rhi_bindings.bindings.size());
+        for (size_t binding = 0; binding < bindings_info.size(); binding++) {
+            const auto &rhi_binding = rhi_bindings.bindings[binding];
+            if (rhi_binding.type == DescriptorType::eNone) {
+                continue;
             }
+            bindings_info.push_back(D3D12_DESCRIPTOR_RANGE1 {
+                .RangeType = ToDxDescriptorRangeType(rhi_binding.type),
+                .NumDescriptors = rhi_binding.count,
+                .BaseShaderRegister = static_cast<UINT>(binding),
+                .RegisterSpace = static_cast<UINT>(set),
+                .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+            });
         }
 
         root_params[set] = D3D12_ROOT_PARAMETER1 {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             .DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1 {
-                .NumDescriptorRanges = static_cast<UINT>(binding_info.size()),
-                .pDescriptorRanges = binding_info.data(),
+                .NumDescriptorRanges = static_cast<UINT>(bindings_info.size()),
+                .pDescriptorRanges = bindings_info.data(),
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
     }
 
-    // TODO - push constants (root constants)
+    if (rhi_layout.push_constants_size > 0) {
+        root_params[root_params.size() - 1] = D3D12_ROOT_PARAMETER1 {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+            .Constants = D3D12_ROOT_CONSTANTS {
+                .ShaderRegister = 0,
+                .RegisterSpace = 0,
+                .Num32BitValues = (rhi_layout.push_constants_size + 3) / 4,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+    }
     
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC signature_desc {
         .Version = D3D_ROOT_SIGNATURE_VERSION_1_1,
@@ -163,34 +202,28 @@ RenderPipelineD3D12::RenderPipelineD3D12(Ref<DeviceD3D12> device, const RenderPi
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_desc {};
 
-    ShaderInfoD3D12 shader_info {};
     {
         auto shader_vk = desc.shaders.vertex.CastTo<ShaderModuleD3D12>();
-        shader_info = shader_vk->Info();
         pipeline_desc.VS = shader_vk->RawBytecode();
     }
     if (desc.shaders.tessellation_control) {
         auto shader_vk = static_cast<ShaderModuleD3D12 *>(desc.shaders.tessellation_control);
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         pipeline_desc.DS = shader_vk->RawBytecode();
     }
     if (desc.shaders.tessellation_evaluation) {
         auto shader_vk = static_cast<ShaderModuleD3D12 *>(desc.shaders.tessellation_evaluation);
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         pipeline_desc.HS = shader_vk->RawBytecode();
     }
     if (desc.shaders.geometry) {
         auto shader_vk = static_cast<ShaderModuleD3D12 *>(desc.shaders.geometry);
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         pipeline_desc.GS = shader_vk->RawBytecode();
     }
     {
         auto shader_vk = desc.shaders.fragment.CastTo<ShaderModuleD3D12>();
-        shader_info.bindings.Combine(shader_vk->Info().bindings);
         pipeline_desc.PS = shader_vk->RawBytecode();
     }
 
-    CreateSignature(shader_info, device->Raw(), root_signature_);
+    CreateSignature(desc.layout, device->Raw(), root_signature_);
     pipeline_desc.pRootSignature = root_signature_.Get();
 
     pipeline_desc.NumRenderTargets = desc.color_target_state.attachments.size();
@@ -251,29 +284,20 @@ RenderPipelineD3D12::RenderPipelineD3D12(Ref<DeviceD3D12> device, const RenderPi
     pipeline_desc.DSVFormat = ToDxFormat(desc.depth_stencil_state.format);
 
     Vec<D3D12_INPUT_ELEMENT_DESC> input_elements;
-    Vec<size_t> vertex_input_attributes_map(shader_info.vertex_inputs.size(), -1);
-    input_elements.reserve(desc.vertex_input_buffers.size());
-    for (size_t i = 0; i < shader_info.vertex_inputs.size(); i++) {
-        const auto &input_attribute = shader_info.vertex_inputs[i];
-        if (input_attribute == ResourceFormat::eUndefined) {
-            continue;
-        }
-        vertex_input_attributes_map[i] = input_elements.size();
-        input_elements.push_back(D3D12_INPUT_ELEMENT_DESC {
-            .SemanticName = ToDxSemanticName(static_cast<VertexSemantics>(i)),
-            .SemanticIndex = ToDxSemanticIndex(static_cast<VertexSemantics>(i)),
-            .Format = ToDxFormat(input_attribute),
-        });
-    }
     for (size_t i = 0; i < desc.vertex_input_buffers.size(); i++) {
         const auto &input_buffer = desc.vertex_input_buffers[i];
         for (const auto &attribute : input_buffer.attributes) {
-            size_t input_index = vertex_input_attributes_map[static_cast<size_t>(attribute.semantics)];
-            input_elements[input_index].InputSlot = i;
-            input_elements[input_index].AlignedByteOffset = attribute.offset;
-            input_elements[input_index].InputSlotClass = input_buffer.per_instance
-                ? D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA : D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-            input_elements[input_index].InstanceDataStepRate = input_buffer.per_instance ? 1 : 0;
+            uint32_t location = static_cast<uint32_t>(attribute.semantics);
+            input_elements.push_back(D3D12_INPUT_ELEMENT_DESC {
+                .SemanticName = ToDxSemanticName(attribute.semantics),
+                .SemanticIndex = ToDxSemanticIndex(attribute.semantics),
+                .Format = ToDxFormat(attribute.format),
+                .InputSlot = static_cast<UINT>(i),
+                .AlignedByteOffset = attribute.offset,
+                .InputSlotClass = input_buffer.per_instance
+                    ? D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA : D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                .InstanceDataStepRate = input_buffer.per_instance ? 1u : 0u,
+            });
         }
     }
     pipeline_desc.InputLayout = D3D12_INPUT_LAYOUT_DESC {
@@ -303,13 +327,8 @@ RenderPipelineD3D12::~RenderPipelineD3D12() {}
 ComputePipelineD3D12::ComputePipelineD3D12(Ref<DeviceD3D12> device, const ComputePipelineDesc &desc)
     : device_(device), desc_(desc) {
     auto shader_dx = desc.compute.CastTo<ShaderModuleD3D12>();
-    const auto &shader_info = shader_dx->Info();
 
-    local_size_x = shader_info.compute_local_size_x;
-    local_size_y = shader_info.compute_local_size_y;
-    local_size_z = shader_info.compute_local_size_z;
-
-    CreateSignature(shader_info, device->Raw(), root_signature_);
+    CreateSignature(desc.layout, device->Raw(), root_signature_);
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pipeline_desc {
         .pRootSignature = root_signature_.Get(),

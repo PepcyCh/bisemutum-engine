@@ -10,6 +10,7 @@
 #include "sync.hpp"
 #include "resource.hpp"
 #include "sampler.hpp"
+#include "pipeline.hpp"
 #include "shader.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -154,6 +155,14 @@ Ptr<Sampler> DeviceD3D12::CreateSampler(const SamplerDesc &desc) {
 
 Ptr<ShaderModule> DeviceD3D12::CreateShaderModule(const Vec<uint8_t> &src_bytes) {
     return Ptr<ShaderModuleD3D12>::Make(RefThis(), src_bytes);
+}
+
+Ptr<RenderPipeline> DeviceD3D12::CreateRenderPipeline(const RenderPipelineDesc &desc) {
+    return Ptr<RenderPipelineD3D12>::Make(RefThis(), desc);
+}
+
+Ptr<ComputePipeline> DeviceD3D12::CreateComputePipeline(const ComputePipelineDesc &desc) {
+    return Ptr<ComputePipelineD3D12>::Make(RefThis(), desc);
 }
 
 BISMUTH_GFX_NAMESPACE_END

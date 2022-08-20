@@ -1,7 +1,6 @@
 #pragma once
 
-#include "core/container.hpp"
-#include "core/ptr.hpp"
+#include "graphics/descriptor.hpp"
 #include "utils.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -24,7 +23,7 @@ public:
     ID3D12DescriptorHeap *Raw() const { return heap_.Get(); }
     D3D12_DESCRIPTOR_HEAP_TYPE RawType() const { return type_; }
 
-private:
+protected:
     Ref<DeviceD3D12> device_;
     ComPtr<ID3D12DescriptorHeap> heap_;
     D3D12_DESCRIPTOR_HEAP_TYPE type_;
@@ -33,8 +32,14 @@ private:
     UINT descriptor_size_;
     UINT max_count_;
     UINT used_count_;
+};
 
-    // TODO - recycle decriptor
+class ShaderVisibleDescriptorHeapD3D12 : public DescriptorHeapD3D12 {
+public:
+    ShaderVisibleDescriptorHeapD3D12(Ref<class DeviceD3D12> device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT max_count)
+        : DescriptorHeapD3D12(device, type, max_count, true) {}
+
+    DescriptorHandle AllocateAndWriteDescriptors(const DescriptorSetLayout &layout, const ShaderParams &values);
 };
 
 BISMUTH_GFX_NAMESPACE_END

@@ -5,6 +5,7 @@
 #include "core/ptr.hpp"
 #include "defines.hpp"
 #include "shader.hpp"
+#include "descriptor.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -28,6 +29,7 @@ enum class VertexSemantics : uint8_t {
 struct VertexInputAttribute {
     uint32_t offset;
     VertexSemantics semantics;
+    ResourceFormat format;
 };
 struct VertexInputBufferDesc {
     uint32_t stride = 0;
@@ -153,6 +155,8 @@ struct ColorTargetState {
 struct RenderPipelineDesc {
     std::string name = "";
 
+    PipelineLayout layout;
+
     Vec<VertexInputBufferDesc> vertex_input_buffers;
     PrimitiveState primitive_state;
     DepthStencilState depth_stencil_state;
@@ -177,6 +181,14 @@ protected:
 
 struct ComputePipelineDesc {
     std::string name = "";
+
+    PipelineLayout layout;
+
+    struct {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    } thread_group;
     Ref<ShaderModule> compute;
 };
 

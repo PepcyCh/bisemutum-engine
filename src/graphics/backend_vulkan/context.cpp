@@ -16,7 +16,7 @@ FrameContextVulkan::FrameContextVulkan(Ref<DeviceVulkan> device) : device_(devic
     };
     vkCreateCommandPool(device->Raw(), &graphics_command_pool_ci, nullptr, &graphics_command_pool_);
 
-    descriptor_pool_ = Ptr<DescriptorPoolVulkan>::Make(device, DescriptorPoolSizesVulkan::kDefault);
+    descriptor_pool_ = Ptr<DescriptorSetPoolVulkan>::Make(device, DescriptorPoolSizesVulkan::kDefault);
 }
 
 FrameContextVulkan::~FrameContextVulkan() {
@@ -40,26 +40,14 @@ Ptr<CommandEncoder> FrameContextVulkan::GetCommandEncoder(QueueType queue) {
     return Ptr<CommandEncoderVulkan>::Make(device_, RefThis(), command_buffer);
 }
 
-DescriptorSetVulkan *FrameContextVulkan::GetDescriptorSet(RenderPipelineVulkan *pipeline, uint32_t set_index) {
-    auto key = std::make_pair(pipeline, set_index);
-    if (auto it = render_descriptor_sets_.find(key); it != render_descriptor_sets_.end()) {
-        return &it->second;
+VkDescriptorSet FrameContextVulkan::GetDescriptorSet(VkDescriptorSetLayout layout_vk, const DescriptorSetLayout &layout,
+    const ShaderParams &values) {
+    if (auto it = descriptor_sets_.find(values); it != descriptor_sets_.end()) {
+        return it->second;
     }
-
-    DescriptorSetVulkan set = descriptor_pool_->AllocateSet(pipeline, set_index);
-    auto it = render_descriptor_sets_.insert({key, set}).first;
-    return &it->second;
-}
-
-DescriptorSetVulkan *FrameContextVulkan::GetDescriptorSet(ComputePipelineVulkan *pipeline, uint32_t set_index) {
-    auto key = std::make_pair(pipeline, set_index);
-    if (auto it = compute_descriptor_sets_.find(key); it != compute_descriptor_sets_.end()) {
-        return &it->second;
-    }
-
-    DescriptorSetVulkan set = descriptor_pool_->AllocateSet(pipeline, set_index);
-    auto it = compute_descriptor_sets_.insert({key, set}).first;
-    return &it->second;
+    auto descriptor_set = descriptor_pool_->AllocateAndWriteSet(layout_vk, layout, values);
+    descriptor_sets_.insert({values, descriptor_set});
+    return descriptor_set;
 }
 
 BISMUTH_GFX_NAMESPACE_END

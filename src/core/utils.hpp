@@ -6,11 +6,14 @@
 
 BISMUTH_NAMESPACE_BEGIN
 
+inline size_t HashCombine(size_t seed, size_t v) {
+    seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
+}
 template <typename T>
 size_t HashCombine(size_t seed, const T &v) {
     std::hash<T> hasher;
-    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    return seed;
+    return HashCombine(seed, hasher(v));
 }
 
 template <typename T>
