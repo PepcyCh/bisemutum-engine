@@ -38,11 +38,16 @@ public:
 
     void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) override;
 
-    void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) override;
+    void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
+        Span<TextureCopyDesc> regions) override;
 
-    void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) override;
+    void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
+        Span<BufferTextureCopyDesc> regions) override;
 
-    void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) override;
+    void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
+        Span<BufferTextureCopyDesc> regions) override;
+
+    void ResourceBarrier(Span<BufferBarrier> buffer_barriers, Span<TextureBarrier> texture_barriers) override;
 
     Ptr<RenderCommandEncoder> BeginRenderPass(const CommandLabel &label, const RenderTargetDesc &desc) override;
 

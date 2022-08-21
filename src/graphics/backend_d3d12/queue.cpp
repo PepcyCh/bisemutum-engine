@@ -1,6 +1,7 @@
 #include "queue.hpp"
 
 #include "device.hpp"
+#include "command.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -34,7 +35,15 @@ void QueueD3D12::WaitIdle() const {
 
 void QueueD3D12::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Span<Ref<Semaphore>> wait_semaphores,
     Span<Ref<Semaphore>> signal_semaphores, Fence *signal_fence) const {
-    // TODO
+    Vec<ID3D12CommandList *> cmd_lists(cmd_buffers.Size());
+    for (size_t i = 0; i < cmd_buffers.Size(); i++) {
+        cmd_lists[i] = cmd_buffers[i].AsRef().CastTo<CommandBufferD3D12>()->Raw();
+    }
+    queue_->ExecuteCommandLists(cmd_lists.size(), cmd_lists.data());
+
+    if (signal_fence) {
+        signal_fence->SignalOn(this);
+    }
 }
 
 BISMUTH_GFX_NAMESPACE_END

@@ -14,9 +14,13 @@ public:
 
     DescriptorHandle GetDescriptorHandle() const { return descriptor_handle_; }
 
+    D3D12_STATIC_SAMPLER_DESC GetStaticSamplerDesc(uint32_t shader_register, uint32_t register_space) const;
+
 private:
     Ref<DeviceD3D12> device_;
     DescriptorHandle descriptor_handle_;
+
+    D3D12_STATIC_SAMPLER_DESC static_sampler_desc_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

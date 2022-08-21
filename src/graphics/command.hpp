@@ -66,6 +66,25 @@ struct RenderTargetDesc {
     std::optional<DepthStencilAttachmentDesc> depth_stencil;
 };
 
+struct BufferBarrier {
+    Ref<Buffer> buffer;
+    BitFlags<ResourceAccessType> src_access_type;
+    BitFlags<ResourceAccessStage> src_access_stage;
+    BitFlags<ResourceAccessType> dst_access_type;
+    BitFlags<ResourceAccessStage> dst_access_stage;
+    class Queue *src_queue = nullptr;
+    class Queue *dst_queue = nullptr;
+};
+struct TextureBarrier {
+    TextureView texture;
+    BitFlags<ResourceAccessType> src_access_type;
+    BitFlags<ResourceAccessStage> src_access_stage;
+    BitFlags<ResourceAccessType> dst_access_type;
+    BitFlags<ResourceAccessStage> dst_access_stage;
+    class Queue *src_queue = nullptr;
+    class Queue *dst_queue = nullptr;
+};
+
 class CommandEncoder;
 class RenderCommandEncoder;
 class ComputeCommandEncoder;
@@ -97,11 +116,16 @@ public:
 
     virtual void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) = 0;
 
-    virtual void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture, Span<TextureCopyDesc> regions) = 0;
+    virtual void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
+        Span<TextureCopyDesc> regions) = 0;
 
-    virtual void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture, Span<BufferTextureCopyDesc> regions) = 0;
+    virtual void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
+        Span<BufferTextureCopyDesc> regions) = 0;
 
-    virtual void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer, Span<BufferTextureCopyDesc> regions) = 0;
+    virtual void CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
+        Span<BufferTextureCopyDesc> regions) = 0;
+
+    virtual void ResourceBarrier(Span<BufferBarrier> buffer_barriers, Span<TextureBarrier> texture_barriers) = 0;
 
     virtual Ptr<RenderCommandEncoder> BeginRenderPass(const CommandLabel &label, const RenderTargetDesc &desc) = 0;
 

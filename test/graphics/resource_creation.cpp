@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
         gfx::BufferDesc buffer_desc {
             .name = "buffer",
             .size = 256,
-            .usages = { gfx::BufferUsage::eUnorderedAccess },
+            .usages = { gfx::BufferUsage::eRWStorage },
             .memory_property = gfx::BufferMemoryProperty::eGpuOnly,
             .persistently_mapped = false,
         };
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
             .extent = { 1920, 1080 },
             .levels = 10,
             .format = gfx::ResourceFormat::eRgba32SFloat,
-            .usages = { gfx::TextureUsage::eShaderResource }
+            .usages = { gfx::TextureUsage::eStorage }
         };
         auto texture = device->CreateTexture(texture_desc);
     }

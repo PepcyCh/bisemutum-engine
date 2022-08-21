@@ -17,6 +17,89 @@ UINT64 EncodeEventColor(float r, float g, float b) {
     return PIX_COLOR(static_cast<BYTE>(r * 255.0f), static_cast<BYTE>(g * 255.0f), static_cast<BYTE>(b * 255.0f));
 }
 
+D3D12_RESOURCE_STATES ToDxBufferState(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage) {
+    D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
+    if (type.Contains(ResourceAccessType::eVertexBufferRead) || type.Contains(ResourceAccessType::eUniformBufferRead)) {
+        states |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+    }
+    if (type.Contains(ResourceAccessType::eIndexBufferRead)) {
+        states |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
+    }
+    if (type.Contains(ResourceAccessType::eIndirectRead)) {
+        states |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+        states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+    if (type.Contains(ResourceAccessType::eTransferRead)) {
+        states |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+    }
+    if (type.Contains(ResourceAccessType::eTransferWrite)) {
+        states |= D3D12_RESOURCE_STATE_COPY_DEST;
+    }
+    return states;
+}
+
+D3D12_RESOURCE_STATES ToDxTextureState(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage) {
+    D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
+    if (type.Contains(ResourceAccessType::eSampledTextureRead)
+        || type.Contains(ResourceAccessType::eStorageResourceRead)) {
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+        states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+    if (type.Contains(ResourceAccessType::eRenderAttachmentRead)) {
+        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
+            states |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+        }
+        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
+            states |= D3D12_RESOURCE_STATE_DEPTH_READ;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eRenderAttachmentWrite)) {
+        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
+            states |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+        }
+        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
+            states |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eTransferRead)) {
+        if (stage.Contains(ResourceAccessStage::eTransfer)) {
+            states |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+        }
+        if (stage.Contains(ResourceAccessStage::eResolve)) {
+            states |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eTransferWrite)) {
+        if (stage.Contains(ResourceAccessStage::eTransfer)) {
+            states |= D3D12_RESOURCE_STATE_COPY_DEST;
+        }
+        if (stage.Contains(ResourceAccessStage::eResolve)) {
+            states |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
+        }
+    }
+    if (type.Contains(ResourceAccessType::ePresent)) {
+        states |= D3D12_RESOURCE_STATE_PRESENT;
+    }
+    return states;
+}
+
 }
 
 CommandBufferD3D12::CommandBufferD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list)
@@ -66,6 +149,10 @@ void CommandEncoderD3D12::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Tex
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.extent.depth_or_layers, depth, layers);
         for (uint32_t array = 0; array < layers; array++) {
+            if (array + src_base_layer >= src_texture_dx->Layers()
+                || array + dst_base_layer >= dst_texture_dx->Layers()) {
+                break;
+            }
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_texture_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -100,6 +187,9 @@ void CommandEncoderD3D12::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Textur
         uint32_t depth, layers;
         dst_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
         for (uint32_t array = 0; array < layers; array++) {
+            if (array + dst_base_layer >= dst_texture_dx->Layers()) {
+                break;
+            }
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_buffer_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
@@ -143,6 +233,9 @@ void CommandEncoderD3D12::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buff
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
         for (uint32_t array = 0; array < layers; array++) {
+            if (array + src_base_layer >= src_texture_dx->Layers()) {
+                break;
+            }
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_texture_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -173,6 +266,87 @@ void CommandEncoderD3D12::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buff
             cmd_list_->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &copy_box);
         }
     }
+}
+
+void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, Span<TextureBarrier> texture_barriers) {
+    Vec<D3D12_RESOURCE_BARRIER> barriers_dx;
+    barriers_dx.reserve(buffer_barriers.Size() + texture_barriers.Size());
+    for (const auto &barrier : buffer_barriers) {
+        auto src_states = ToDxBufferState(barrier.src_access_type, barrier.src_access_stage);
+        auto dst_states = ToDxBufferState(barrier.dst_access_type, barrier.dst_access_stage);
+        if (src_states != dst_states) {
+            barriers_dx.push_back(D3D12_RESOURCE_BARRIER {
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .Transition = D3D12_RESOURCE_TRANSITION_BARRIER {
+                    .pResource = barrier.buffer.CastTo<BufferD3D12>()->Raw(),
+                    .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    .StateBefore = src_states,
+                    .StateAfter = dst_states,
+                },
+            });
+        } else if ((src_states & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) != 0) {
+            barriers_dx.push_back(D3D12_RESOURCE_BARRIER {
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .UAV = D3D12_RESOURCE_UAV_BARRIER {
+                    .pResource = barrier.buffer.CastTo<BufferD3D12>()->Raw(),
+                },
+            });
+        }
+    }
+    for (const auto &barrier : texture_barriers) {
+        const auto texture_dx = barrier.texture.texture.CastTo<TextureD3D12>();
+        auto src_states = ToDxBufferState(barrier.src_access_type, barrier.src_access_stage);
+        auto dst_states = ToDxBufferState(barrier.dst_access_type, barrier.dst_access_stage);
+        if (src_states != dst_states) {
+            if (barrier.texture.base_layer == 0 && barrier.texture.layers >= texture_dx->Layers()
+                && barrier.texture.base_level == 0 && barrier.texture.levels >= texture_dx->Desc().levels) {
+                barriers_dx.push_back(D3D12_RESOURCE_BARRIER {
+                    .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                    .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                    .Transition = D3D12_RESOURCE_TRANSITION_BARRIER {
+                        .pResource = texture_dx->Raw(),
+                        .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                        .StateBefore = src_states,
+                        .StateAfter = dst_states,
+                    },
+                });
+            } else {
+                for (uint32_t layer = 0; layer < barrier.texture.layers; layer++) {
+                    if (barrier.texture.base_layer + layer >= texture_dx->Layers()) {
+                        break;
+                    }
+                    for (uint32_t level = 0; level < barrier.texture.levels; level++) {
+                        if (barrier.texture.base_level + level >= texture_dx->Desc().levels) {
+                            break;
+                        }
+                        barriers_dx.push_back(D3D12_RESOURCE_BARRIER {
+                            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+                            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                            .Transition = D3D12_RESOURCE_TRANSITION_BARRIER {
+                                .pResource = texture_dx->Raw(),
+                                .Subresource = texture_dx->SubresourceIndex(barrier.texture.base_level + level,
+                                    barrier.texture.base_layer + layer),
+                                .StateBefore = src_states,
+                                .StateAfter = dst_states,
+                            },
+                        });
+                    }
+                }
+            }
+        } else if ((src_states & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) != 0) {
+            barriers_dx.push_back(D3D12_RESOURCE_BARRIER {
+                .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+                .UAV = D3D12_RESOURCE_UAV_BARRIER {
+                    .pResource = texture_dx->Raw(),
+                },
+            });
+        }
+    }
+
+    cmd_list_->ResourceBarrier(barriers_dx.size(), barriers_dx.data());
 }
 
 Ptr<RenderCommandEncoder> CommandEncoderD3D12::BeginRenderPass(const CommandLabel &label, const RenderTargetDesc &desc) {

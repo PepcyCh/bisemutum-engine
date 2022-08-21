@@ -49,7 +49,7 @@ struct DescriptorSetLayoutBinding {
     ResourceFormat tex_format = ResourceFormat::eUndefined;
     uint32_t count = 1;
     uint32_t struct_stride = 0;
-    Span<Ref<Sampler>> immutable_samples = {}; // TODO - support immutable/static sampler
+    Span<Ref<Sampler>> immutable_samplers = {};
 };
 struct DescriptorSetLayout {
     Vec<DescriptorSetLayoutBinding> bindings;

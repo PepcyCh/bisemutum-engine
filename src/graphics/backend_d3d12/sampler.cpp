@@ -76,6 +76,20 @@ void ToDxBorderColor(SamplerBorderColor border, float color[4]) {
     }
 }
 
+D3D12_STATIC_BORDER_COLOR ToDxStaticBorderColor(SamplerBorderColor border) {
+    switch (border) {
+        case SamplerBorderColor::TransparentFloat:
+        case SamplerBorderColor::TransparentInt:
+            return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+        case SamplerBorderColor::BlackFloat:
+        case SamplerBorderColor::BlackInt:
+            return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+        case SamplerBorderColor::WhiteFloat:
+        case SamplerBorderColor::WhiteInt:
+            return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    }
+}
+
 }
 
 SamplerD3D12::SamplerD3D12(Ref<DeviceD3D12> device, const SamplerDesc &desc) : device_(device) {
@@ -94,6 +108,29 @@ SamplerD3D12::SamplerD3D12(Ref<DeviceD3D12> device, const SamplerDesc &desc) : d
 
     descriptor_handle_ = device->Heap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->AllocateDecriptor();
     device->Raw()->CreateSampler(&sampler_desc, descriptor_handle_.cpu);
+
+    static_sampler_desc_ = D3D12_STATIC_SAMPLER_DESC {
+        .Filter = sampler_desc.Filter,
+        .AddressU = sampler_desc.AddressU,
+        .AddressV = sampler_desc.AddressV,
+        .AddressW = sampler_desc.AddressW,
+        .MipLODBias = sampler_desc.MipLODBias,
+        .MaxAnisotropy = sampler_desc.MaxAnisotropy,
+        .ComparisonFunc = sampler_desc.ComparisonFunc,
+        .BorderColor = ToDxStaticBorderColor(desc.border_color),
+        .MinLOD = sampler_desc.MinLOD,
+        .MaxLOD = sampler_desc.MaxLOD,
+        .ShaderRegister = 0,
+        .RegisterSpace = 0,
+        .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+    };
+}
+
+D3D12_STATIC_SAMPLER_DESC SamplerD3D12::GetStaticSamplerDesc(uint32_t shader_register, uint32_t register_space) const {
+    auto desc = static_sampler_desc_;
+    desc.ShaderRegister = shader_register;
+    desc.RegisterSpace = register_space;
+    return desc;
 }
 
 SamplerD3D12::~SamplerD3D12() {}

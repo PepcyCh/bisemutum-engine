@@ -21,7 +21,7 @@ VkBufferUsageFlags ToVkBufferUsage(BitFlags<BufferUsage> usage) {
     if (usage.Contains(BufferUsage::eUniform)) {
         vk_usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    if (usage.Contains(BufferUsage::eUnorderedAccess) || usage.Contains(BufferUsage::eShaderResource)) {
+    if (usage.Contains(BufferUsage::eStorage)) {
         vk_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
     if (usage.Contains(BufferUsage::eIndirect)) {
@@ -54,10 +54,10 @@ VkImageType ToVkImageType(TextureDimension dim) {
 
 VkImageUsageFlags ToVkImageUsage(BitFlags<TextureUsage> usage) {
     VkImageUsageFlags vk_usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    if (usage.Contains(TextureUsage::eShaderResource)) {
+    if (usage.Contains(TextureUsage::eSampled)) {
         vk_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
     }
-    if (usage.Contains(TextureUsage::eUnorderedAccess)) {
+    if (usage.Contains(TextureUsage::eStorage)) {
         vk_usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
     if (usage.Contains(TextureUsage::eColorAttachment)) {
@@ -139,7 +139,6 @@ TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, const TextureDesc &desc) 
         .pQueueFamilyIndices = nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
     };
-    layout_ = VK_IMAGE_LAYOUT_PREINITIALIZED;
 
     VmaAllocationCreateInfo allocation_ci {
         .flags = 0,
@@ -165,7 +164,6 @@ TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, VkImage raw_image, const 
     image_ = raw_image;
     allocation_ = nullptr;
     desc_ = desc;
-    layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 TextureVulkan::~TextureVulkan() {

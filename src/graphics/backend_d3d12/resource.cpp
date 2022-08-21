@@ -19,7 +19,7 @@ D3D12_RESOURCE_DIMENSION ToDxDimension(TextureDimension dim) {
 
 D3D12_RESOURCE_FLAGS ToDxResourceFlags(BitFlags<BufferUsage> usage) {
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-    if (usage.Contains(BufferUsage::eUnorderedAccess) || usage.Contains(BufferUsage::eAccelerationStructure)) {
+    if (usage.Contains(BufferUsage::eRWStorage)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
     return flags;
@@ -27,7 +27,7 @@ D3D12_RESOURCE_FLAGS ToDxResourceFlags(BitFlags<BufferUsage> usage) {
 
 D3D12_RESOURCE_FLAGS ToDxResourceFlags(BitFlags<TextureUsage> usage) {
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-    if (usage.Contains(TextureUsage::eUnorderedAccess)) {
+    if (usage.Contains(TextureUsage::eRWStorage)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
     if (usage.Contains(TextureUsage::eColorAttachment)) {
@@ -187,6 +187,10 @@ void TextureD3D12::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, u
         depth = 1;
         layers = depth_or_layers;
     }
+}
+
+uint32_t TextureD3D12::Layers() const {
+    return desc_.dim == TextureDimension::e3D ? 1 : desc_.extent.depth_or_layers;
 }
 
 UINT TextureD3D12::SubresourceIndex(uint32_t level, uint32_t layer, uint32_t plane) const {

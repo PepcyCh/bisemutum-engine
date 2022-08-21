@@ -10,13 +10,41 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
+enum class ResourceAccessType : uint16_t {
+    eNone = 0x0,
+    eVertexBufferRead = 0x1,
+    eIndexBufferRead = 0x2,
+    eIndirectRead = 0x4,
+    eUniformBufferRead = 0x8,
+    eSampledTextureRead = 0x10,
+    eStorageResourceRead = 0x20,
+    eStorageResourceWrite = 0x40,
+    eRenderAttachmentRead = 0x80,
+    eRenderAttachmentWrite = 0x100,
+    eTransferRead = 0x200,
+    eTransferWrite = 0x400,
+    ePresent = 0x800,
+};
+
+enum class ResourceAccessStage : uint8_t {
+    eNone = 0x0,
+    eInputAssembler = 0x1,
+    eGraphicsShader = 0x2,
+    eColorAttachment = 0x4,
+    eDepthStencilAttachment = 0x8,
+    eComputeShader = 0x10,
+    eTransfer = 0x20,
+    eResolve = 0x40,
+    ePresent = 0x80,
+};
+
 enum class BufferUsage : uint8_t {
     eNone = 0x0,
     eVertex = 0x1,
     eIndex = 0x2,
     eUniform = 0x4,
-    eUnorderedAccess = 0x8,
-    eShaderResource = 0x10,
+    eStorage = 0x8,
+    eRWStorage = 0x10 | 0x8,
     eIndirect = 0x20,
     eAccelerationStructure = 0x40,
 };
@@ -53,10 +81,11 @@ struct BufferRange {
 
 enum class TextureUsage : uint8_t {
     eNone = 0x0,
-    eShaderResource = 0x1,
-    eUnorderedAccess = 0x2,
-    eColorAttachment = 0x4,
-    eDepthStencilAttachment = 0x8,
+    eSampled = 0x1,
+    eStorage = 0x2,
+    eRWStorage = 0x4 | 0x2,
+    eColorAttachment = 0x8,
+    eDepthStencilAttachment = 0x10,
 };
 
 enum class TextureDimension : uint8_t {

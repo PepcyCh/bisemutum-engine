@@ -54,11 +54,12 @@ VkDescriptorBufferInfo ToVkBufferInfo(const BufferRange &buffer) {
     };
 }
 
-VkDescriptorImageInfo ToVkImageInfo(const TextureView &texture, TextureViewDimension dim, ResourceFormat format) {
+VkDescriptorImageInfo ToVkImageInfo(const TextureView &texture, const DescriptorSetLayoutBinding &binding) {
     const auto texture_vk = texture.texture.CastTo<TextureVulkan>();
     TextureViewVulkanDesc view_desc {
-        .type = ToVkImageViewType(dim),
-        .format = format == ResourceFormat::eUndefined ? texture_vk->RawFormat() : ToVkFormat(format),
+        .type = ToVkImageViewType(binding.tex_dim),
+        .format = binding.tex_format == ResourceFormat::eUndefined
+            ? texture_vk->RawFormat() : ToVkFormat(binding.tex_format),
         .base_layer = texture.base_layer,
         .layers = texture.layers,
         .base_level = texture.base_level,
@@ -68,7 +69,10 @@ VkDescriptorImageInfo ToVkImageInfo(const TextureView &texture, TextureViewDimen
     return VkDescriptorImageInfo {
         .sampler = VK_NULL_HANDLE,
         .imageView = view,
-        .imageLayout = texture_vk->Layout(),
+        .imageLayout = binding.type == DescriptorType::eSampledTexture
+            ? (IsDepthStencilFormat(texture_vk->Desc().format)
+                ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            : VK_IMAGE_LAYOUT_GENERAL,
     };
 }
 
@@ -167,7 +171,7 @@ VkDescriptorSet DescriptorSetPoolVulkan::AllocateAndWriteSet(VkDescriptorSetLayo
                 ++p_write;
             },
             [set, binding, &layout, &p_write, &p_image_info](const TextureView &texture) {
-                *p_image_info = ToVkImageInfo(texture, layout.bindings[binding].tex_dim, layout.bindings[binding].tex_format);
+                *p_image_info = ToVkImageInfo(texture, layout.bindings[binding]);
                 *p_write = VkWriteDescriptorSet {
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                     .pNext = nullptr,
@@ -224,7 +228,7 @@ VkDescriptorSet DescriptorSetPoolVulkan::AllocateAndWriteSet(VkDescriptorSetLayo
                 auto p_image_info_start = p_image_info;
                 for (const auto &texture : textures) {
                     *p_image_info =
-                        ToVkImageInfo(texture, layout.bindings[binding].tex_dim, layout.bindings[binding].tex_format);
+                        ToVkImageInfo(texture, layout.bindings[binding]);
                     ++p_image_info;
                 }
                 *p_write = VkWriteDescriptorSet {

@@ -36,18 +36,33 @@ void CreateLayout(const PipelineLayout &rhi_layout, VkShaderStageFlags stage, Vk
         const auto &rhi_bindings = rhi_layout.sets_layout[set];
         Vec<VkDescriptorSetLayoutBinding> bindings_info;
         bindings_info.reserve(rhi_bindings.bindings.size());
+        uint32_t num_immutable_samplers = 0;
+        for (const auto &rhi_binding : rhi_bindings.bindings) {
+            num_immutable_samplers += rhi_binding.immutable_samplers.Size();
+        }
+        Vec<VkSampler> immutable_samplers(num_immutable_samplers, VK_NULL_HANDLE);
+        VkSampler *p_immutable_sampler = immutable_samplers.data();
+
         for (size_t binding = 0; binding < bindings_info.size(); binding++) {
             const auto &rhi_binding = rhi_bindings.bindings[binding];
             if (rhi_binding.type == DescriptorType::eNone) {
                 continue;
             }
-            bindings_info.push_back(VkDescriptorSetLayoutBinding {
+            VkDescriptorSetLayoutBinding binding_info {
                 .binding = static_cast<uint32_t>(binding),
                 .descriptorType = ToVkDescriptorType(rhi_binding.type),
                 .descriptorCount = rhi_binding.count,
                 .stageFlags = stage,
                 .pImmutableSamplers = nullptr,
-            });
+            };
+            if (!rhi_binding.immutable_samplers.Empty()) {
+                binding_info.pImmutableSamplers = p_immutable_sampler;
+                for (const auto &sampler : rhi_binding.immutable_samplers) {
+                    *p_immutable_sampler = sampler.CastTo<SamplerVulkan>()->Raw();
+                    ++p_immutable_sampler;
+                }
+            }
+            bindings_info.push_back(binding_info);
         }
 
         VkDescriptorSetLayoutCreateInfo set_layout_ci {

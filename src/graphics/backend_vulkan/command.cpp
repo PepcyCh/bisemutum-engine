@@ -110,6 +110,145 @@ Vec<VkBufferImageCopy> ToVkBufferImageCopy(TextureVulkan *texture_vk, Span<Buffe
     return regions_vk;
 }
 
+void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage,
+    VkAccessFlags2 &type_vk, VkPipelineStageFlags2 &stage_vk) {
+    type_vk = 0;
+    stage_vk = 0;
+    if (type.Contains(ResourceAccessType::eVertexBufferRead)) {
+        type_vk |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eIndexBufferRead)) {
+        type_vk |= VK_ACCESS_2_INDEX_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eIndirectRead)) {
+        type_vk |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eUniformBufferRead)) {
+        type_vk |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT;
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
+        type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+        type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eTransferRead)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eTransferWrite)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    }
+}
+
+void ToVkImageAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage, bool is_depth_stencil,
+    VkAccessFlags2 &type_vk, VkPipelineStageFlags2 &stage_vk, VkImageLayout &layout_vk) {
+    type_vk = 0;
+    stage_vk = 0;
+    layout_vk = VK_IMAGE_LAYOUT_UNDEFINED;
+    if (type.Contains(ResourceAccessType::eSampledTextureRead)) {
+        type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        }
+        layout_vk = is_depth_stencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+            : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
+        type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        }
+        layout_vk = VK_IMAGE_LAYOUT_GENERAL;
+    }
+    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+        type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
+        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        }
+        layout_vk = VK_IMAGE_LAYOUT_GENERAL;
+    }
+    if (type.Contains(ResourceAccessType::eRenderAttachmentRead)) {
+        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
+            type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+            stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
+            type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+            layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eRenderAttachmentWrite)) {
+        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
+            type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
+            type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+            layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        }
+    }
+    if (type.Contains(ResourceAccessType::eTransferRead)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
+        if (stage.Contains(ResourceAccessStage::eTransfer)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eResolve)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+        }
+        layout_vk = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eTransferWrite)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        if (stage.Contains(ResourceAccessStage::eTransfer)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        }
+        if (stage.Contains(ResourceAccessStage::eResolve)) {
+            stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+        }
+        layout_vk = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::ePresent)) {
+        stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    }
+}
+
 }
 
 CommandBufferVulkan::CommandBufferVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer)
@@ -151,8 +290,8 @@ void CommandEncoderVulkan::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Te
     auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
     auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkImageCopy(src_texture_vk, dst_texture_vk, regions);
-    vkCmdCopyImage(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_texture_vk->Raw(),
-        dst_texture_vk->Layout(), regions_vk.size(), regions_vk.data());
+    vkCmdCopyImage(cmd_buffer_, src_texture_vk->Raw(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_texture_vk->Raw(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions_vk.size(), regions_vk.data());
 }
 
 void CommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
@@ -160,8 +299,8 @@ void CommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Textu
     auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
     auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
     auto regions_vk = ToVkBufferImageCopy(dst_texture_vk, regions);
-    vkCmdCopyBufferToImage(cmd_buffer_, src_buffer_vk->Raw(), dst_texture_vk->Raw(), dst_texture_vk->Layout(),
-        regions_vk.size(), regions_vk.data());
+    vkCmdCopyBufferToImage(cmd_buffer_, src_buffer_vk->Raw(), dst_texture_vk->Raw(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions_vk.size(), regions_vk.data());
 }
 
 void CommandEncoderVulkan::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
@@ -169,8 +308,71 @@ void CommandEncoderVulkan::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buf
     auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
     auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
     auto regions_vk = ToVkBufferImageCopy(src_texture_vk, regions);
-    vkCmdCopyImageToBuffer(cmd_buffer_, src_texture_vk->Raw(), src_texture_vk->Layout(), dst_buffer_vk->Raw(),
-        regions_vk.size(), regions_vk.data());
+    vkCmdCopyImageToBuffer(cmd_buffer_, src_texture_vk->Raw(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dst_buffer_vk->Raw(), regions_vk.size(), regions_vk.data());
+}
+
+void CommandEncoderVulkan::ResourceBarrier(Span<BufferBarrier> buffer_barriers, Span<TextureBarrier> texture_barriers) {
+    Vec<VkBufferMemoryBarrier2> buffer_barriers_vk(buffer_barriers.Size());
+    for (size_t i = 0; i < buffer_barriers.Size(); i++) {
+        const auto &barrier = buffer_barriers[i];
+        buffer_barriers_vk[i] = VkBufferMemoryBarrier2 {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .pNext = nullptr,
+            .srcQueueFamilyIndex = barrier.src_queue ? static_cast<QueueVulkan *>(barrier.src_queue)->RawFamilyIndex()
+                : VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = barrier.dst_queue ? static_cast<QueueVulkan *>(barrier.dst_queue)->RawFamilyIndex()
+                : VK_QUEUE_FAMILY_IGNORED,
+            .buffer = barrier.buffer.CastTo<BufferVulkan>()->Raw(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        };
+        ToVkBufferAccessType(barrier.src_access_type, barrier.src_access_stage,
+            buffer_barriers_vk[i].srcAccessMask, buffer_barriers_vk[i].srcStageMask);
+        ToVkBufferAccessType(barrier.dst_access_type, barrier.dst_access_stage,
+            buffer_barriers_vk[i].dstAccessMask, buffer_barriers_vk[i].dstStageMask);
+    }
+    Vec<VkImageMemoryBarrier2> texture_barriers_vk(buffer_barriers.Size());
+    for (size_t i = 0; i < texture_barriers.Size(); i++) {
+        const auto &barrier = texture_barriers[i];
+        const auto texture_vk = barrier.texture.texture.CastTo<TextureVulkan>();
+        texture_barriers_vk[i] = VkImageMemoryBarrier2 {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext = nullptr,
+            .srcQueueFamilyIndex = barrier.src_queue ? static_cast<QueueVulkan *>(barrier.src_queue)->RawFamilyIndex()
+                : VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = barrier.dst_queue ? static_cast<QueueVulkan *>(barrier.dst_queue)->RawFamilyIndex()
+                : VK_QUEUE_FAMILY_IGNORED,
+            .image = texture_vk->Raw(),
+            .subresourceRange = VkImageSubresourceRange {
+                .aspectMask = texture_vk->GetAspect(),
+                .baseMipLevel = barrier.texture.base_level,
+                .levelCount = barrier.texture.levels,
+                .baseArrayLayer = barrier.texture.base_layer,
+                .layerCount = barrier.texture.layers,
+            },
+        };
+        bool is_depth_stencil = IsDepthStencilFormat(texture_vk->Desc().format);
+        ToVkImageAccessType(barrier.src_access_type, barrier.src_access_stage,
+            is_depth_stencil, texture_barriers_vk[i].srcAccessMask,
+            texture_barriers_vk[i].srcStageMask, texture_barriers_vk[i].oldLayout);
+        ToVkImageAccessType(barrier.dst_access_type, barrier.dst_access_stage,
+            is_depth_stencil, texture_barriers_vk[i].dstAccessMask,
+            texture_barriers_vk[i].dstStageMask, texture_barriers_vk[i].newLayout);
+    }
+
+    VkDependencyInfo dep_info {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = nullptr,
+        .dependencyFlags = 0,
+        .memoryBarrierCount = 0,
+        .pMemoryBarriers = nullptr,
+        .bufferMemoryBarrierCount = static_cast<uint32_t>(buffer_barriers_vk.size()),
+        .pBufferMemoryBarriers = buffer_barriers_vk.data(),
+        .imageMemoryBarrierCount = static_cast<uint32_t>(texture_barriers_vk.size()),
+        .pImageMemoryBarriers = texture_barriers_vk.data(),
+    };
+    vkCmdPipelineBarrier2KHR(cmd_buffer_, &dep_info);
 }
 
 Ptr<RenderCommandEncoder> CommandEncoderVulkan::BeginRenderPass(const CommandLabel &label,
@@ -218,7 +420,7 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
                 .base_level = desc.colors[i].texture.base_level,
                 .levels = desc.colors[i].texture.levels,
             }),
-            .imageLayout = texture_vk->Layout(),
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
             // TODO - support resolve
             .resolveImageView = nullptr,
@@ -251,7 +453,7 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
                 .base_level = depth_stencil.texture.base_level,
                 .levels = depth_stencil.texture.levels,
             }),
-            .imageLayout = texture_vk->Layout(),
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
             .resolveImageView = nullptr,
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,

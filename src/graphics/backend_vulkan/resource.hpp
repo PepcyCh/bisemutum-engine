@@ -69,8 +69,6 @@ public:
 
     VkFormat RawFormat() const;
 
-    VkImageLayout Layout() const { return layout_; }
-
     VkImageAspectFlags GetAspect() const;
 
     void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const;
@@ -80,7 +78,6 @@ private:
     VkImage image_;
     VmaAllocation allocation_;
     TextureDesc desc_;
-    VkImageLayout layout_;
 
     mutable HashMap<TextureViewVulkanDesc, VkImageView> cached_views_;
 };

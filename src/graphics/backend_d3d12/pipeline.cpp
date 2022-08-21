@@ -1,6 +1,7 @@
 #include "pipeline.hpp"
 
 #include "device.hpp"
+#include "sampler.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -30,6 +31,8 @@ D3D12_DESCRIPTOR_RANGE_TYPE ToDxDescriptorRangeType(DescriptorType type) {
 void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, ComPtr<ID3D12RootSignature> &signature) {
     Vec<D3D12_ROOT_PARAMETER1> root_params(rhi_layout.sets_layout.size()
         + (rhi_layout.push_constants_size > 0 ? 1 : 0));
+    Vec<D3D12_STATIC_SAMPLER_DESC> static_samplers;
+
     for (size_t set = 0; set < rhi_layout.sets_layout.size(); set++) {
         const auto &rhi_bindings = rhi_layout.sets_layout[set];
         Vec<D3D12_DESCRIPTOR_RANGE1> bindings_info;
@@ -39,14 +42,20 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
             if (rhi_binding.type == DescriptorType::eNone) {
                 continue;
             }
-            bindings_info.push_back(D3D12_DESCRIPTOR_RANGE1 {
-                .RangeType = ToDxDescriptorRangeType(rhi_binding.type),
-                .NumDescriptors = rhi_binding.count,
-                .BaseShaderRegister = static_cast<UINT>(binding),
-                .RegisterSpace = static_cast<UINT>(set),
-                .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
-                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
-            });
+            if (rhi_binding.immutable_samplers.Empty()) {
+                bindings_info.push_back(D3D12_DESCRIPTOR_RANGE1 {
+                    .RangeType = ToDxDescriptorRangeType(rhi_binding.type),
+                    .NumDescriptors = rhi_binding.count,
+                    .BaseShaderRegister = static_cast<UINT>(binding),
+                    .RegisterSpace = static_cast<UINT>(set),
+                    .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+                    .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+                });
+            } else {
+                for (const auto &sampler : rhi_binding.immutable_samplers) {
+                    static_samplers.push_back(sampler.CastTo<SamplerD3D12>()->GetStaticSamplerDesc(binding, set));
+                }
+            }
         }
 
         root_params[set] = D3D12_ROOT_PARAMETER1 {
