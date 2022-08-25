@@ -11,7 +11,7 @@
 #include "resource.hpp"
 #include "sampler.hpp"
 #include "pipeline.hpp"
-#include "shader.hpp"
+#include "context.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -72,6 +72,24 @@ DeviceD3D12::DeviceD3D12(const DeviceDesc &desc) {
     BI_INFO(gGraphicsLogger, "Use GPU: {}", WCharsToString(adapter_desc.Description));
 
     D3D12CreateDevice(selected_adapter, kD3D12FeatureLevel, IID_PPV_ARGS(&device_));
+
+    if (desc.enable_validation) {
+        device_->QueryInterface(IID_PPV_ARGS(&info_queue_));
+        info_queue_->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+        info_queue_->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+
+        // see https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
+        D3D12_MESSAGE_ID denied_id[] = {
+            D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
+        };
+        D3D12_INFO_QUEUE_FILTER filter {
+            .DenyList = D3D12_INFO_QUEUE_FILTER_DESC {
+                .NumIDs = _countof(denied_id),
+                .pIDList = denied_id,
+            }
+        };
+        info_queue_->AddStorageFilterEntries(&filter);
+    }
 
     window_ = glfwGetWin32Window(desc.window);
     surface_format_ = desc.surface_format;
@@ -163,6 +181,10 @@ Ptr<RenderPipeline> DeviceD3D12::CreateRenderPipeline(const RenderPipelineDesc &
 
 Ptr<ComputePipeline> DeviceD3D12::CreateComputePipeline(const ComputePipelineDesc &desc) {
     return Ptr<ComputePipelineD3D12>::Make(RefThis(), desc);
+}
+
+Ptr<FrameContext> DeviceD3D12::CreateFrameContext() {
+    return Ptr<FrameContextD3D12>::Make(RefThis());
 }
 
 BISMUTH_GFX_NAMESPACE_END

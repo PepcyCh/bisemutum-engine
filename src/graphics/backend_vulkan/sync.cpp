@@ -25,12 +25,20 @@ void FenceVulkan::Reset() {
 }
 
 void FenceVulkan::SignalOn(const Queue *queue) {
+    if (signaled_) {
+        return;
+    }
     auto queue_vk = static_cast<const QueueVulkan *>(queue);
     vkQueueSubmit(queue_vk->Raw(), 0, nullptr, fence_);
+    signaled_ = true;
 }
 
 void FenceVulkan::Wait(uint64_t timeout) {
-    vkWaitForFences(device_->Raw(), 1, &fence_, VK_FALSE, timeout);
+    if (signaled_) {
+        vkWaitForFences(device_->Raw(), 1, &fence_, VK_FALSE, timeout);
+        vkResetFences(device_->Raw(), 1, &fence_);
+        signaled_ = false;
+    }
 }
 
 bool FenceVulkan::IsFinished() {

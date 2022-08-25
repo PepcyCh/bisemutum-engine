@@ -12,13 +12,13 @@ class DeviceD3D12;
 
 class CommandBufferD3D12 : public CommandBuffer {
 public:
-    CommandBufferD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list);
+    CommandBufferD3D12(Ref<DeviceD3D12> device, ID3D12GraphicsCommandList4 *cmd_list);
 
-    ID3D12GraphicsCommandList4 *Raw() const { return cmd_list_.Get(); }
+    ID3D12GraphicsCommandList4 *Raw() const { return cmd_list_; }
 
 private:
     Ref<DeviceD3D12> device_;
-    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
+    ID3D12GraphicsCommandList4 *cmd_list_;
 };
 
 class RenderCommandEncoderD3D12;
@@ -27,7 +27,7 @@ class ComputeCommandEncoderD3D12;
 class CommandEncoderD3D12 : public CommandEncoder, public RefFromThis<CommandEncoderD3D12> {
 public:
     CommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<FrameContextD3D12> context,
-        ComPtr<ID3D12GraphicsCommandList4> cmd_list);
+        ID3D12GraphicsCommandList4 *cmd_list);
     ~CommandEncoderD3D12();
 
     Ptr<CommandBuffer> Finish() override;
@@ -36,10 +36,11 @@ public:
 
     void PopLabel() override;
 
-    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) override;
+    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
+        Span<BufferCopyDesc> regions = { {} }) override;
 
     void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
-        Span<TextureCopyDesc> regions) override;
+        Span<TextureCopyDesc> regions = { {} }) override;
 
     void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
         Span<BufferTextureCopyDesc> regions) override;
@@ -59,7 +60,7 @@ private:
 
     Ref<DeviceD3D12> device_;
     Ref<FrameContextD3D12> context_;
-    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
+    ID3D12GraphicsCommandList4 *cmd_list_;
 };
 
 class RenderCommandEncoderD3D12 : public RenderCommandEncoder {
@@ -80,6 +81,9 @@ public:
 
     void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) override;
 
+    void SetViewports(Span<Viewport> viewports) override;
+    void SetScissors(Span<Scissor> scissors) override;
+
     void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;
 
@@ -92,7 +96,7 @@ private:
     Ref<DeviceD3D12> device_;
     Ref<CommandEncoderD3D12> base_encoder_;
     std::string label_;
-    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
+    ID3D12GraphicsCommandList4 *cmd_list_;
 
     class RenderPipelineD3D12 *curr_pipeline_ = nullptr;
 };
@@ -120,7 +124,7 @@ private:
     Ref<DeviceD3D12> device_;
     Ref<CommandEncoderD3D12> base_encoder_;
     std::string label_;
-    ComPtr<ID3D12GraphicsCommandList4> cmd_list_;
+    ID3D12GraphicsCommandList4 *cmd_list_;
 
     class ComputePipelineD3D12 *curr_pipeline_ = nullptr;
 };

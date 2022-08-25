@@ -16,9 +16,6 @@ public:
 
     Ptr<class CommandEncoder> GetCommandEncoder(QueueType queue = QueueType::eGraphics) override;
 
-    // DescriptorSetVulkan *GetDescriptorSet(RenderPipelineVulkan *pipeline, uint32_t set_index);
-    // DescriptorSetVulkan *GetDescriptorSet(ComputePipelineVulkan *pipeline, uint32_t set_index);
-
     VkDescriptorSet GetDescriptorSet(VkDescriptorSetLayout layout_vk, const DescriptorSetLayout &layout,
         const ShaderParams &values);
 
@@ -26,12 +23,11 @@ private:
     Ref<DeviceVulkan> device_;
 
     VkCommandPool graphics_command_pool_;
+    Vec<VkCommandBuffer> allocated_command_buffers_;
+    size_t available_command_buffer_index_;
 
     Ptr<DescriptorSetPoolVulkan> descriptor_pool_;
     HashMap<ShaderParams, VkDescriptorSet> descriptor_sets_;
-
-    // HashMap<std::pair<RenderPipelineVulkan *, uint32_t>, DescriptorSetVulkan> render_descriptor_sets_;
-    // HashMap<std::pair<ComputePipelineVulkan *, uint32_t>, DescriptorSetVulkan> compute_descriptor_sets_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

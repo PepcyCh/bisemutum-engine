@@ -75,7 +75,7 @@ void SwapChainVulkan::Resize(uint32_t width, uint32_t height) {
     if (width != width_ || height != height_) {
         CreateSwapChain(width, height, transform_);
         
-        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures,", width_, height_, kNumSwapChainBuffers);
+        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures", width_, height_, kNumSwapChainBuffers);
     }
 }
 
@@ -107,6 +107,26 @@ bool SwapChainVulkan::AcquireNextTexture(Ref<Semaphore> acquired_semaphore) {
     }
 
     return true;
+}
+
+void SwapChainVulkan::Present(Span<Ref<Semaphore>> wait_semaphores) {
+    Vec<VkSemaphore> wait_semaphores_vk(wait_semaphores.Size());
+    for (size_t i = 0; i < wait_semaphores_vk.size(); i++) {
+        wait_semaphores_vk[i] = wait_semaphores[i].CastTo<SemaphoreVulkan>()->Raw();
+    }
+
+    VkPresentInfoKHR present_info {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = nullptr,
+        .waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores_vk.size()),
+        .pWaitSemaphores = wait_semaphores_vk.data(),
+        .swapchainCount = 1,
+        .pSwapchains = &swap_chain_,
+        .pImageIndices = &curr_texture_,
+        .pResults = nullptr,
+    };
+    VkResult result = vkQueuePresentKHR(queue_->Raw(), &present_info);
+    // TODO - present result
 }
 
 BISMUTH_GFX_NAMESPACE_END

@@ -17,6 +17,8 @@ public:
 
     bool AcquireNextTexture(Ref<Semaphore> acquired_semaphore) override;
 
+    void Present(Span<Ref<Semaphore>> wait_semaphores) override;
+
     Ref<Texture> GetCurrentTexture() override { return textures_[curr_texture_].AsRef(); }
 
 private:

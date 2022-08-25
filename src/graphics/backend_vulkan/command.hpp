@@ -36,10 +36,11 @@ public:
 
     void PopLabel() override;
 
-    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) override;
+    void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
+        Span<BufferCopyDesc> regions = { {} }) override;
 
     void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
-        Span<TextureCopyDesc> regions) override;
+        Span<TextureCopyDesc> regions = { {} }) override;
 
     void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
         Span<BufferTextureCopyDesc> regions) override;
@@ -79,6 +80,9 @@ public:
     void BindShaderParams(uint32_t set_index, const ShaderParams &values) override;
 
     void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) override;
+
+    void SetViewports(Span<Viewport> viewports) override;
+    void SetScissors(Span<Scissor> scissors) override;
 
     void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) override;
     void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) override;

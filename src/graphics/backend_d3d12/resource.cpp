@@ -66,7 +66,15 @@ BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : devi
     D3D12MA::ALLOCATION_DESC allocation_desc {
         .HeapType = ToDxHeapType(desc.memory_property),
     };
-    device_->RawAllocator()->CreateResource(&allocation_desc, &resource_desc, D3D12_RESOURCE_STATE_COMMON, nullptr,
+    D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
+    if (allocation_desc.HeapType == D3D12_HEAP_TYPE_UPLOAD) {
+        initial_state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        state_restricted_ = true;
+    } else if (allocation_desc.HeapType == D3D12_HEAP_TYPE_READBACK) {
+        initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
+        state_restricted_ = true;
+    }
+    device_->RawAllocator()->CreateResource(&allocation_desc, &resource_desc, initial_state, nullptr,
         &allocation_, IID_PPV_ARGS(&resource_));
 
     if (desc.persistently_mapped) {
@@ -79,13 +87,24 @@ BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : devi
 }
 
 BufferD3D12::~BufferD3D12() {
-    if (mapped_ptr_) {
-        resource_->Unmap(0, nullptr);
-        mapped_ptr_ = nullptr;
-    }
+    Unmap();
     if (allocation_) {
         allocation_->Release();
         allocation_ = nullptr;
+    }
+}
+
+void *BufferD3D12::Map() {
+    if (mapped_ptr_ == nullptr) {
+        resource_->Map(0, nullptr, &mapped_ptr_);
+    }
+    return mapped_ptr_;
+}
+
+void BufferD3D12::Unmap() {
+    if (mapped_ptr_) {
+        resource_->Unmap(0, nullptr);
+        mapped_ptr_ = nullptr;
     }
 }
 
@@ -158,7 +177,15 @@ TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, const TextureDesc &desc) : d
     D3D12MA::ALLOCATION_DESC allocation_desc {
         .HeapType = D3D12_HEAP_TYPE_DEFAULT,
     };
-    device_->RawAllocator()->CreateResource(&allocation_desc, &resource_desc, D3D12_RESOURCE_STATE_COMMON, nullptr,
+    D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
+    if (allocation_desc.HeapType == D3D12_HEAP_TYPE_UPLOAD) {
+        initial_state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        state_restricted_ = true;
+    } else if (allocation_desc.HeapType == D3D12_HEAP_TYPE_READBACK) {
+        initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
+        state_restricted_ = true;
+    }
+    device_->RawAllocator()->CreateResource(&allocation_desc, &resource_desc, initial_state, nullptr,
         &allocation_, IID_PPV_ARGS(&resource_));
 
     if (!desc.name.empty()) {
@@ -224,6 +251,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .MipLevels = view_desc.levels,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
                 case TextureViewDimension::e2D:
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
                     srv_desc.Texture2D = {
@@ -232,6 +260,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .PlaneSlice = 0,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
                 case TextureViewDimension::e3D:
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
                     srv_desc.Texture3D = {
@@ -239,6 +268,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .MipLevels = view_desc.levels,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
                 case TextureViewDimension::eCube:
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
                     srv_desc.TextureCube = {
@@ -246,6 +276,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .MipLevels = view_desc.levels,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
                 case TextureViewDimension::e1DArray:
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
                     srv_desc.Texture1DArray = {
@@ -255,6 +286,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .ArraySize = view_desc.layers,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
                 case TextureViewDimension::e2DArray:
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
                     srv_desc.Texture2DArray = {
@@ -265,6 +297,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .PlaneSlice = 0,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
                 case TextureViewDimension::eCubeArray:
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
                     srv_desc.TextureCubeArray = {
@@ -274,6 +307,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .NumCubes = view_desc.layers == 0 ? -1 : view_desc.layers,
                         .ResourceMinLODClamp = 0.0f,
                     };
+                    break;
             }
             device_->Raw()->CreateShaderResourceView(resource_.Get(), &srv_desc, handle.cpu);
             break;
@@ -286,9 +320,11 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                 case TextureViewDimension::e1D:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
                     uav_desc.Texture1D = { .MipSlice = view_desc.base_level };
+                    break;
                 case TextureViewDimension::e2D:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
                     uav_desc.Texture2D = { .MipSlice = view_desc.base_level, .PlaneSlice = 0 };
+                    break;
                 case TextureViewDimension::e3D:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
                     uav_desc.Texture3D = {
@@ -296,6 +332,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .FirstWSlice = view_desc.base_layer,
                         .WSize = view_desc.layers,
                     };
+                    break;
                 case TextureViewDimension::eCube:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
                     uav_desc.Texture2DArray = {
@@ -304,6 +341,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .ArraySize = view_desc.layers,
                         .PlaneSlice = 0,
                     };
+                    break;
                 case TextureViewDimension::e1DArray:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
                     uav_desc.Texture1DArray = {
@@ -311,6 +349,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .FirstArraySlice = view_desc.base_layer,
                         .ArraySize = view_desc.layers,
                     };
+                    break;
                 case TextureViewDimension::e2DArray:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
                     uav_desc.Texture2DArray = {
@@ -319,6 +358,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .ArraySize = view_desc.layers,
                         .PlaneSlice = 0,
                     };
+                    break;
                 case TextureViewDimension::eCubeArray:
                     uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
                     uav_desc.Texture2DArray = {
@@ -327,6 +367,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureViewD3D12Desc &view_desc) co
                         .ArraySize = view_desc.layers,
                         .PlaneSlice = 0,
                     };
+                    break;
             }
             device_->Raw()->CreateUnorderedAccessView(resource_.Get(), nullptr, &uav_desc, handle.cpu);
             break;
@@ -354,9 +395,11 @@ DescriptorHandle TextureD3D12::GetView(const TextureRenderTargetViewD3D12Desc &v
             case TextureDimension::e1D:
                 rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
                 rtv_desc.Texture1D = { .MipSlice = view_desc.base_level, };
+                break;
             case TextureDimension::e2D:
                 rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
                 rtv_desc.Texture2D = { .MipSlice = view_desc.base_level, .PlaneSlice = 0 };
+                break;
             case TextureDimension::e3D:
                 rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
                 rtv_desc.Texture3D = {
@@ -364,6 +407,7 @@ DescriptorHandle TextureD3D12::GetView(const TextureRenderTargetViewD3D12Desc &v
                     .FirstWSlice = view_desc.base_layer,
                     .WSize = view_desc.layers,
                 };
+                break;
         }
         device_->Raw()->CreateRenderTargetView(resource_.Get(), &rtv_desc, handle.cpu);
     } else {
@@ -374,11 +418,14 @@ DescriptorHandle TextureD3D12::GetView(const TextureRenderTargetViewD3D12Desc &v
             case TextureDimension::e1D:
                 dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
                 dsv_desc.Texture1D = { .MipSlice = view_desc.base_level, };
+                break;
             case TextureDimension::e2D:
                 dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
                 dsv_desc.Texture2D = { .MipSlice = view_desc.base_level };
+                break;
             case TextureDimension::e3D:
                 dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_UNKNOWN;
+                break;
         }
         device_->Raw()->CreateDepthStencilView(resource_.Get(), &dsv_desc, handle.cpu);
     }

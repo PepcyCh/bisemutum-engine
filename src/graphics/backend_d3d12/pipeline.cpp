@@ -87,7 +87,7 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
             .pParameters = root_params.data(),
             .NumStaticSamplers = 0,
             .pStaticSamplers = nullptr,
-            .Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE,
+            .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
         },
     };
     ComPtr<ID3DBlob> serialized_signature;
@@ -183,7 +183,7 @@ UINT ToDxSemanticIndex(VertexSemantics semantic) {
     return std::max(0, semantic_raw - static_cast<int>(VertexSemantics::eTexcoord0));
 }
 
-D3D12_PRIMITIVE_TOPOLOGY_TYPE ToDxPrimitiveTopology(PrimitiveTopology topo) {
+D3D12_PRIMITIVE_TOPOLOGY_TYPE ToDxPrimitiveTopologyType(PrimitiveTopology topo) {
     switch (topo) {
         case PrimitiveTopology::ePointList:
             return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
@@ -194,12 +194,28 @@ D3D12_PRIMITIVE_TOPOLOGY_TYPE ToDxPrimitiveTopology(PrimitiveTopology topo) {
             return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
         case PrimitiveTopology::eTriangleList:
         case PrimitiveTopology::eTriangleStrip:
-        case PrimitiveTopology::eTriangleFan:
         case PrimitiveTopology::eTriangleListAdjacency:
         case PrimitiveTopology::eTriangleStripAdjacency:
             return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         case PrimitiveTopology::ePatchList:
             return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+    }
+    Unreachable();
+}
+
+D3D12_PRIMITIVE_TOPOLOGY ToDxPrimitiveTopology(PrimitiveTopology topo) {
+    switch (topo) {
+        case PrimitiveTopology::ePointList: return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+        case PrimitiveTopology::eLineList: return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        case PrimitiveTopology::eLineStrip: return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+        case PrimitiveTopology::eLineListAdjacency: return D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ;
+        case PrimitiveTopology::eLineStripAdjacency: return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ;
+        case PrimitiveTopology::eTriangleList: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        case PrimitiveTopology::eTriangleStrip: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        case PrimitiveTopology::eTriangleListAdjacency: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ;
+        case PrimitiveTopology::eTriangleStripAdjacency: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ;
+        // TODO - support tessellation
+        case PrimitiveTopology::ePatchList: return D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
     }
     Unreachable();
 }
@@ -271,7 +287,8 @@ RenderPipelineD3D12::RenderPipelineD3D12(Ref<DeviceD3D12> device, const RenderPi
     };
 
     pipeline_desc.DepthStencilState = D3D12_DEPTH_STENCIL_DESC {
-        .DepthEnable = desc.depth_stencil_state.depth_test,
+        .DepthEnable = desc.depth_stencil_state.format == ResourceFormat::eUndefined ? false
+            : desc.depth_stencil_state.depth_test,
         .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL,
         .DepthFunc = ToDxCompareFunc(desc.depth_stencil_state.depth_compare_op),
         .StencilEnable = desc.depth_stencil_state.stencil_test,
@@ -314,7 +331,8 @@ RenderPipelineD3D12::RenderPipelineD3D12(Ref<DeviceD3D12> device, const RenderPi
         .NumElements = static_cast<UINT>(input_elements.size()),
     };
 
-    pipeline_desc.PrimitiveTopologyType = ToDxPrimitiveTopology(desc.primitive_state.topology);
+    pipeline_desc.PrimitiveTopologyType = ToDxPrimitiveTopologyType(desc.primitive_state.topology);
+    topology_ = ToDxPrimitiveTopology(desc.primitive_state.topology);
 
     pipeline_desc.SampleDesc = DXGI_SAMPLE_DESC { .Count = 1, .Quality = 0 };
 

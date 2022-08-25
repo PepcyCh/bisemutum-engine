@@ -28,21 +28,28 @@ void QueueVulkan::SubmitCommandBuffer(Span<Ptr<CommandBuffer>> &&cmd_buffers, Sp
     }
 
     Vec<VkSemaphore> wait_semaphores_vk(wait_semaphores.Size());
+    Vec<VkPipelineStageFlags> wait_stages(wait_semaphores.Size());
     for (size_t i = 0; i < wait_semaphores.Size(); i++) {
         wait_semaphores_vk[i] = wait_semaphores[i].CastTo<SemaphoreVulkan>()->Raw();
+        wait_stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     }
     Vec<VkSemaphore> signal_semaphores_vk(wait_semaphores.Size());
     for (size_t i = 0; i < signal_semaphores.Size(); i++) {
         signal_semaphores_vk[i] = signal_semaphores[i].CastTo<SemaphoreVulkan>()->Raw();
     }
-    VkFence signal_fence_vk = signal_fence ? static_cast<FenceVulkan *>(signal_fence)->Raw() : VK_NULL_HANDLE;
+    VkFence signal_fence_vk = VK_NULL_HANDLE;
+    if (signal_fence) {
+        auto fence_vk = static_cast<FenceVulkan *>(signal_fence);
+        signal_fence_vk = fence_vk->Raw();
+        fence_vk->SetSignaled();
+    }
 
     VkSubmitInfo submit_info {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = nullptr,
         .waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores_vk.size()),
         .pWaitSemaphores = wait_semaphores_vk.data(),
-        .pWaitDstStageMask = nullptr,
+        .pWaitDstStageMask = wait_stages.data(),
         .commandBufferCount = static_cast<uint32_t>(cmd_buffers_vk.size()),
         .pCommandBuffers = cmd_buffers_vk.data(),
         .signalSemaphoreCount = static_cast<uint32_t>(signal_semaphores.Size()),

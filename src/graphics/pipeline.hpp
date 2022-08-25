@@ -43,7 +43,6 @@ enum class PrimitiveTopology : uint8_t {
     eLineStrip,
     eTriangleList,
     eTriangleStrip,
-    eTriangleFan,
     eLineListAdjacency,
     eLineStripAdjacency,
     eTriangleListAdjacency,

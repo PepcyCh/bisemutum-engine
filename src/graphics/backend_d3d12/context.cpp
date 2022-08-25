@@ -9,6 +9,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 FrameContextD3D12::FrameContextD3D12(Ref<class DeviceD3D12> device) : device_(device) {
     device->Raw()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&graphics_command_allocator_));
+    available_command_list_index_ = 0;
 
     cbv_srv_uav_heap_ =
         Ptr<ShaderVisibleDescriptorHeapD3D12>::Make(device_, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 65536);
@@ -22,14 +23,25 @@ void FrameContextD3D12::Reset() {
 }
 
 Ptr<CommandEncoder> FrameContextD3D12::GetCommandEncoder(QueueType queue) {
-    ComPtr<ID3D12GraphicsCommandList4> cmd_list;
-    device_->Raw()->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, graphics_command_allocator_.Get(), nullptr,
-        IID_PPV_ARGS(&cmd_list));
+    ID3D12GraphicsCommandList4 *cmd_list = nullptr;
+    if (available_command_list_index_ < allocated_command_lists_.size()) {
+        cmd_list = allocated_command_lists_[available_command_list_index_].Get();
+        ++available_command_list_index_;
+
+        cmd_list->Reset(graphics_command_allocator_.Get(), nullptr);
+    } else {
+        ComPtr<ID3D12GraphicsCommandList4> cmd_list_ptr;
+        device_->Raw()->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, graphics_command_allocator_.Get(), nullptr,
+            IID_PPV_ARGS(&cmd_list_ptr));
+        allocated_command_lists_.emplace_back(cmd_list_ptr);
+        ++available_command_list_index_;
+        cmd_list = allocated_command_lists_.back().Get();
+    }
 
     ID3D12DescriptorHeap *heaps[] = { cbv_srv_uav_heap_->Raw(), sampler_heap_->Raw() };
     cmd_list->SetDescriptorHeaps(2, heaps);
 
-    return Ptr<CommandEncoderD3D12>::Make(device_, RefThis(), std::move(cmd_list));
+    return Ptr<CommandEncoderD3D12>::Make(device_, RefThis(), cmd_list);
 }
 
 DescriptorHandle FrameContextD3D12::GetDescriptorSet(const DescriptorSetLayout &layout, const ShaderParams &values) {

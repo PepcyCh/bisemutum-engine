@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/ptr.hpp"
+#include "core/span.hpp"
 #include "sync.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -16,6 +17,8 @@ public:
     virtual bool AcquireNextTexture(Ref<Semaphore> acquired_semaphore) = 0;
 
     virtual class Ref<class Texture> GetCurrentTexture() = 0;
+
+    virtual void Present(Span<Ref<Semaphore>> wait_semaphores = {}) = 0;
 
 protected:
     SwapChain() = default;

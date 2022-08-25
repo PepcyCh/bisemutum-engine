@@ -88,6 +88,7 @@ D3D12_STATIC_BORDER_COLOR ToDxStaticBorderColor(SamplerBorderColor border) {
         case SamplerBorderColor::WhiteInt:
             return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
     }
+    Unreachable();
 }
 
 }

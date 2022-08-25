@@ -15,6 +15,10 @@ public:
     BufferVulkan(Ref<class DeviceVulkan> device, const BufferDesc &desc);
     ~BufferVulkan() override;
 
+    void *Map() override;
+
+    void Unmap() override;
+
     uint64_t Size() const { return size_; }
 
     VkBuffer Raw() const { return buffer_; }
@@ -26,6 +30,7 @@ private:
     uint64_t size_;
 
     void *mapped_ptr_ = nullptr;
+    bool persistently_mapped_ = false;
 };
 
 struct TextureViewVulkanDesc {

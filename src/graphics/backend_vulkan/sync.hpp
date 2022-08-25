@@ -24,9 +24,12 @@ public:
 
     VkFence Raw() const { return fence_; }
 
+    void SetSignaled() { signaled_ = true; }
+
 private:
     Ref<DeviceVulkan> device_;
     VkFence fence_;
+    bool signaled_ = false;
 };
 
 class SemaphoreVulkan : public Semaphore {

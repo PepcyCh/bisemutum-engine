@@ -13,6 +13,7 @@
 #include "sampler.hpp"
 #include "shader.hpp"
 #include "pipeline.hpp"
+#include "context.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -84,7 +85,7 @@ DeviceVulkan::DeviceVulkan(const DeviceDesc &desc) {
     ConnectVkPNextChain(&instance_ci, &debug_utils_ci);
 
     vkCreateInstance(&instance_ci, nullptr, &instance_);
-    volkLoadInstance(instance_);
+    volkLoadInstanceOnly(instance_);
 
     if (desc.enable_validation) {
         vkCreateDebugUtilsMessengerEXT(instance_, &debug_utils_ci, nullptr, &debug_utils_messenger_);
@@ -196,9 +197,9 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
 
     Vec<const char *> enabled_device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
 #if BISMUTH_VULKAN_VERSION_MINOR < 3
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 #endif
     };
@@ -226,15 +227,11 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
     };
     ConnectVkPNextChain(&device_features, &vk13_features);
 #endif
+#if BISMUTH_VULKAN_VERSION_MINOR < 3
     VkPhysicalDeviceSynchronization2FeaturesKHR sync2_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR,
     };
     ConnectVkPNextChain(&device_features, &sync2_features);
-    VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservative_rasterization_features {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT,
-    };
-    ConnectVkPNextChain(&device_features, &conservative_rasterization_features);
-#if BISMUTH_VULKAN_VERSION_MINOR < 3
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
     };
@@ -338,6 +335,10 @@ Ptr<RenderPipeline> DeviceVulkan::CreateRenderPipeline(const RenderPipelineDesc 
 
 Ptr<ComputePipeline> DeviceVulkan::CreateComputePipeline(const ComputePipelineDesc &desc) {
     return Ptr<ComputePipelineVulkan>::Make(RefThis(), desc);
+}
+
+Ptr<FrameContext> DeviceVulkan::CreateFrameContext() {
+    return Ptr<FrameContextVulkan>::Make(RefThis());
 }
 
 BISMUTH_GFX_NAMESPACE_END

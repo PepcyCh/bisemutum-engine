@@ -10,6 +10,7 @@
 #include "sampler.hpp"
 #include "shader.hpp"
 #include "pipeline.hpp"
+#include "context.hpp"
 
 struct GLFWwindow;
 
@@ -52,6 +53,8 @@ public:
     virtual Ptr<RenderPipeline> CreateRenderPipeline(const RenderPipelineDesc &desc) = 0;
 
     virtual Ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineDesc &desc) = 0;
+
+    virtual Ptr<FrameContext> CreateFrameContext() = 0;
 
 protected:
     Device() = default;

@@ -3,16 +3,10 @@ add_rules("mode.debug", "mode.release")
 set_languages("cxx20")
 
 add_requires("spdlog")
-add_requires("volk", "vulkan-memory-allocator", "spirv-cross", "spirv-reflect", "glslang", "glfw", "glm")
+add_requires("volk", {configs = {header_only = true}})
+add_requires("vulkan-memory-allocator", "spirv-cross", "spirv-reflect", "glslang", "glfw", "glm")
 if is_plat("windows") then
     add_requires("vcpkg::d3d12-memory-allocator", "directxshadercompiler")
-
-    target("pix")
-        set_kind("static")
-        add_headerfiles("thirdparty/WinPixEventRuntime/**.h")
-        add_includedirs("thirdparty/WinPixEventRuntime/include", {public=true})
-        add_linkdirs("thirdparty/WinPixEventRuntime/bin/x64")
-        add_linkdirs("WinPixEventRuntime.lib")
 end
 
 if is_mode("debug") then
@@ -41,9 +35,14 @@ target("bismuth-graphics")
     add_packages("volk", "vulkan-memory-allocator", "spirv-cross", "spirv-reflect", "glslang", "glfw")
     if is_plat("windows") then
         add_defines("VK_USE_PLATFORM_WIN32_KHR")
-        add_deps("pix")
         add_packages("vcpkg::d3d12-memory-allocator", "directxshadercompiler")
         add_syslinks("d3d12", "dxgi", "dxguid")
+        add_includedirs("thirdparty/WinPixEventRuntime/include")
+        add_linkdirs("thirdparty/WinPixEventRuntime/bin/x64")
+        add_links("WinPixEventRuntime")
+        after_build(function (target)
+            os.cp("thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll", target:targetdir())
+        end)
     end
 
 includes("test/xmake.lua")

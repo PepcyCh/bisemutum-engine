@@ -38,6 +38,8 @@ public:
 
     Ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineDesc &desc) override;
 
+    Ptr<FrameContext> CreateFrameContext() override;
+
     VkDevice Raw() const { return device_; }
     VkPhysicalDevice RawPhysicalDevice() const { return physical_device_; }
 

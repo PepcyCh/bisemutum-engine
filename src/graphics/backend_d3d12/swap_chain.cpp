@@ -43,15 +43,13 @@ SwapChainD3D12::SwapChainD3D12(Ref<DeviceD3D12> device, Ref<QueueD3D12> queue, u
         .Windowed = true,
     };
 
-    IDXGISwapChain1 *swap_chain_temp;
+    ComPtr<IDXGISwapChain1> swap_chain_temp;
     device_->RawFactory()->CreateSwapChainForHwnd(queue_->Raw(), device_->RawWindow(), &swap_chain_desc,
         &swap_chain_fullscreen_desc, nullptr, &swap_chain_temp);
     
     device_->RawFactory()->MakeWindowAssociation(device_->RawWindow(), DXGI_MWA_NO_ALT_ENTER);
 
     swap_chain_temp->QueryInterface(IID_PPV_ARGS(&swap_chain_));
-    swap_chain_temp->Release();
-    swap_chain_temp = nullptr;
 
     CreateSwapChainTexture();
 
@@ -81,17 +79,22 @@ void SwapChainD3D12::Resize(uint32_t width, uint32_t height) {
     if (width != width_ || height != height_) {
         width_ = width;
         height_ = height;
+        textures_.clear();
         swap_chain_->ResizeBuffers(kNumSwapChainBuffers, width, height,
             FormatRemoveSrgb(device_->RawSurfaceFormat()), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
         CreateSwapChainTexture();
 
-        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures,", width_, height_, kNumSwapChainBuffers);
+        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures", width_, height_, kNumSwapChainBuffers);
     }
 }
 
 bool SwapChainD3D12::AcquireNextTexture(Ref<Semaphore> acquired_semaphore) {
     curr_texture_ = swap_chain_->GetCurrentBackBufferIndex();
     return true;
+}
+
+void SwapChainD3D12::Present(Span<Ref<Semaphore>> wait_semaphores) {
+    swap_chain_->Present(0, 0);
 }
 
 BISMUTH_GFX_NAMESPACE_END

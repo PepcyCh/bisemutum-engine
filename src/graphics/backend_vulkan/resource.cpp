@@ -97,6 +97,7 @@ BufferVulkan::BufferVulkan(Ref<DeviceVulkan> device, const BufferDesc &desc) : d
     VmaAllocationInfo allocation_info {};
     vmaCreateBuffer(device_->Allocator(), &buffer_ci, &allocation_ci, &buffer_, &allocation_, &allocation_info);
     mapped_ptr_ = allocation_info.pMappedData;
+    persistently_mapped_ = desc.persistently_mapped;
 
     if (!desc.name.empty()) {
         VkDebugUtilsObjectNameInfoEXT name_info {
@@ -111,9 +112,23 @@ BufferVulkan::BufferVulkan(Ref<DeviceVulkan> device, const BufferDesc &desc) : d
 }
 
 BufferVulkan::~BufferVulkan() {
+    Unmap();
     vmaDestroyBuffer(device_->Allocator(), buffer_, allocation_);
 }
 
+void *BufferVulkan::Map() {
+    if (mapped_ptr_ == nullptr) {
+        vmaMapMemory(device_->Allocator(), allocation_, &mapped_ptr_);
+    }
+    return mapped_ptr_;
+}
+
+void BufferVulkan::Unmap() {
+    if (!persistently_mapped_ && mapped_ptr_) {
+        vmaUnmapMemory(device_->Allocator(), allocation_);
+        mapped_ptr_ = nullptr;
+    }
+}
 
 TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, const TextureDesc &desc) : device_(device) {
     desc_ = desc;

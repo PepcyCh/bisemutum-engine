@@ -23,19 +23,22 @@ VkDebugUtilsLabelEXT ToVkDebugLabel(const CommandLabel &label) {
     };
 }
 
-Vec<VkBufferCopy> ToVkBufferCopy(Span<BufferCopyDesc> regions) {
+Vec<VkBufferCopy> ToVkBufferCopy(Ref<BufferVulkan> src_buffer_vk, Ref<BufferVulkan> dst_buffer_vk,
+    Span<BufferCopyDesc> regions) {
     Vec<VkBufferCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
+        uint64_t length = std::min({ regions[i].length, src_buffer_vk->Size() - regions[i].src_offset,
+            dst_buffer_vk->Size() - regions[i].dst_offset });
         regions_vk[i] = VkBufferCopy {
             .srcOffset = regions[i].src_offset,
             .dstOffset = regions[i].dst_offset,
-            .size = regions[i].length,
+            .size = length,
         };
     }
     return regions_vk;
 }
 
-Vec<VkImageCopy> ToVkImageCopy(TextureVulkan *src_texture_vk, TextureVulkan *dst_texture_vk,
+Vec<VkImageCopy> ToVkImageCopy(Ref<TextureVulkan> src_texture_vk, Ref<TextureVulkan> dst_texture_vk,
     Span<TextureCopyDesc> regions) {
     Vec<VkImageCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
@@ -78,7 +81,7 @@ Vec<VkImageCopy> ToVkImageCopy(TextureVulkan *src_texture_vk, TextureVulkan *dst
     return regions_vk;
 }
 
-Vec<VkBufferImageCopy> ToVkBufferImageCopy(TextureVulkan *texture_vk, Span<BufferTextureCopyDesc> regions) {
+Vec<VkBufferImageCopy> ToVkBufferImageCopy(Ref<TextureVulkan> texture_vk, Span<BufferTextureCopyDesc> regions) {
     Vec<VkBufferImageCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
         uint32_t base_depth, base_layer;
@@ -279,16 +282,16 @@ void CommandEncoderVulkan::PopLabel() {
 
 void CommandEncoderVulkan::CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
     Span<BufferCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
-    auto regions_vk = ToVkBufferCopy(regions);
+    auto src_buffer_vk = src_buffer.CastTo<BufferVulkan>();
+    auto dst_buffer_vk = dst_buffer.CastTo<BufferVulkan>();
+    auto regions_vk = ToVkBufferCopy(src_buffer_vk, dst_buffer_vk, regions);
     vkCmdCopyBuffer(cmd_buffer_, src_buffer_vk->Raw(), dst_buffer_vk->Raw(), regions_vk.size(), regions_vk.data());
 }
 
 void CommandEncoderVulkan::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
     Span<TextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
+    auto src_texture_vk = src_texture.CastTo<TextureVulkan>();
+    auto dst_texture_vk = dst_texture.CastTo<TextureVulkan>();
     auto regions_vk = ToVkImageCopy(src_texture_vk, dst_texture_vk, regions);
     vkCmdCopyImage(cmd_buffer_, src_texture_vk->Raw(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_texture_vk->Raw(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions_vk.size(), regions_vk.data());
@@ -296,8 +299,8 @@ void CommandEncoderVulkan::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Te
 
 void CommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_buffer_vk = static_cast<BufferVulkan *>(src_buffer.Get());
-    auto dst_texture_vk = static_cast<TextureVulkan *>(dst_texture.Get());
+    auto src_buffer_vk = src_buffer.CastTo<BufferVulkan>();
+    auto dst_texture_vk = dst_texture.CastTo<TextureVulkan>();
     auto regions_vk = ToVkBufferImageCopy(dst_texture_vk, regions);
     vkCmdCopyBufferToImage(cmd_buffer_, src_buffer_vk->Raw(), dst_texture_vk->Raw(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions_vk.size(), regions_vk.data());
@@ -305,8 +308,8 @@ void CommandEncoderVulkan::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Textu
 
 void CommandEncoderVulkan::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buffer> dst_buffer,
     Span<BufferTextureCopyDesc> regions) {
-    auto src_texture_vk = static_cast<TextureVulkan *>(src_texture.Get());
-    auto dst_buffer_vk = static_cast<BufferVulkan *>(dst_buffer.Get());
+    auto src_texture_vk = src_texture.CastTo<TextureVulkan>();
+    auto dst_buffer_vk = dst_buffer.CastTo<BufferVulkan>();
     auto regions_vk = ToVkBufferImageCopy(src_texture_vk, regions);
     vkCmdCopyImageToBuffer(cmd_buffer_, src_texture_vk->Raw(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         dst_buffer_vk->Raw(), regions_vk.size(), regions_vk.data());
@@ -332,7 +335,7 @@ void CommandEncoderVulkan::ResourceBarrier(Span<BufferBarrier> buffer_barriers, 
         ToVkBufferAccessType(barrier.dst_access_type, barrier.dst_access_stage,
             buffer_barriers_vk[i].dstAccessMask, buffer_barriers_vk[i].dstStageMask);
     }
-    Vec<VkImageMemoryBarrier2> texture_barriers_vk(buffer_barriers.Size());
+    Vec<VkImageMemoryBarrier2> texture_barriers_vk(texture_barriers.Size());
     for (size_t i = 0; i < texture_barriers.Size(); i++) {
         const auto &barrier = texture_barriers[i];
         const auto texture_vk = barrier.texture.texture.CastTo<TextureVulkan>();
@@ -372,7 +375,11 @@ void CommandEncoderVulkan::ResourceBarrier(Span<BufferBarrier> buffer_barriers, 
         .imageMemoryBarrierCount = static_cast<uint32_t>(texture_barriers_vk.size()),
         .pImageMemoryBarriers = texture_barriers_vk.data(),
     };
+#if BISMUTH_VULKAN_VERSION_MINOR < 3
     vkCmdPipelineBarrier2KHR(cmd_buffer_, &dep_info);
+#else
+    vkCmdPipelineBarrier2(cmd_buffer_, &dep_info);
+#endif
 }
 
 Ptr<RenderCommandEncoder> CommandEncoderVulkan::BeginRenderPass(const CommandLabel &label,
@@ -415,15 +422,17 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
             .pNext = nullptr,
             .imageView = texture_vk->GetView(TextureViewVulkanDesc {
+                .type = VK_IMAGE_VIEW_TYPE_2D,
+                .format = texture_vk->RawFormat(),
                 .base_layer = desc.colors[i].texture.base_layer,
                 .layers = desc.colors[i].texture.layers,
                 .base_level = desc.colors[i].texture.base_level,
                 .levels = desc.colors[i].texture.levels,
             }),
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
             // TODO - support resolve
-            .resolveImageView = nullptr,
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = VK_NULL_HANDLE,
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .loadOp = desc.colors[i].clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = desc.colors[i].store ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -448,14 +457,16 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
             .pNext = nullptr,
             .imageView = texture_vk->GetView(TextureViewVulkanDesc {
+                .type = VK_IMAGE_VIEW_TYPE_2D,
+                .format = texture_vk->RawFormat(),
                 .base_layer = depth_stencil.texture.base_layer,
                 .layers = depth_stencil.texture.layers,
                 .base_level = depth_stencil.texture.base_level,
                 .levels = depth_stencil.texture.levels,
             }),
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            .resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
-            .resolveImageView = nullptr,
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = VK_NULL_HANDLE,
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .loadOp = depth_stencil.clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = depth_stencil.store ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -483,11 +494,19 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
         .pDepthAttachment = has_depth_stencil ? &depth_stencil_attachment_vk : nullptr,
         .pStencilAttachment = has_stencil ? &depth_stencil_attachment_vk : nullptr,
     };
+#if BISMUTH_VULKAN_VERSION_MINOR < 3
     vkCmdBeginRenderingKHR(cmd_buffer_, &rendering_info);
+#else
+    vkCmdBeginRendering(cmd_buffer_, &rendering_info);
+#endif
 }
 
 RenderCommandEncoderVulkan::~RenderCommandEncoderVulkan() {
+#if BISMUTH_VULKAN_VERSION_MINOR < 3
     vkCmdEndRenderingKHR(cmd_buffer_);
+#else
+    vkCmdEndRendering(cmd_buffer_);
+#endif
 
     if (!label_.empty()) {
         PopLabel();
@@ -537,6 +556,33 @@ void RenderCommandEncoderVulkan::PushConstants(const void *data, uint32_t size, 
 
     vkCmdPushConstants(cmd_buffer_, curr_pipeline_->RawPipelineLayout(), VK_SHADER_STAGE_ALL_GRAPHICS,
         offset, size, data);
+}
+
+void RenderCommandEncoderVulkan::SetViewports(Span<Viewport> viewports) {
+    Vec<VkViewport> viewports_vk(viewports.Size());
+    for (size_t i = 0; i < viewports_vk.size(); i++) {
+        // inverse Vulkan viewport to make result the same as D3D12
+        viewports_vk[i] = VkViewport {
+            .x = viewports[i].x,
+            .y = viewports[i].height - viewports[i].y,
+            .width = viewports[i].width,
+            .height = -viewports[i].height,
+            .minDepth = viewports[i].min_depth,
+            .maxDepth = viewports[i].max_depth,
+        };
+    }
+    vkCmdSetViewport(cmd_buffer_, 0, viewports_vk.size(), viewports_vk.data());
+}
+
+void RenderCommandEncoderVulkan::SetScissors(Span<Scissor> scissors) {
+    Vec<VkRect2D> scissors_vk(scissors.Size());
+    for (size_t i = 0; i < scissors_vk.size(); i++) {
+        scissors_vk[i] = VkRect2D {
+            .offset = { scissors[i].x, scissors[i].y },
+            .extent = { scissors[i].width, scissors[i].height },
+        };
+    }
+    vkCmdSetScissor(cmd_buffer_, 0, scissors_vk.size(), scissors_vk.data());
 }
 
 void RenderCommandEncoderVulkan::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {

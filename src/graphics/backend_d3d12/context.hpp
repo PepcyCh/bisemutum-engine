@@ -22,6 +22,8 @@ private:
     Ref<DeviceD3D12> device_;
 
     ComPtr<ID3D12CommandAllocator> graphics_command_allocator_;
+    Vec<ComPtr<ID3D12GraphicsCommandList4>> allocated_command_lists_;
+    size_t available_command_list_index_;
 
     Ptr<ShaderVisibleDescriptorHeapD3D12> cbv_srv_uav_heap_;
     Ptr<ShaderVisibleDescriptorHeapD3D12> sampler_heap_;

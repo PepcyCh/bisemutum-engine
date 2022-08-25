@@ -36,6 +36,8 @@ public:
 
     Ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineDesc &desc) override;
 
+    Ptr<FrameContext> CreateFrameContext() override;
+
     ID3D12Device2 *Raw() const { return device_.Get(); }
 
     IDXGIFactory6 *RawFactory() const { return factory_.Get(); }
@@ -58,6 +60,7 @@ private:
     ComPtr<ID3D12Debug3> debug_;
     ComPtr<IDXGIFactory6> factory_;
     ComPtr<ID3D12Device2> device_;
+    ComPtr<ID3D12InfoQueue> info_queue_;
 
     D3D12MA::Allocator *allocator_;
 

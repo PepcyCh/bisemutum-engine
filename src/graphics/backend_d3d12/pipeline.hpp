@@ -14,6 +14,10 @@ public:
 
     ID3D12PipelineState *RawPipeline() const { return pipeline_.Get(); }
 
+    ID3D12RootSignature *RawRootSignature() const { return root_signature_.Get(); }
+
+    D3D12_PRIMITIVE_TOPOLOGY RawPrimitiveTopology() const { return topology_; }
+
     const RenderPipelineDesc &Desc() const { return desc_; }
 
 private:
@@ -22,6 +26,8 @@ private:
 
     ComPtr<ID3D12RootSignature> root_signature_;
     ComPtr<ID3D12PipelineState> pipeline_;
+
+    D3D12_PRIMITIVE_TOPOLOGY topology_;
 };
 
 class ComputePipelineD3D12 : public ComputePipeline {
@@ -34,6 +40,8 @@ public:
     uint32_t LocalSizeZ() const { return desc_.thread_group.z; }
 
     ID3D12PipelineState *RawPipeline() const { return pipeline_.Get(); }
+
+    ID3D12RootSignature *RawRootSignature() const { return root_signature_.Get(); }
 
     const ComputePipelineDesc &Desc() const { return desc_; }
 

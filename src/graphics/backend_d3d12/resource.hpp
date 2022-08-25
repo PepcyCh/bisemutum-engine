@@ -39,7 +39,13 @@ public:
     BufferD3D12(Ref<class DeviceD3D12> device, const BufferDesc &desc);
     ~BufferD3D12() override;
 
+    void *Map() override;
+
+    void Unmap() override;
+
     uint64_t Size() const { return size_; }
+
+    bool IsStateRestricted() const { return state_restricted_; }
 
     DescriptorHandle GetView(const BufferViewD3D12Desc &view_desc) const;
 
@@ -50,6 +56,7 @@ private:
     ComPtr<ID3D12Resource> resource_;
     D3D12MA::Allocation *allocation_ = nullptr;
     uint64_t size_;
+    bool state_restricted_ = false;
 
     void *mapped_ptr_ = nullptr;
 
@@ -111,6 +118,8 @@ public:
 
     UINT SubresourceIndex(uint32_t level, uint32_t layer, uint32_t plane = 0) const;
 
+    bool IsStateRestricted() const { return state_restricted_; }
+
     DescriptorHandle GetView(const TextureViewD3D12Desc &view_desc) const;
     DescriptorHandle GetView(const TextureRenderTargetViewD3D12Desc &view_desc) const;
 
@@ -125,6 +134,7 @@ private:
     ComPtr<ID3D12Resource> resource_;
     D3D12MA::Allocation *allocation_ = nullptr;
     TextureDesc desc_;
+    bool state_restricted_ = false;
 
     mutable HashMap<TextureViewD3D12Desc, DescriptorHandle> cached_views_;
     mutable HashMap<TextureRenderTargetViewD3D12Desc, DescriptorHandle> cached_render_target_views_;

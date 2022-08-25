@@ -102,12 +102,12 @@ D3D12_RESOURCE_STATES ToDxTextureState(BitFlags<ResourceAccessType> type, BitFla
 
 }
 
-CommandBufferD3D12::CommandBufferD3D12(Ref<DeviceD3D12> device, ComPtr<ID3D12GraphicsCommandList4> cmd_list)
+CommandBufferD3D12::CommandBufferD3D12(Ref<DeviceD3D12> device, ID3D12GraphicsCommandList4 *cmd_list)
     : device_(device), cmd_list_(cmd_list) {}
 
 
 CommandEncoderD3D12::CommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<FrameContextD3D12> context,
-    ComPtr<ID3D12GraphicsCommandList4> cmd_list) : device_(device), context_(context), cmd_list_(cmd_list) {}
+    ID3D12GraphicsCommandList4 *cmd_list) : device_(device), context_(context), cmd_list_(cmd_list) {}
 
 CommandEncoderD3D12::~CommandEncoderD3D12() {
     BI_ASSERT(cmd_list_ == nullptr);
@@ -122,18 +122,20 @@ Ptr<CommandBuffer> CommandEncoderD3D12::Finish() {
 
 void CommandEncoderD3D12::PushLabel(const CommandLabel &label) {
     UINT64 color = EncodeEventColor(label.color.r, label.color.g, label.color.b);
-    PIXBeginEvent(cmd_list_.Get(), color, label.label.c_str());
+    PIXBeginEvent(cmd_list_, color, label.label.c_str());
 }
 
 void CommandEncoderD3D12::PopLabel() {
-    PIXEndEvent(cmd_list_.Get());
+    PIXEndEvent(cmd_list_);
 }
 
 void CommandEncoderD3D12::CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) {
-    auto src_buffer_dx = src_buffer.CastTo<BufferD3D12>()->Raw();
-    auto dst_buffer_dx = dst_buffer.CastTo<BufferD3D12>()->Raw();
+    auto src_buffer_dx = src_buffer.CastTo<BufferD3D12>();
+    auto dst_buffer_dx = dst_buffer.CastTo<BufferD3D12>();
     for (const auto &region : regions) {
-        cmd_list_->CopyBufferRegion(dst_buffer_dx, region.dst_offset, src_buffer_dx, region.src_offset, region.length);
+        UINT64 length = std::min({ region.length, src_buffer_dx->Size() - region.src_offset,
+            dst_buffer_dx->Size() - region.dst_offset });
+        cmd_list_->CopyBufferRegion(dst_buffer_dx->Raw(), region.dst_offset, src_buffer_dx->Raw(), region.src_offset, length);
     }
 }
 
@@ -148,11 +150,9 @@ void CommandEncoderD3D12::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Tex
         src_texture_dx->GetDepthAndLayer(region.dst_offset.z, dst_base_depth, dst_base_layer);
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.extent.depth_or_layers, depth, layers);
+        layers = std::min({ layers, src_texture_dx->Layers() - src_base_layer,
+            dst_texture_dx->Layers() - dst_base_layer });
         for (uint32_t array = 0; array < layers; array++) {
-            if (array + src_base_layer >= src_texture_dx->Layers()
-                || array + dst_base_layer >= dst_texture_dx->Layers()) {
-                break;
-            }
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_texture_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -186,10 +186,8 @@ void CommandEncoderD3D12::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Textur
         dst_texture_dx->GetDepthAndLayer(region.texture_offset.z, dst_base_depth, dst_base_layer);
         uint32_t depth, layers;
         dst_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
+        layers = std::min(layers, dst_texture_dx->Layers() - dst_base_layer);
         for (uint32_t array = 0; array < layers; array++) {
-            if (array + dst_base_layer >= dst_texture_dx->Layers()) {
-                break;
-            }
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_buffer_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
@@ -232,10 +230,8 @@ void CommandEncoderD3D12::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buff
         src_texture_dx->GetDepthAndLayer(region.texture_offset.z, src_base_depth, src_base_layer);
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
+        layers = std::min(layers, src_texture_dx->Layers() - src_base_layer);
         for (uint32_t array = 0; array < layers; array++) {
-            if (array + src_base_layer >= src_texture_dx->Layers()) {
-                break;
-            }
             D3D12_TEXTURE_COPY_LOCATION src_loc {
                 .pResource = src_texture_dx->Raw(),
                 .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -272,6 +268,10 @@ void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, S
     Vec<D3D12_RESOURCE_BARRIER> barriers_dx;
     barriers_dx.reserve(buffer_barriers.Size() + texture_barriers.Size());
     for (const auto &barrier : buffer_barriers) {
+        auto buffer_dx = barrier.buffer.CastTo<BufferD3D12>();
+        if (buffer_dx->IsStateRestricted()) {
+            continue;
+        }
         auto src_states = ToDxBufferState(barrier.src_access_type, barrier.src_access_stage);
         auto dst_states = ToDxBufferState(barrier.dst_access_type, barrier.dst_access_stage);
         if (src_states != dst_states) {
@@ -279,7 +279,7 @@ void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, S
                 .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
                 .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                 .Transition = D3D12_RESOURCE_TRANSITION_BARRIER {
-                    .pResource = barrier.buffer.CastTo<BufferD3D12>()->Raw(),
+                    .pResource = buffer_dx->Raw(),
                     .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
                     .StateBefore = src_states,
                     .StateAfter = dst_states,
@@ -290,15 +290,18 @@ void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, S
                 .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
                 .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                 .UAV = D3D12_RESOURCE_UAV_BARRIER {
-                    .pResource = barrier.buffer.CastTo<BufferD3D12>()->Raw(),
+                    .pResource = buffer_dx->Raw(),
                 },
             });
         }
     }
     for (const auto &barrier : texture_barriers) {
         const auto texture_dx = barrier.texture.texture.CastTo<TextureD3D12>();
-        auto src_states = ToDxBufferState(barrier.src_access_type, barrier.src_access_stage);
-        auto dst_states = ToDxBufferState(barrier.dst_access_type, barrier.dst_access_stage);
+        if (texture_dx->IsStateRestricted()) {
+            continue;
+        }
+        auto src_states = ToDxTextureState(barrier.src_access_type, barrier.src_access_stage);
+        auto dst_states = ToDxTextureState(barrier.dst_access_type, barrier.dst_access_stage);
         if (src_states != dst_states) {
             if (barrier.texture.base_layer == 0 && barrier.texture.layers >= texture_dx->Layers()
                 && barrier.texture.base_level == 0 && barrier.texture.levels >= texture_dx->Desc().levels) {
@@ -346,7 +349,9 @@ void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, S
         }
     }
 
-    cmd_list_->ResourceBarrier(barriers_dx.size(), barriers_dx.data());
+    if (!barriers_dx.empty()) {
+        cmd_list_->ResourceBarrier(barriers_dx.size(), barriers_dx.data());
+    }
 }
 
 Ptr<RenderCommandEncoder> CommandEncoderD3D12::BeginRenderPass(const CommandLabel &label, const RenderTargetDesc &desc) {
@@ -378,10 +383,10 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
         auto texture_dx = desc.colors[i].texture.texture.CastTo<TextureD3D12>();
         colors_desc[i] = D3D12_RENDER_PASS_RENDER_TARGET_DESC {
             .cpuDescriptor = texture_dx->GetView(TextureRenderTargetViewD3D12Desc {
-                .base_layer = 0,
-                .layers = 1,
-                .base_level = 0,
-                .levels = 1,
+                .base_layer = desc.colors[i].texture.base_layer,
+                .layers = desc.colors[i].texture.layers,
+                .base_level = desc.colors[i].texture.base_level,
+                .levels = desc.colors[i].texture.levels,
             }).cpu,
             .BeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
                 .Type = desc.colors[i].clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
@@ -409,10 +414,10 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
         auto texture_dx = depth_stencil.texture.texture.CastTo<TextureD3D12>();
         depth_stencil_desc = D3D12_RENDER_PASS_DEPTH_STENCIL_DESC {
             .cpuDescriptor = texture_dx->GetView(TextureRenderTargetViewD3D12Desc {
-                .base_layer = 0,
-                .layers = 1,
-                .base_level = 0,
-                .levels = 1,
+                .base_layer = depth_stencil.texture.base_layer,
+                .layers = depth_stencil.texture.layers,
+                .base_level = depth_stencil.texture.base_level,
+                .levels = depth_stencil.texture.levels,
             }).cpu,
             .DepthBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS {
                 .Type = depth_stencil.clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
@@ -464,17 +469,27 @@ RenderCommandEncoderD3D12::~RenderCommandEncoderD3D12() {
     base_encoder_->cmd_list_ = cmd_list_;
 }
 
+Ptr<CommandBuffer> RenderCommandEncoderD3D12::Finish() {
+    cmd_list_->Close();
+    auto cmd_buffer = Ptr<CommandBufferD3D12>::Make(device_, cmd_list_);
+    cmd_list_ = nullptr;
+    return cmd_buffer;
+}
+
 void RenderCommandEncoderD3D12::PushLabel(const CommandLabel &label) {
     UINT64 color = EncodeEventColor(label.color.r, label.color.g, label.color.b);
-    PIXBeginEvent(cmd_list_.Get(), color, label.label.c_str());
+    PIXBeginEvent(cmd_list_, color, label.label.c_str());
 }
 
 void RenderCommandEncoderD3D12::PopLabel() {
-    PIXEndEvent(cmd_list_.Get());
+    PIXEndEvent(cmd_list_);
 }
 
 void RenderCommandEncoderD3D12::SetPipeline(Ref<RenderPipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<RenderPipelineD3D12>().Get();
+    cmd_list_->SetPipelineState(curr_pipeline_->RawPipeline());
+    cmd_list_->SetGraphicsRootSignature(curr_pipeline_->RawRootSignature());
+    cmd_list_->IASetPrimitiveTopology(curr_pipeline_->RawPrimitiveTopology());
 }
 
 void RenderCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const ShaderParams &values) {
@@ -491,6 +506,34 @@ void RenderCommandEncoderD3D12::PushConstants(const void *data, uint32_t size, u
 
     cmd_list_->SetGraphicsRoot32BitConstants(curr_pipeline_->Desc().layout.sets_layout.size(),
         size / 4, data, offset / 4);
+}
+
+void RenderCommandEncoderD3D12::SetViewports(Span<Viewport> viewports) {
+    Vec<D3D12_VIEWPORT> viewports_dx(viewports.Size());
+    for (size_t i = 0; i < viewports_dx.size(); i++) {
+        viewports_dx[i] = D3D12_VIEWPORT {
+            .TopLeftX = viewports[i].x,
+            .TopLeftY = viewports[i].y,
+            .Width = viewports[i].width,
+            .Height = viewports[i].height,
+            .MinDepth = viewports[i].min_depth,
+            .MaxDepth = viewports[i].max_depth,
+        };
+    }
+    cmd_list_->RSSetViewports(viewports_dx.size(), viewports_dx.data());
+}
+
+void RenderCommandEncoderD3D12::SetScissors(Span<Scissor> scissors) {
+    Vec<D3D12_RECT> scissors_dx(scissors.Size());
+    for (size_t i = 0; i < scissors_dx.size(); i++) {
+        scissors_dx[i] = D3D12_RECT {
+            .left = static_cast<LONG>(scissors[i].x),
+            .top = static_cast<LONG>(scissors[i].y),
+            .right = static_cast<LONG>(scissors[i].x + scissors[i].width),
+            .bottom = static_cast<LONG>(scissors[i].y + scissors[i].height),
+        };
+    }
+    cmd_list_->RSSetScissorRects(scissors_dx.size(), scissors_dx.data());
 }
 
 void RenderCommandEncoderD3D12::BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding) {
@@ -547,17 +590,26 @@ ComputeCommandEncoderD3D12::~ComputeCommandEncoderD3D12() {
     base_encoder_->cmd_list_ = cmd_list_;
 }
 
+Ptr<CommandBuffer> ComputeCommandEncoderD3D12::Finish() {
+    cmd_list_->Close();
+    auto cmd_buffer = Ptr<CommandBufferD3D12>::Make(device_, cmd_list_);
+    cmd_list_ = nullptr;
+    return cmd_buffer;
+}
+
 void ComputeCommandEncoderD3D12::PushLabel(const CommandLabel &label) {
     UINT64 color = EncodeEventColor(label.color.r, label.color.g, label.color.b);
-    PIXBeginEvent(cmd_list_.Get(), color, label.label.c_str());
+    PIXBeginEvent(cmd_list_, color, label.label.c_str());
 }
 
 void ComputeCommandEncoderD3D12::PopLabel() {
-    PIXEndEvent(cmd_list_.Get());
+    PIXEndEvent(cmd_list_);
 }
 
 void ComputeCommandEncoderD3D12::SetPipeline(Ref<ComputePipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<ComputePipelineD3D12>().Get();
+    cmd_list_->SetPipelineState(curr_pipeline_->RawPipeline());
+    cmd_list_->SetGraphicsRootSignature(curr_pipeline_->RawRootSignature());
 }
 
 void ComputeCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const ShaderParams &values) {

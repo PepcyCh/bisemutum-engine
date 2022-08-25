@@ -62,8 +62,8 @@ struct ColorAttachmentDesc {
 };
 inline constexpr uint32_t kMaxRenderTargetsCount = 8;
 struct RenderTargetDesc {
-    Vec<ColorAttachmentDesc> colors;
-    std::optional<DepthStencilAttachmentDesc> depth_stencil;
+    Vec<ColorAttachmentDesc> colors = {};
+    std::optional<DepthStencilAttachmentDesc> depth_stencil = std::nullopt;
 };
 
 struct BufferBarrier {
@@ -83,6 +83,21 @@ struct TextureBarrier {
     BitFlags<ResourceAccessStage> dst_access_stage;
     class Queue *src_queue = nullptr;
     class Queue *dst_queue = nullptr;
+};
+
+struct Viewport {
+    float x = 0.0f;
+    float y = 0.0f;
+    float width;
+    float height;
+    float min_depth = 0.0f;
+    float max_depth = 1.0f;
+};
+struct Scissor {
+    int x = 0;
+    int y = 0;
+    uint32_t width;
+    uint32_t height;
 };
 
 class CommandEncoder;
@@ -114,10 +129,11 @@ class CommandEncoder : public CommandEncoderBase {
 public:
     virtual ~CommandEncoder() = default;
 
-    virtual void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer, Span<BufferCopyDesc> regions) = 0;
+    virtual void CopyBufferToBuffer(Ref<Buffer> src_buffer, Ref<Buffer> dst_buffer,
+        Span<BufferCopyDesc> regions = { {} }) = 0;
 
     virtual void CopyTextureToTexture(Ref<Texture> src_texture, Ref<Texture> dst_texture,
-        Span<TextureCopyDesc> regions) = 0;
+        Span<TextureCopyDesc> regions = { {} }) = 0;
 
     virtual void CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Texture> dst_texture,
         Span<BufferTextureCopyDesc> regions) = 0;
@@ -146,6 +162,9 @@ public:
     virtual void PushConstants(const void *data, uint32_t size, uint32_t offset = 0) = 0;
     template <typename T>
     void PushConstants(const T &data) { PushConstants(&data, sizeof(T)); }
+
+    virtual void SetViewports(Span<Viewport> viewports) = 0;
+    virtual void SetScissors(Span<Scissor> scissors) = 0;
 
     virtual void BindVertexBuffer(Span<BufferRange> buffers, uint32_t first_binding = 0) = 0;
     virtual void BindIndexBuffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) = 0;

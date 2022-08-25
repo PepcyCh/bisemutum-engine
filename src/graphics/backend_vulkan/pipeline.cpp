@@ -99,7 +99,6 @@ VkPrimitiveTopology ToVkPrimitiveTopology(PrimitiveTopology topo) {
         case PrimitiveTopology::eLineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
         case PrimitiveTopology::eTriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         case PrimitiveTopology::eTriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        case PrimitiveTopology::eTriangleFan: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
         case PrimitiveTopology::eLineListAdjacency: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
         case PrimitiveTopology::eLineStripAdjacency: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
         case PrimitiveTopology::eTriangleListAdjacency: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
