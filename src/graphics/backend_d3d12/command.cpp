@@ -53,7 +53,7 @@ D3D12_RESOURCE_STATES ToDxTextureState(BitFlags<ResourceAccessType> type, BitFla
     if (type.Contains(ResourceAccessType::eSampledTextureRead)
         || type.Contains(ResourceAccessType::eStorageResourceRead)) {
         if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
-            states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
             states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
@@ -145,9 +145,9 @@ void CommandEncoderD3D12::CopyTextureToTexture(Ref<Texture> src_texture, Ref<Tex
     auto dst_texture_dx = dst_texture.CastTo<TextureD3D12>();
     for (const auto &region : regions) {
         uint32_t src_base_depth, src_base_layer;
-        src_texture_dx->GetDepthAndLayer(region.src_offset.z, src_base_depth, src_base_layer);
+        src_texture_dx->GetDepthAndLayer(region.src_offset.z, src_base_depth, src_base_layer, 0);
         uint32_t dst_base_depth, dst_base_layer;
-        src_texture_dx->GetDepthAndLayer(region.dst_offset.z, dst_base_depth, dst_base_layer);
+        src_texture_dx->GetDepthAndLayer(region.dst_offset.z, dst_base_depth, dst_base_layer, 0);
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.extent.depth_or_layers, depth, layers);
         layers = std::min({ layers, src_texture_dx->Layers() - src_base_layer,
@@ -183,7 +183,7 @@ void CommandEncoderD3D12::CopyBufferToTexture(Ref<Buffer> src_buffer, Ref<Textur
     auto dst_texture_dx = dst_texture.CastTo<TextureD3D12>();
     for (const auto &region : regions) {
         uint32_t dst_base_depth, dst_base_layer;
-        dst_texture_dx->GetDepthAndLayer(region.texture_offset.z, dst_base_depth, dst_base_layer);
+        dst_texture_dx->GetDepthAndLayer(region.texture_offset.z, dst_base_depth, dst_base_layer, 0);
         uint32_t depth, layers;
         dst_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
         layers = std::min(layers, dst_texture_dx->Layers() - dst_base_layer);
@@ -227,7 +227,7 @@ void CommandEncoderD3D12::CopyTextureToBuffer(Ref<Texture> src_texture, Ref<Buff
     auto dst_buffer_dx = dst_buffer.CastTo<BufferD3D12>();
     for (const auto &region : regions) {
         uint32_t src_base_depth, src_base_layer;
-        src_texture_dx->GetDepthAndLayer(region.texture_offset.z, src_base_depth, src_base_layer);
+        src_texture_dx->GetDepthAndLayer(region.texture_offset.z, src_base_depth, src_base_layer, 0);
         uint32_t depth, layers;
         src_texture_dx->GetDepthAndLayer(region.texture_extent.depth_or_layers, depth, layers);
         layers = std::min(layers, src_texture_dx->Layers() - src_base_layer);
@@ -497,8 +497,9 @@ void RenderCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const Shade
 
     DescriptorHandle descriptor_set =
         base_encoder_->context_->GetDescriptorSet(curr_pipeline_->Desc().layout.sets_layout[set_index], values);
-
-    cmd_list_->SetGraphicsRootDescriptorTable(set_index, descriptor_set.gpu);
+    if (descriptor_set.gpu.ptr != 0) {
+        cmd_list_->SetGraphicsRootDescriptorTable(set_index, descriptor_set.gpu);
+    }
 }
 
 void RenderCommandEncoderD3D12::PushConstants(const void *data, uint32_t size, uint32_t offset) {

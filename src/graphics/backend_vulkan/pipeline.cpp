@@ -43,7 +43,7 @@ void CreateLayout(const PipelineLayout &rhi_layout, VkShaderStageFlags stage, Vk
         Vec<VkSampler> immutable_samplers(num_immutable_samplers, VK_NULL_HANDLE);
         VkSampler *p_immutable_sampler = immutable_samplers.data();
 
-        for (size_t binding = 0; binding < bindings_info.size(); binding++) {
+        for (size_t binding = 0; binding < rhi_bindings.bindings.size(); binding++) {
             const auto &rhi_binding = rhi_bindings.bindings[binding];
             if (rhi_binding.type == DescriptorType::eNone) {
                 continue;

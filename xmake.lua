@@ -2,7 +2,7 @@ add_rules("mode.debug", "mode.release")
 
 set_languages("cxx20")
 
-add_requires("spdlog")
+add_requires("spdlog", "stb")
 add_requires("volk", {configs = {header_only = true}})
 add_requires("vulkan-memory-allocator", "spirv-cross", "spirv-reflect", "glslang", "glfw", "glm")
 if is_plat("windows") then

@@ -76,7 +76,7 @@ public:
 
     VkImageAspectFlags GetAspect() const;
 
-    void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const;
+    void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers, uint32_t another = 1) const;
 
 private:
     Ref<DeviceVulkan> device_;

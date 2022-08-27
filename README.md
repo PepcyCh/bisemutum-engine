@@ -6,7 +6,10 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 TODO
 
-* [ ] A simple RHI on Vulkan and D3D12
+* [x] A simple RHI on Vulkan and D3D12
+  * [ ] multisample texture and resolve
+  * [ ] tessellation
+
 * [ ] Render graph on that RHI
 
 ...
@@ -18,6 +21,7 @@ This project use [Xmake](https://xmake.io/) to build.
 ## Dependencies
 
 * spdlog
+* stb
 * glfw
 * glm
 * volk

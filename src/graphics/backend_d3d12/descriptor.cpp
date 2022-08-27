@@ -79,7 +79,10 @@ DescriptorHandle ShaderVisibleDescriptorHeapD3D12::AllocateAndWriteDescriptors(c
     const ShaderParams &values) {
     uint32_t num_descriptors = 0;
     for (const auto &binding : layout.bindings) {
-        num_descriptors += binding.count;
+        num_descriptors += binding.immutable_samplers.Empty() ? binding.count : 0;
+    }
+    if (num_descriptors == 0) {
+        return DescriptorHandle { { 0 }, { 0 } };
     }
     BI_ASSERT(used_count_ + num_descriptors <= max_count_);
 

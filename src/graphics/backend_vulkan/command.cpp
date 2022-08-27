@@ -43,9 +43,9 @@ Vec<VkImageCopy> ToVkImageCopy(Ref<TextureVulkan> src_texture_vk, Ref<TextureVul
     Vec<VkImageCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
         uint32_t src_base_depth, src_base_layer;
-        src_texture_vk->GetDepthAndLayer(regions[i].src_offset.z, src_base_depth, src_base_layer);
+        src_texture_vk->GetDepthAndLayer(regions[i].src_offset.z, src_base_depth, src_base_layer, 0);
         uint32_t dst_base_depth, dst_base_layer;
-        dst_texture_vk->GetDepthAndLayer(regions[i].dst_offset.z, dst_base_depth, dst_base_layer);
+        dst_texture_vk->GetDepthAndLayer(regions[i].dst_offset.z, dst_base_depth, dst_base_layer, 0);
         uint32_t depth, layers;
         src_texture_vk->GetDepthAndLayer(regions[i].extent.depth_or_layers, depth, layers);
         regions_vk[i] = VkImageCopy {
@@ -85,12 +85,12 @@ Vec<VkBufferImageCopy> ToVkBufferImageCopy(Ref<TextureVulkan> texture_vk, Span<B
     Vec<VkBufferImageCopy> regions_vk(regions.size());
     for (size_t i = 0; i < regions.size(); i++) {
         uint32_t base_depth, base_layer;
-        texture_vk->GetDepthAndLayer(regions[i].texture_offset.z, base_depth, base_layer);
+        texture_vk->GetDepthAndLayer(regions[i].texture_offset.z, base_depth, base_layer, 0);
         uint32_t depth, layers;
         texture_vk->GetDepthAndLayer(regions[i].texture_extent.depth_or_layers, depth, layers);
         regions_vk[i] = VkBufferImageCopy {
             .bufferOffset = regions[i].buffer_offset,
-            .bufferRowLength = regions[i].buffer_bytes_per_row,
+            .bufferRowLength = regions[i].buffer_bytes_per_row / FormatTexelSize(texture_vk->Desc().format),
             .bufferImageHeight = regions[i].buffer_rows_per_texture,
             .imageSubresource = VkImageSubresourceLayers {
                 .aspectMask = texture_vk->GetAspect(),
@@ -547,8 +547,8 @@ void RenderCommandEncoderVulkan::BindShaderParams(uint32_t set_index, const Shad
     VkDescriptorSet descriptor_set = base_encoder_->context_->GetDescriptorSet(curr_pipeline_->RawSetLayout(set_index),
         curr_pipeline_->Desc().layout.sets_layout[set_index], values);
 
-    vkCmdBindDescriptorSets(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipelineLayout(), 0,
-        1, &descriptor_set, 0, nullptr);
+    vkCmdBindDescriptorSets(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipelineLayout(),
+        set_index, 1, &descriptor_set, 0, nullptr);
 }
 
 void RenderCommandEncoderVulkan::PushConstants(const void *data, uint32_t size, uint32_t offset) {

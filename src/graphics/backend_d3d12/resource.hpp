@@ -113,7 +113,7 @@ public:
     TextureD3D12(Ref<class DeviceD3D12> device, ComPtr<ID3D12Resource> &&raw_resource, const TextureDesc &desc);
     ~TextureD3D12() override;
 
-    void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const;
+    void GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers, uint32_t another = 1) const;
     uint32_t Layers() const;
 
     UINT SubresourceIndex(uint32_t level, uint32_t layer, uint32_t plane = 0) const;

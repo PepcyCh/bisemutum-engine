@@ -36,8 +36,8 @@ struct BufferTextureCopyDesc {
     uint64_t buffer_offset = 0;
     uint32_t buffer_bytes_per_row = 0;
     uint32_t buffer_rows_per_texture = 0;
-    Offset3D texture_offset = {};
-    Extent3D texture_extent = {};
+    Offset3D texture_offset = { 0, 0, 0 };
+    Extent3D texture_extent = { ~0u, ~0u, ~0u };
     uint32_t texture_level = 0;
 };
 

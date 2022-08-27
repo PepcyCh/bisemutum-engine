@@ -227,12 +227,13 @@ VkImageAspectFlags TextureVulkan::GetAspect() const {
     return ToVkImageAspect(desc_.format);
 }
 
-void TextureVulkan::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers) const {
+void TextureVulkan::GetDepthAndLayer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers,
+    uint32_t another) const {
     if (desc_.dim == TextureDimension::e3D) {
         depth = depth_or_layers;
-        layers = 1;
+        layers = another;
     } else {
-        depth = 1;
+        depth = another;
         layers = depth_or_layers;
     }
 }

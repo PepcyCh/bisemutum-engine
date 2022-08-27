@@ -132,13 +132,19 @@ VkDescriptorSet DescriptorSetPoolVulkan::AllocateAndWriteSet(VkDescriptorSetLayo
     uint32_t num_buffers = 0;
     uint32_t num_textures = 0;
     uint32_t num_samplers = 0;
+    uint32_t num_bindings_to_write = 0;
     for (const auto &binding : layout.bindings) {
         if (IsDescriptorTypeBuffer(binding.type)) {
             num_buffers += binding.count;
+            ++num_bindings_to_write;
         } else if (IsDescriptorTypeTexture(binding.type)) {
             num_textures += binding.count;
+            ++num_bindings_to_write;
         } else if (IsDescriptorTypeSampler(binding.type)) {
-            num_samplers += binding.count;
+            if (binding.immutable_samplers.Empty()) {
+                num_samplers += binding.count;
+                ++num_bindings_to_write;
+            }
         }
     }
     uint32_t total = num_buffers + num_textures + num_samplers;
@@ -147,7 +153,7 @@ VkDescriptorSet DescriptorSetPoolVulkan::AllocateAndWriteSet(VkDescriptorSetLayo
     VkDescriptorBufferInfo *p_buffer_info = buffer_infos.data();
     Vec<VkDescriptorImageInfo> image_infos(num_textures + num_samplers);
     VkDescriptorImageInfo *p_image_info = image_infos.data();
-    Vec<VkWriteDescriptorSet> writes(layout.bindings.size());
+    Vec<VkWriteDescriptorSet> writes(num_bindings_to_write);
     VkWriteDescriptorSet *p_write = writes.data();
     for (uint32_t binding = 0; binding < values.resources.size(); binding++) {
         const auto &resource = values.resources[binding];

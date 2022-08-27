@@ -33,24 +33,35 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
         + (rhi_layout.push_constants_size > 0 ? 1 : 0));
     Vec<D3D12_STATIC_SAMPLER_DESC> static_samplers;
 
+    size_t num_bindings = 0;
+    for (const auto &rhi_bindings : rhi_layout.sets_layout) {
+        num_bindings += std::count_if(rhi_bindings.bindings.begin(), rhi_bindings.bindings.end(),
+            [](const gfx::DescriptorSetLayoutBinding &rhi_binding) {
+                return rhi_binding.immutable_samplers.Empty();
+            });
+    }
+    Vec<D3D12_DESCRIPTOR_RANGE1> bindings_info(num_bindings);
+    D3D12_DESCRIPTOR_RANGE1 *p_binding_info = bindings_info.data();
+
     for (size_t set = 0; set < rhi_layout.sets_layout.size(); set++) {
         const auto &rhi_bindings = rhi_layout.sets_layout[set];
-        Vec<D3D12_DESCRIPTOR_RANGE1> bindings_info;
-        bindings_info.reserve(rhi_bindings.bindings.size());
-        for (size_t binding = 0; binding < bindings_info.size(); binding++) {
+        const auto p_binding_info_start = p_binding_info;
+        UINT num_bindings = 0;
+        for (size_t binding = 0; binding < rhi_bindings.bindings.size(); binding++) {
             const auto &rhi_binding = rhi_bindings.bindings[binding];
             if (rhi_binding.type == DescriptorType::eNone) {
                 continue;
             }
             if (rhi_binding.immutable_samplers.Empty()) {
-                bindings_info.push_back(D3D12_DESCRIPTOR_RANGE1 {
+                *p_binding_info = D3D12_DESCRIPTOR_RANGE1 {
                     .RangeType = ToDxDescriptorRangeType(rhi_binding.type),
                     .NumDescriptors = rhi_binding.count,
                     .BaseShaderRegister = static_cast<UINT>(binding),
                     .RegisterSpace = static_cast<UINT>(set),
                     .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
                     .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
-                });
+                };
+                ++num_bindings;
             } else {
                 for (const auto &sampler : rhi_binding.immutable_samplers) {
                     static_samplers.push_back(sampler.CastTo<SamplerD3D12>()->GetStaticSamplerDesc(binding, set));
@@ -61,8 +72,8 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
         root_params[set] = D3D12_ROOT_PARAMETER1 {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             .DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1 {
-                .NumDescriptorRanges = static_cast<UINT>(bindings_info.size()),
-                .pDescriptorRanges = bindings_info.data(),
+                .NumDescriptorRanges = num_bindings,
+                .pDescriptorRanges = p_binding_info_start,
             },
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         };
@@ -85,8 +96,8 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
         .Desc_1_1 = D3D12_ROOT_SIGNATURE_DESC1 {
             .NumParameters = static_cast<UINT>(root_params.size()),
             .pParameters = root_params.data(),
-            .NumStaticSamplers = 0,
-            .pStaticSamplers = nullptr,
+            .NumStaticSamplers = static_cast<UINT>(static_samplers.size()),
+            .pStaticSamplers = static_samplers.data(),
             .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
         },
     };
