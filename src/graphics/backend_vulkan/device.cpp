@@ -179,9 +179,13 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
     Vec<uint32_t> created_queue_family = { graphics_queue_family };
     if (transfer_queue_family != ~0u) {
         created_queue_family.push_back(transfer_queue_family);
+    } else {
+        queue_family_indices[static_cast<uint8_t>(QueueType::eTransfer)] = graphics_queue_family;
     }
     if (compute_queue_family != ~0u) {
         created_queue_family.push_back(compute_queue_family);
+    } else {
+        queue_family_indices[static_cast<uint8_t>(QueueType::eCompute)] = graphics_queue_family;
     }
     Vec<VkDeviceQueueCreateInfo> queue_ci(created_queue_family.size());
     for (size_t i = 0; i < queue_ci.size(); i++) {

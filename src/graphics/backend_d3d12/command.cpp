@@ -610,7 +610,7 @@ void ComputeCommandEncoderD3D12::PopLabel() {
 void ComputeCommandEncoderD3D12::SetPipeline(Ref<ComputePipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<ComputePipelineD3D12>().Get();
     cmd_list_->SetPipelineState(curr_pipeline_->RawPipeline());
-    cmd_list_->SetGraphicsRootSignature(curr_pipeline_->RawRootSignature());
+    cmd_list_->SetComputeRootSignature(curr_pipeline_->RawRootSignature());
 }
 
 void ComputeCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const ShaderParams &values) {
@@ -619,18 +619,21 @@ void ComputeCommandEncoderD3D12::BindShaderParams(uint32_t set_index, const Shad
     DescriptorHandle descriptor_set =
         base_encoder_->context_->GetDescriptorSet(curr_pipeline_->Desc().layout.sets_layout[set_index], values);
 
-    cmd_list_->SetComputeRootDescriptorTable(set_index, descriptor_set.gpu);
+    if (descriptor_set.gpu.ptr != 0) {
+        cmd_list_->SetComputeRootDescriptorTable(set_index, descriptor_set.gpu);
+    }
 }
 
 void ComputeCommandEncoderD3D12::PushConstants(const void *data, uint32_t size, uint32_t offset) {
     BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::PushConstants() without setting pipeline");
 
-    cmd_list_->SetGraphicsRoot32BitConstants(curr_pipeline_->Desc().layout.sets_layout.size(),
+    cmd_list_->SetComputeRoot32BitConstants(curr_pipeline_->Desc().layout.sets_layout.size(),
         size / 4, data, offset / 4);
 }
 
 void ComputeCommandEncoderD3D12::Dispatch(uint32_t size_x, uint32_t size_y, uint32_t size_z) {
     BI_ASSERT_MSG(curr_pipeline_, "Call ComputeCommandEncoder::Dispatch() without setting pipeline");
+
     uint32_t x = (size_x + curr_pipeline_->LocalSizeX() - 1) / curr_pipeline_->LocalSizeX();
     uint32_t y = (size_y + curr_pipeline_->LocalSizeY() - 1) / curr_pipeline_->LocalSizeY();
     uint32_t z = (size_z + curr_pipeline_->LocalSizeZ() - 1) / curr_pipeline_->LocalSizeZ();

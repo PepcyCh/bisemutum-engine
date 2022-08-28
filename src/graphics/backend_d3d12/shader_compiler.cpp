@@ -55,6 +55,10 @@ Vec<uint8_t> ShaderCompilerD3D12::Compile(const fs::path &src_path, const std::s
         src_filename_w.c_str(),
         L"-E", entry_w.c_str(),
         L"-T", ToDxShaderStage(stage),
+#ifndef BI_DEBUG_MODE
+        L"-Qstrip_debug",
+        L"-Qstrip_reflect",
+#endif
     };
     args.reserve(args.size() + defines_w.size() * 2);
     for (const auto &define_w : defines_w) {

@@ -203,7 +203,7 @@ VkImageView TextureVulkan::GetView(const TextureViewVulkanDesc &view_desc) const
         .image = image_,
         .viewType = view_desc.type,
         .format = view_desc.format,
-        .components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_R },
+        .components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
         .subresourceRange = {
             .aspectMask = ToVkImageAspect(desc_.format),
             .baseMipLevel = view_desc.base_level,

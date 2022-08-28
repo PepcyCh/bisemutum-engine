@@ -9,6 +9,7 @@ TODO
 * [x] A simple RHI on Vulkan and D3D12
   * [ ] multisample texture and resolve
   * [ ] tessellation
+  * [ ] multi-queue
 
 * [ ] Render graph on that RHI
 

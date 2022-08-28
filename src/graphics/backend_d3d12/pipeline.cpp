@@ -28,7 +28,8 @@ D3D12_DESCRIPTOR_RANGE_TYPE ToDxDescriptorRangeType(DescriptorType type) {
     Unreachable();
 }
 
-void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, ComPtr<ID3D12RootSignature> &signature) {
+void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, ComPtr<ID3D12RootSignature> &signature,
+    bool allow_input_assembler) {
     Vec<D3D12_ROOT_PARAMETER1> root_params(rhi_layout.sets_layout.size()
         + (rhi_layout.push_constants_size > 0 ? 1 : 0));
     Vec<D3D12_STATIC_SAMPLER_DESC> static_samplers;
@@ -37,7 +38,7 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
     for (const auto &rhi_bindings : rhi_layout.sets_layout) {
         num_bindings += std::count_if(rhi_bindings.bindings.begin(), rhi_bindings.bindings.end(),
             [](const gfx::DescriptorSetLayoutBinding &rhi_binding) {
-                return rhi_binding.immutable_samplers.Empty();
+                return rhi_binding.immutable_samplers.Empty() && rhi_binding.type != DescriptorType::eNone;
             });
     }
     Vec<D3D12_DESCRIPTOR_RANGE1> bindings_info(num_bindings);
@@ -61,6 +62,7 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
                     .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
                     .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
                 };
+                ++p_binding_info;
                 ++num_bindings;
             } else {
                 for (const auto &sampler : rhi_binding.immutable_samplers) {
@@ -98,7 +100,8 @@ void CreateSignature(const PipelineLayout &rhi_layout, ID3D12Device2 *device, Co
             .pParameters = root_params.data(),
             .NumStaticSamplers = static_cast<UINT>(static_samplers.size()),
             .pStaticSamplers = static_samplers.data(),
-            .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+            .Flags = allow_input_assembler
+                ? D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT : D3D12_ROOT_SIGNATURE_FLAG_NONE,
         },
     };
     ComPtr<ID3DBlob> serialized_signature;
@@ -259,7 +262,7 @@ RenderPipelineD3D12::RenderPipelineD3D12(Ref<DeviceD3D12> device, const RenderPi
         pipeline_desc.PS = shader_vk->RawBytecode();
     }
 
-    CreateSignature(desc.layout, device->Raw(), root_signature_);
+    CreateSignature(desc.layout, device->Raw(), root_signature_, true);
     pipeline_desc.pRootSignature = root_signature_.Get();
 
     pipeline_desc.NumRenderTargets = desc.color_target_state.attachments.size();
@@ -366,7 +369,7 @@ ComputePipelineD3D12::ComputePipelineD3D12(Ref<DeviceD3D12> device, const Comput
     : device_(device), desc_(desc) {
     auto shader_dx = desc.compute.CastTo<ShaderModuleD3D12>();
 
-    CreateSignature(desc.layout, device->Raw(), root_signature_);
+    CreateSignature(desc.layout, device->Raw(), root_signature_, false);
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pipeline_desc {
         .pRootSignature = root_signature_.Get(),
