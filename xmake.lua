@@ -45,4 +45,11 @@ target("bismuth-graphics")
         end)
     end
 
+target("bismuth-render_graph")
+    set_kind("static")
+    add_files("src/render_graph/*.cpp")
+    add_headerfiles("src/render_graph/*.hpp")
+    add_includedirs("src/")
+    add_deps("bismuth-core", "bismuth-graphics", {public = true})
+
 includes("test/xmake.lua")

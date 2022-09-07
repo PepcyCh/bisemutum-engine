@@ -9,6 +9,7 @@ class BitFlags {
     using ValueType = std::underlying_type_t<E>;
 
 public:
+    BitFlags() : value_(0) {}
     BitFlags(E value) : value_(static_cast<ValueType>(value)) {}
     BitFlags(std::initializer_list<E> list) : value_(0) {
         for (E item : list) {
@@ -42,8 +43,18 @@ public:
         return value_;
     }
 
+    bool operator==(const BitFlags<E> &rhs) const = default;
+
 private:
     ValueType value_;
 };
 
 BISMUTH_NAMESPACE_END
+
+template <bismuth::EnumT E>
+struct std::hash<bismuth::BitFlags<E>> {
+    size_t operator()(const bismuth::BitFlags<E> &v) const noexcept {
+        std::hash<decltype(v.RawValue())> hasher;
+        return hasher(v.RawValue());
+    }
+};

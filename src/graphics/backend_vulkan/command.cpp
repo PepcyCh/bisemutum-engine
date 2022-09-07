@@ -131,7 +131,7 @@ void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAc
     }
     if (type.Contains(ResourceAccessType::eUniformBufferRead)) {
         type_vk |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -140,7 +140,7 @@ void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAc
     }
     if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -149,7 +149,7 @@ void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAc
     }
     if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
         type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -173,7 +173,7 @@ void ToVkImageAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAcc
     layout_vk = VK_IMAGE_LAYOUT_UNDEFINED;
     if (type.Contains(ResourceAccessType::eSampledTextureRead)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -184,7 +184,7 @@ void ToVkImageAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAcc
     }
     if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -194,7 +194,7 @@ void ToVkImageAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAcc
     }
     if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
         type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {

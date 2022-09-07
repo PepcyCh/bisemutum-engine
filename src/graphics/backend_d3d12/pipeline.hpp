@@ -12,6 +12,8 @@ public:
     RenderPipelineD3D12(Ref<class DeviceD3D12> device, const RenderPipelineDesc &desc);
     ~RenderPipelineD3D12() override;
 
+    void SetTargetFormats(Span<ResourceFormat> color_formats, ResourceFormat depth_stencil_format);
+
     ID3D12PipelineState *RawPipeline() const { return pipeline_.Get(); }
 
     ID3D12RootSignature *RawRootSignature() const { return root_signature_.Get(); }

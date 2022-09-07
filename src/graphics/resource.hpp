@@ -29,7 +29,7 @@ enum class ResourceAccessType : uint16_t {
 enum class ResourceAccessStage : uint8_t {
     eNone = 0x0,
     eInputAssembler = 0x1,
-    eGraphicsShader = 0x2,
+    eRenderShader = 0x2,
     eColorAttachment = 0x4,
     eDepthStencilAttachment = 0x8,
     eComputeShader = 0x10,

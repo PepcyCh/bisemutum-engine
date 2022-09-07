@@ -17,11 +17,15 @@ struct Extent3D {
     uint32_t width = 1;
     uint32_t height = 1;
     uint32_t depth_or_layers = 1;
+
+    bool operator==(const Extent3D &rhs) const = default;
 };
 struct Offset3D {
     uint32_t x = 0;
     uint32_t y = 0;
     uint32_t z = 0;
+
+    bool operator==(const Offset3D &rhs) const = default;
 };
 
 enum class IndexType : uint8_t {

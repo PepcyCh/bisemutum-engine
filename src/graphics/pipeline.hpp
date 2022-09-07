@@ -88,6 +88,7 @@ struct StencilFaceState {
     StencilOp depth_fail_op = StencilOp::eKeep;
 };
 struct DepthStencilState {
+    // not needed
     ResourceFormat format = ResourceFormat::eUndefined;
     bool depth_write : 1 = true;
     bool depth_test : 1 = true;
@@ -131,6 +132,7 @@ enum class ColorWriteComponent : uint8_t {
     eRgba = eR | eG | eB | eA,
 };
 struct ColorTargetAttachmentState {
+    // not needed
     ResourceFormat format = ResourceFormat::eUndefined;
     bool blend_enable = false;
     BlendOp blend_op = BlendOp::eAdd;

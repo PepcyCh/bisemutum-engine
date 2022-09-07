@@ -29,7 +29,7 @@ D3D12_RESOURCE_STATES ToDxBufferState(BitFlags<ResourceAccessType> type, BitFlag
         states |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
     }
     if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -52,7 +52,7 @@ D3D12_RESOURCE_STATES ToDxTextureState(BitFlags<ResourceAccessType> type, BitFla
     D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
     if (type.Contains(ResourceAccessType::eSampledTextureRead)
         || type.Contains(ResourceAccessType::eStorageResourceRead)) {
-        if (stage.Contains(ResourceAccessStage::eGraphicsShader)) {
+        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
             states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
         }
         if (stage.Contains(ResourceAccessStage::eComputeShader)) {
@@ -379,6 +379,7 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
     cmd_list_ = base_encoder->cmd_list_;
 
     Vec<D3D12_RENDER_PASS_RENDER_TARGET_DESC> colors_desc(desc.colors.size());
+    color_formats_.resize(desc.colors.size(), ResourceFormat::eUndefined);
     for (size_t i = 0; i < desc.colors.size(); i++) {
         auto texture_dx = desc.colors[i].texture.texture.CastTo<TextureD3D12>();
         colors_desc[i] = D3D12_RENDER_PASS_RENDER_TARGET_DESC {
@@ -405,10 +406,12 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
                 .Resolve = {}, // TODO - support resolve
             }
         };
+        color_formats_[i] = texture_dx->Desc().format;
     }
 
     D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depth_stencil_desc;
     bool has_depth_stencil = desc.depth_stencil.has_value();
+    depth_stencil_format_ = ResourceFormat::eUndefined;
     if (has_depth_stencil) {
         const auto &depth_stencil = desc.depth_stencil.value();
         auto texture_dx = depth_stencil.texture.texture.CastTo<TextureD3D12>();
@@ -454,6 +457,7 @@ RenderCommandEncoderD3D12::RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, co
                 .Resolve = {},
             }
         };
+        depth_stencil_format_ = texture_dx->Desc().format;
     }
 
     cmd_list_->BeginRenderPass(colors_desc.size(), colors_desc.data(),
@@ -487,6 +491,9 @@ void RenderCommandEncoderD3D12::PopLabel() {
 
 void RenderCommandEncoderD3D12::SetPipeline(Ref<RenderPipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<RenderPipelineD3D12>().Get();
+
+    curr_pipeline_->SetTargetFormats(color_formats_, depth_stencil_format_);
+
     cmd_list_->SetPipelineState(curr_pipeline_->RawPipeline());
     cmd_list_->SetGraphicsRootSignature(curr_pipeline_->RawRootSignature());
     cmd_list_->IASetPrimitiveTopology(curr_pipeline_->RawPrimitiveTopology());

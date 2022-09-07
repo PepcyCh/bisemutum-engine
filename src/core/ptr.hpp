@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <concepts>
 
 #include "traits.hpp"
@@ -82,6 +83,12 @@ public:
     template <NonArrayT T2> requires requires { static_cast<T2 *>(std::declval<T *>()); }
     Ref<T2> CastTo() const {
         return Ref<T2>(static_cast<T2 *>(ptr_));
+    }
+
+    template <NonArrayT T2> requires requires { dynamic_cast<T2 *>(std::declval<T *>()); }
+    std::optional<Ref<T2>> DCastTo() const {
+        T2 *ptr2 = dynamic_cast<T2 *>(ptr_);
+        return ptr2 ? Ref<T2>(ptr2) : std::nullopt;
     }
 
 private:

@@ -98,6 +98,9 @@ private:
     std::string label_;
     ID3D12GraphicsCommandList4 *cmd_list_;
 
+    Vec<ResourceFormat> color_formats_;
+    ResourceFormat depth_stencil_format_;
+
     class RenderPipelineD3D12 *curr_pipeline_ = nullptr;
 };
 

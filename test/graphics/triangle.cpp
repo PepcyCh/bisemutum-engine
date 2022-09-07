@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
         .primitive_state = gfx::PrimitiveState {},
         .depth_stencil_state = gfx::DepthStencilState {},
         .color_target_state = gfx::ColorTargetState {
-            .attachments = { { device_desc.surface_format } }
+            .attachments = { {} }
         },
         .shaders = {
             .vertex = vs_sm.AsRef(),

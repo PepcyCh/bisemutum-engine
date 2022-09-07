@@ -44,7 +44,7 @@ struct BufferTextureCopyDesc {
 struct DepthStencilAttachmentDesc {
     TextureView texture;
     float clear_depth = 0.0f;
-    uint32_t clear_stencil = 0;
+    uint8_t clear_stencil = 0;
     bool clear = false;
     bool store = true;
 };

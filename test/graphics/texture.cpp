@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
             .src_access_type = gfx::ResourceAccessType::eTransferWrite,
             .src_access_stage = gfx::ResourceAccessStage::eTransfer,
             .dst_access_type = gfx::ResourceAccessType::eSampledTextureRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eGraphicsShader,
+            .dst_access_stage = gfx::ResourceAccessStage::eRenderShader,
         };
         
         cmd_encoder->ResourceBarrier({}, { texture_barrier });
@@ -307,7 +307,8 @@ int main(int argc, char **argv) {
         .primitive_state = gfx::PrimitiveState {},
         .depth_stencil_state = gfx::DepthStencilState {},
         .color_target_state = gfx::ColorTargetState {
-            .attachments = { { device_desc.surface_format } }
+            // .attachments = { { device_desc.surface_format } }
+            .attachments = { {} }
         },
         .shaders = {
             .vertex = vs_sm.AsRef(),
