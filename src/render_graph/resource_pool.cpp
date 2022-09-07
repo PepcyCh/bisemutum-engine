@@ -4,6 +4,8 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFXRG_NAMESPACE_BEGIN
 
+ResourcePool::ResourcePool(Ref<gfx::Device> device) : device_(device) {}
+
 BufferKey::BufferKey(const gfx::BufferDesc &desc) {
     size = desc.size;
     usages = desc.usages;
@@ -28,19 +30,17 @@ ResourcePool::Buffer ResourcePool::GetBuffer(const gfx::BufferDesc &desc) {
         return Buffer {
             .buffer = buffer_ref,
             .index = index,
-            .access_type = access.first,
-            .access_stage = access.second,
+            .access_type = access,
         };
     } else {
         auto buffer = device_->CreateBuffer(desc);
         auto buffer_ref = buffer.AsRef();
         pool.created_buffers.emplace_back(std::move(buffer));
-        pool.access.emplace_back(gfx::ResourceAccessType::eNone, gfx::ResourceAccessStage::eNone);
+        pool.access.push_back(gfx::ResourceAccessType::eNone);
         return Buffer {
             .buffer = buffer_ref,
             .index = pool.created_buffers.size() - 1,
             .access_type = gfx::ResourceAccessType::eNone,
-            .access_stage = gfx::ResourceAccessStage::eNone,
         };
     }
 }
@@ -48,6 +48,7 @@ ResourcePool::Buffer ResourcePool::GetBuffer(const gfx::BufferDesc &desc) {
 void ResourcePool::RemoveBuffer(const gfx::BufferDesc &desc, const Buffer &buffer) {
     auto &pool = buffer_pools_[desc];
     pool.recycled_index.push_back(buffer.index);
+    pool.access[buffer.index] = buffer.access_type;
 }
 
 ResourcePool::Texture ResourcePool::GetTexure(const gfx::TextureDesc &desc) {
@@ -59,19 +60,17 @@ ResourcePool::Texture ResourcePool::GetTexure(const gfx::TextureDesc &desc) {
         return Texture {
             .texture = texture_ref,
             .index = index,
-            .access_type = access.first,
-            .access_stage = access.second,
+            .access_type = access,
         };
     } else {
         auto texture = device_->CreateTexture(desc);
         auto texture_ref = texture.AsRef();
         pool.created_textures.emplace_back(std::move(texture));
-        pool.access.emplace_back(gfx::ResourceAccessType::eNone, gfx::ResourceAccessStage::eNone);
+        pool.access.push_back(gfx::ResourceAccessType::eNone);
         return Texture {
             .texture = texture_ref,
             .index = pool.created_textures.size() - 1,
             .access_type = gfx::ResourceAccessType::eNone,
-            .access_stage = gfx::ResourceAccessStage::eNone,
         };
     }
 }
@@ -79,6 +78,7 @@ ResourcePool::Texture ResourcePool::GetTexure(const gfx::TextureDesc &desc) {
 void ResourcePool::RemoveTexture(const gfx::TextureDesc &desc, const Texture &texture) {
     auto &pool = texture_pools_[desc];
     pool.recycled_index.push_back(texture.index);
+    pool.access[texture.index] = texture.access_type;
 }
 
 BISMUTH_GFXRG_NAMESPACE_END

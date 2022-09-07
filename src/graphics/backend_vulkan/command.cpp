@@ -113,8 +113,7 @@ Vec<VkBufferImageCopy> ToVkBufferImageCopy(Ref<TextureVulkan> texture_vk, Span<B
     return regions_vk;
 }
 
-void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage,
-    VkAccessFlags2 &type_vk, VkPipelineStageFlags2 &stage_vk) {
+void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, VkAccessFlags2 &type_vk, VkPipelineStageFlags2 &stage_vk) {
     type_vk = 0;
     stage_vk = 0;
     if (type.Contains(ResourceAccessType::eVertexBufferRead)) {
@@ -129,32 +128,29 @@ void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAc
         type_vk |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
     }
-    if (type.Contains(ResourceAccessType::eUniformBufferRead)) {
+    if (type.Contains(ResourceAccessType::eRenderShaderUniformBufferRead)) {
         type_vk |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
+    if (type.Contains(ResourceAccessType::eComputeShaderUniformBufferRead)) {
+        type_vk |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceRead)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+    if (type.Contains(ResourceAccessType::eComputeShaderStorageResourceRead)) {
+        type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceWrite)) {
         type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+    }
+    if (type.Contains(ResourceAccessType::eComputeShaderStorageResourceWrite)) {
+        type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
     }
     if (type.Contains(ResourceAccessType::eTransferRead)) {
         type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -166,84 +162,81 @@ void ToVkBufferAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAc
     }
 }
 
-void ToVkImageAccessType(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage, bool is_depth_stencil,
+void ToVkImageAccessType(BitFlags<ResourceAccessType> type, bool is_depth_stencil,
     VkAccessFlags2 &type_vk, VkPipelineStageFlags2 &stage_vk, VkImageLayout &layout_vk) {
     type_vk = 0;
     stage_vk = 0;
     layout_vk = VK_IMAGE_LAYOUT_UNDEFINED;
-    if (type.Contains(ResourceAccessType::eSampledTextureRead)) {
+    if (type.Contains(ResourceAccessType::eRenderShaderSampledTextureRead)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         layout_vk = is_depth_stencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
             : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
+    if (type.Contains(ResourceAccessType::eComputeShaderSampledTextureRead)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        layout_vk = is_depth_stencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+            : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceRead)) {
+        type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         layout_vk = VK_IMAGE_LAYOUT_GENERAL;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+    if (type.Contains(ResourceAccessType::eComputeShaderStorageResourceRead)) {
+        type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_GENERAL;
+    }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceWrite)) {
         type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
         layout_vk = VK_IMAGE_LAYOUT_GENERAL;
     }
-    if (type.Contains(ResourceAccessType::eRenderAttachmentRead)) {
-        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
-            type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-            stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-            layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
-        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
-            type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-            stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-            layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        }
+    if (type.Contains(ResourceAccessType::eComputeShaderStorageResourceWrite)) {
+        type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_GENERAL;
     }
-    if (type.Contains(ResourceAccessType::eRenderAttachmentWrite)) {
-        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
-            type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-            stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-            layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
-        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
-            type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-            layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        }
+    if (type.Contains(ResourceAccessType::eColorAttachmentRead)) {
+        type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eDepthStencilAttachmentRead)) {
+        type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eColorAttachmentWrite)) {
+        type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eDepthStencilAttachmentWrite)) {
+        type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
     if (type.Contains(ResourceAccessType::eTransferRead)) {
         type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
-        if (stage.Contains(ResourceAccessStage::eTransfer)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eResolve)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     }
     if (type.Contains(ResourceAccessType::eTransferWrite)) {
         type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        if (stage.Contains(ResourceAccessStage::eTransfer)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        }
-        if (stage.Contains(ResourceAccessStage::eResolve)) {
-            stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-        }
+        stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eResolveRead)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+        layout_vk = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    }
+    if (type.Contains(ResourceAccessType::eResolveWrite)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     }
     if (type.Contains(ResourceAccessType::ePresent)) {
@@ -330,9 +323,9 @@ void CommandEncoderVulkan::ResourceBarrier(Span<BufferBarrier> buffer_barriers, 
             .offset = 0,
             .size = VK_WHOLE_SIZE,
         };
-        ToVkBufferAccessType(barrier.src_access_type, barrier.src_access_stage,
+        ToVkBufferAccessType(barrier.src_access_type,
             buffer_barriers_vk[i].srcAccessMask, buffer_barriers_vk[i].srcStageMask);
-        ToVkBufferAccessType(barrier.dst_access_type, barrier.dst_access_stage,
+        ToVkBufferAccessType(barrier.dst_access_type,
             buffer_barriers_vk[i].dstAccessMask, buffer_barriers_vk[i].dstStageMask);
     }
     Vec<VkImageMemoryBarrier2> texture_barriers_vk(texture_barriers.Size());
@@ -356,11 +349,9 @@ void CommandEncoderVulkan::ResourceBarrier(Span<BufferBarrier> buffer_barriers, 
             },
         };
         bool is_depth_stencil = IsDepthStencilFormat(texture_vk->Desc().format);
-        ToVkImageAccessType(barrier.src_access_type, barrier.src_access_stage,
-            is_depth_stencil, texture_barriers_vk[i].srcAccessMask,
+        ToVkImageAccessType(barrier.src_access_type, is_depth_stencil, texture_barriers_vk[i].srcAccessMask,
             texture_barriers_vk[i].srcStageMask, texture_barriers_vk[i].oldLayout);
-        ToVkImageAccessType(barrier.dst_access_type, barrier.dst_access_stage,
-            is_depth_stencil, texture_barriers_vk[i].dstAccessMask,
+        ToVkImageAccessType(barrier.dst_access_type, is_depth_stencil, texture_barriers_vk[i].dstAccessMask,
             texture_barriers_vk[i].dstStageMask, texture_barriers_vk[i].newLayout);
     }
 

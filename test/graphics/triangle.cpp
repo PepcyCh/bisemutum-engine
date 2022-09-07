@@ -121,30 +121,22 @@ int main(int argc, char **argv) {
         gfx::BufferBarrier pos_upload_buffer_barrier {
             .buffer = pos_upload_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
             .dst_access_type = gfx::ResourceAccessType::eTransferRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
         };
         gfx::BufferBarrier color_upload_buffer_barrier {
             .buffer = color_upload_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
             .dst_access_type = gfx::ResourceAccessType::eTransferRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
         };
         gfx::BufferBarrier pos_buffer_barrier {
             .buffer = pos_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
             .dst_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
         };
         gfx::BufferBarrier color_buffer_barrier {
             .buffer = color_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
             .dst_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
         };
         cmd_encoder->ResourceBarrier(
             { pos_upload_buffer_barrier, color_upload_buffer_barrier, pos_buffer_barrier, color_buffer_barrier },
@@ -164,16 +156,12 @@ int main(int argc, char **argv) {
         pos_buffer_barrier = gfx::BufferBarrier {
             .buffer = pos_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .src_access_stage = gfx::ResourceAccessStage::eTransfer,
             .dst_access_type = gfx::ResourceAccessType::eVertexBufferRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eInputAssembler,
         };
         color_buffer_barrier = gfx::BufferBarrier {
             .buffer = color_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .src_access_stage = gfx::ResourceAccessStage::eTransfer,
             .dst_access_type = gfx::ResourceAccessType::eVertexBufferRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eInputAssembler,
         };
         cmd_encoder->ResourceBarrier({ pos_buffer_barrier, color_buffer_barrier }, {});
 
@@ -244,9 +232,7 @@ int main(int argc, char **argv) {
         gfx::TextureBarrier present_to_color_target {
             .texture = back_buffer,
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
-            .dst_access_type = gfx::ResourceAccessType::eRenderAttachmentWrite,
-            .dst_access_stage = gfx::ResourceAccessStage::eColorAttachment,
+            .dst_access_type = gfx::ResourceAccessType::eColorAttachmentWrite,
         };
         cmd_encoder->ResourceBarrier({}, { present_to_color_target });
 
@@ -281,10 +267,8 @@ int main(int argc, char **argv) {
 
         gfx::TextureBarrier color_target_to_present {
             .texture = back_buffer,
-            .src_access_type = gfx::ResourceAccessType::eRenderAttachmentWrite,
-            .src_access_stage = gfx::ResourceAccessStage::eColorAttachment,
+            .src_access_type = gfx::ResourceAccessType::eColorAttachmentWrite,
             .dst_access_type = gfx::ResourceAccessType::ePresent,
-            .dst_access_stage = gfx::ResourceAccessStage::ePresent,
         };
         cmd_encoder->ResourceBarrier({}, { color_target_to_present });
 

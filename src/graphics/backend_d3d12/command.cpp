@@ -17,9 +17,11 @@ UINT64 EncodeEventColor(float r, float g, float b) {
     return PIX_COLOR(static_cast<BYTE>(r * 255.0f), static_cast<BYTE>(g * 255.0f), static_cast<BYTE>(b * 255.0f));
 }
 
-D3D12_RESOURCE_STATES ToDxBufferState(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage) {
+D3D12_RESOURCE_STATES ToDxBufferState(BitFlags<ResourceAccessType> type) {
     D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
-    if (type.Contains(ResourceAccessType::eVertexBufferRead) || type.Contains(ResourceAccessType::eUniformBufferRead)) {
+    if (type.Contains(ResourceAccessType::eVertexBufferRead)
+        || type.Contains(ResourceAccessType::eRenderShaderUniformBufferRead)
+        || type.Contains(ResourceAccessType::eComputeShaderUniformBufferRead)) {
         states |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     }
     if (type.Contains(ResourceAccessType::eIndexBufferRead)) {
@@ -28,15 +30,14 @@ D3D12_RESOURCE_STATES ToDxBufferState(BitFlags<ResourceAccessType> type, BitFlag
     if (type.Contains(ResourceAccessType::eIndirectRead)) {
         states |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceRead)) {
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceRead)) {
+        states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+    if (type.Contains(ResourceAccessType::eComputeShaderStorageResourceRead)) {
+        states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceWrite)
+        || type.Contains(ResourceAccessType::eComputeShaderStorageResourceWrite)) {
         states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     }
     if (type.Contains(ResourceAccessType::eTransferRead)) {
@@ -48,51 +49,40 @@ D3D12_RESOURCE_STATES ToDxBufferState(BitFlags<ResourceAccessType> type, BitFlag
     return states;
 }
 
-D3D12_RESOURCE_STATES ToDxTextureState(BitFlags<ResourceAccessType> type, BitFlags<ResourceAccessStage> stage) {
+D3D12_RESOURCE_STATES ToDxTextureState(BitFlags<ResourceAccessType> type) {
     D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
-    if (type.Contains(ResourceAccessType::eSampledTextureRead)
-        || type.Contains(ResourceAccessType::eStorageResourceRead)) {
-        if (stage.Contains(ResourceAccessStage::eRenderShader)) {
-            states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
-        if (stage.Contains(ResourceAccessStage::eComputeShader)) {
-            states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
+    if (type.Contains(ResourceAccessType::eRenderShaderSampledTextureRead)
+        || type.Contains(ResourceAccessType::eRenderShaderStorageResourceRead)) {
+        states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     }
-    if (type.Contains(ResourceAccessType::eStorageResourceWrite)) {
+    if (type.Contains(ResourceAccessType::eComputeShaderSampledTextureRead)
+        || type.Contains(ResourceAccessType::eComputeShaderStorageResourceRead)) {
+        states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    }
+    if (type.Contains(ResourceAccessType::eRenderShaderStorageResourceWrite)
+        || type.Contains(ResourceAccessType::eComputeShaderStorageResourceWrite)) {
         states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     }
-    if (type.Contains(ResourceAccessType::eRenderAttachmentRead)) {
-        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
-            states |= D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
-        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
-            states |= D3D12_RESOURCE_STATE_DEPTH_READ;
-        }
+    if (type.Contains(ResourceAccessType::eColorAttachmentRead) || type.Contains(ResourceAccessType::eColorAttachmentWrite)) {
+        states |= D3D12_RESOURCE_STATE_RENDER_TARGET;
     }
-    if (type.Contains(ResourceAccessType::eRenderAttachmentWrite)) {
-        if (stage.Contains(ResourceAccessStage::eColorAttachment)) {
-            states |= D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
-        if (stage.Contains(ResourceAccessStage::eDepthStencilAttachment)) {
-            states |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
-        }
+    if (type.Contains(ResourceAccessType::eDepthStencilAttachmentRead)) {
+        states |= D3D12_RESOURCE_STATE_DEPTH_READ;
+    }
+    if (type.Contains(ResourceAccessType::eDepthStencilAttachmentWrite)) {
+        states |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
     }
     if (type.Contains(ResourceAccessType::eTransferRead)) {
-        if (stage.Contains(ResourceAccessStage::eTransfer)) {
-            states |= D3D12_RESOURCE_STATE_COPY_SOURCE;
-        }
-        if (stage.Contains(ResourceAccessStage::eResolve)) {
-            states |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-        }
+        states |= D3D12_RESOURCE_STATE_COPY_SOURCE;
     }
     if (type.Contains(ResourceAccessType::eTransferWrite)) {
-        if (stage.Contains(ResourceAccessStage::eTransfer)) {
-            states |= D3D12_RESOURCE_STATE_COPY_DEST;
-        }
-        if (stage.Contains(ResourceAccessStage::eResolve)) {
-            states |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
-        }
+        states |= D3D12_RESOURCE_STATE_COPY_DEST;
+    }
+    if (type.Contains(ResourceAccessType::eResolveRead)) {
+        states |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+    }
+    if (type.Contains(ResourceAccessType::eResolveWrite)) {
+        states |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
     }
     if (type.Contains(ResourceAccessType::ePresent)) {
         states |= D3D12_RESOURCE_STATE_PRESENT;
@@ -272,8 +262,8 @@ void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, S
         if (buffer_dx->IsStateRestricted()) {
             continue;
         }
-        auto src_states = ToDxBufferState(barrier.src_access_type, barrier.src_access_stage);
-        auto dst_states = ToDxBufferState(barrier.dst_access_type, barrier.dst_access_stage);
+        auto src_states = ToDxBufferState(barrier.src_access_type);
+        auto dst_states = ToDxBufferState(barrier.dst_access_type);
         if (src_states != dst_states) {
             barriers_dx.push_back(D3D12_RESOURCE_BARRIER {
                 .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -300,8 +290,8 @@ void CommandEncoderD3D12::ResourceBarrier(Span<BufferBarrier> buffer_barriers, S
         if (texture_dx->IsStateRestricted()) {
             continue;
         }
-        auto src_states = ToDxTextureState(barrier.src_access_type, barrier.src_access_stage);
-        auto dst_states = ToDxTextureState(barrier.dst_access_type, barrier.dst_access_stage);
+        auto src_states = ToDxTextureState(barrier.src_access_type);
+        auto dst_states = ToDxTextureState(barrier.dst_access_type);
         if (src_states != dst_states) {
             if (barrier.texture.base_layer == 0 && barrier.texture.layers >= texture_dx->Layers()
                 && barrier.texture.base_level == 0 && barrier.texture.levels >= texture_dx->Desc().levels) {

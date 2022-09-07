@@ -1,12 +1,64 @@
 #pragma once
 
-#include "graphics/pipeline.hpp"
-#include "graph.hpp"
+#include "graphics/command.hpp"
+#include "mod.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFXRG_NAMESPACE_BEGIN
 
+class RenderGraph;
+
+struct BufferHandle {
+private:
+    friend RenderGraph;
+
+    size_t node_index_;
+};
+struct TextureHandle {
+private:
+    friend RenderGraph;
+
+    size_t node_index_;
+};
+
+enum class BufferReadType : uint8_t {
+    eUniform,
+    eStorage,
+};
+class PassResource {
+public:
+    Ref<gfx::Buffer> Buffer(const std::string &name) const;
+    Ref<gfx::Texture> Texture(const std::string &name) const;
+
+private:
+    friend RenderGraph;
+
+    void GetShaderBarriers(RenderGraph &rg, bool is_render_pass,
+        Vec<gfx::BufferBarrier> &buffer_barriers, Vec<gfx::TextureBarrier> &texture_barriers);
+
+    const RenderGraph *graph_;
+    HashMap<std::string, BufferHandle> read_buffers_;
+    HashMap<std::string, BufferReadType> read_buffers_type_;
+    HashMap<std::string, BufferHandle> write_buffers_;
+    HashMap<std::string, TextureHandle> read_textures_;
+    HashMap<std::string, TextureHandle> write_textures_;
+};
+
+struct RenderPassColorTarget {
+    TextureHandle handle;
+    uint32_t base_layer = 0;
+    uint32_t layers = 1;
+    uint32_t level = 0;
+    struct {
+        float r = 0.0f;
+        float g = 0.0f;
+        float b = 0.0f;
+        float a = 0.0f;
+    } clear_color;
+    bool clear = false;
+    bool store = true;
+};
 class RenderPassColorTargetBuilder {
 public:
     RenderPassColorTargetBuilder(TextureHandle handle);
@@ -20,6 +72,17 @@ public:
 
 private:
     RenderPassColorTarget target_;
+};
+
+struct RenderPassDepthStencilTarget {
+    TextureHandle handle;
+    uint32_t base_layer = 0;
+    uint32_t layers = 1;
+    uint32_t level = 0;
+    float clear_depth = 0.0f;
+    uint8_t clear_stencil = 0;
+    bool clear = false;
+    bool store = true;
 };
 struct RenderPassDepthStencilTargetBuilder {
 public:

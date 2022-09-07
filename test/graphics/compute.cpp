@@ -85,16 +85,12 @@ int main(int argc, char **argv) {
         gfx::BufferBarrier buffer_barrier {
             .buffer = texture_upload_buffer.AsRef(),
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
             .dst_access_type = gfx::ResourceAccessType::eTransferRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
         };
         gfx::TextureBarrier texture1_barrier {
             .texture = gfx::TextureView { texture1.AsRef() },
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
             .dst_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
         };
         
         cmd_encoder->ResourceBarrier({ buffer_barrier }, { texture1_barrier });
@@ -115,16 +111,12 @@ int main(int argc, char **argv) {
         texture1_barrier = gfx::TextureBarrier {
             .texture = gfx::TextureView { texture1.AsRef() },
             .src_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .src_access_stage = gfx::ResourceAccessStage::eTransfer,
-            .dst_access_type = gfx::ResourceAccessType::eSampledTextureRead,
-            .dst_access_stage = gfx::ResourceAccessStage::eComputeShader,
+            .dst_access_type = gfx::ResourceAccessType::eComputeShaderSampledTextureRead,
         };
         gfx::TextureBarrier texture2_barrier {
             .texture = gfx::TextureView { texture2.AsRef() },
             .src_access_type = gfx::ResourceAccessType::eNone,
-            .src_access_stage = gfx::ResourceAccessStage::eNone,
-            .dst_access_type = gfx::ResourceAccessType::eStorageResourceWrite,
-            .dst_access_stage = gfx::ResourceAccessStage::eComputeShader,
+            .dst_access_type = gfx::ResourceAccessType::eComputeShaderStorageResourceWrite,
         };
         
         cmd_encoder->ResourceBarrier({}, { texture1_barrier, texture2_barrier });
@@ -225,17 +217,13 @@ int main(int argc, char **argv) {
         {
             gfx::TextureBarrier texture1_barrier {
                 .texture = gfx::TextureView { texture1.AsRef() },
-                .src_access_type = gfx::ResourceAccessType::eSampledTextureRead,
-                .src_access_stage = gfx::ResourceAccessStage::eComputeShader,
-                .dst_access_type = gfx::ResourceAccessType::eStorageResourceWrite,
-                .dst_access_stage = gfx::ResourceAccessStage::eComputeShader,
+                .src_access_type = gfx::ResourceAccessType::eComputeShaderSampledTextureRead,
+                .dst_access_type = gfx::ResourceAccessType::eComputeShaderStorageResourceWrite,
             };
             gfx::TextureBarrier texture2_barrier {
                 .texture = gfx::TextureView { texture2.AsRef() },
-                .src_access_type = gfx::ResourceAccessType::eStorageResourceWrite,
-                .src_access_stage = gfx::ResourceAccessStage::eComputeShader,
-                .dst_access_type = gfx::ResourceAccessType::eSampledTextureRead,
-                .dst_access_stage = gfx::ResourceAccessStage::eComputeShader,
+                .src_access_type = gfx::ResourceAccessType::eComputeShaderStorageResourceWrite,
+                .dst_access_type = gfx::ResourceAccessType::eComputeShaderSampledTextureRead,
             };
             cmd_encoder->ResourceBarrier({}, { texture1_barrier, texture2_barrier });
         }
@@ -251,17 +239,13 @@ int main(int argc, char **argv) {
         {
             gfx::TextureBarrier texture1_barrier {
                 .texture = gfx::TextureView { texture1.AsRef() },
-                .src_access_type = gfx::ResourceAccessType::eStorageResourceWrite,
-                .src_access_stage = gfx::ResourceAccessStage::eComputeShader,
+                .src_access_type = gfx::ResourceAccessType::eComputeShaderStorageResourceWrite,
                 .dst_access_type = gfx::ResourceAccessType::eTransferRead,
-                .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
             };
             gfx::BufferBarrier buffer_barrier {
                 .buffer = texture_readback_buffer.AsRef(),
                 .src_access_type = gfx::ResourceAccessType::eNone,
-                .src_access_stage = gfx::ResourceAccessStage::eNone,
                 .dst_access_type = gfx::ResourceAccessType::eTransferWrite,
-                .dst_access_stage = gfx::ResourceAccessStage::eTransfer,
             };
             cmd_encoder->ResourceBarrier({ buffer_barrier }, { texture1_barrier });
         }

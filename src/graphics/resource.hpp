@@ -10,32 +10,28 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-enum class ResourceAccessType : uint16_t {
+enum class ResourceAccessType : uint32_t {
     eNone = 0x0,
     eVertexBufferRead = 0x1,
     eIndexBufferRead = 0x2,
     eIndirectRead = 0x4,
-    eUniformBufferRead = 0x8,
-    eSampledTextureRead = 0x10,
-    eStorageResourceRead = 0x20,
-    eStorageResourceWrite = 0x40,
-    eRenderAttachmentRead = 0x80,
-    eRenderAttachmentWrite = 0x100,
-    eTransferRead = 0x200,
-    eTransferWrite = 0x400,
-    ePresent = 0x800,
-};
-
-enum class ResourceAccessStage : uint8_t {
-    eNone = 0x0,
-    eInputAssembler = 0x1,
-    eRenderShader = 0x2,
-    eColorAttachment = 0x4,
-    eDepthStencilAttachment = 0x8,
-    eComputeShader = 0x10,
-    eTransfer = 0x20,
-    eResolve = 0x40,
-    ePresent = 0x80,
+    eRenderShaderUniformBufferRead = 0x8,
+    eRenderShaderSampledTextureRead = 0x10,
+    eRenderShaderStorageResourceRead = 0x20,
+    eRenderShaderStorageResourceWrite = 0x40,
+    eComputeShaderUniformBufferRead = 0x80,
+    eComputeShaderSampledTextureRead = 0x100,
+    eComputeShaderStorageResourceRead = 0x200,
+    eComputeShaderStorageResourceWrite = 0x400,
+    eColorAttachmentRead = 0x800,
+    eColorAttachmentWrite = 0x1000,
+    eDepthStencilAttachmentRead = 0x2000,
+    eDepthStencilAttachmentWrite = 0x4000,
+    eTransferRead = 0x8000,
+    eTransferWrite = 0x10000,
+    eResolveRead = 0x20000,
+    eResolveWrite = 0x40000,
+    ePresent = 0x80000,
 };
 
 enum class BufferUsage : uint8_t {

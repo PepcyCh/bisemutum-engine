@@ -1,13 +1,11 @@
 #include "graph.hpp"
 
-#include "resource.hpp"
-#include "pass.hpp"
-
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFXRG_NAMESPACE_BEGIN
 
-RenderGraph::RenderGraph(Ref<gfx::Device> device, uint32_t num_frames) : device_(device) {
+RenderGraph::RenderGraph(Ref<gfx::Device> device, Ref<gfx::Queue> queue, uint32_t num_frames)
+    : device_(device), queue_(queue) {
     contexts_.reserve(num_frames);
     resource_pools_.reserve(num_frames);
     for (uint32_t i = 0; i < num_frames; i++) {
@@ -41,7 +39,6 @@ BufferHandle RenderGraph::ImportBuffer(const std::string &name, Ref<gfx::Buffer>
         .buffer = buffer,
         .index = static_cast<size_t>(-1),
         .access_type = gfx::ResourceAccessType::eNone,
-        .access_stage = gfx::ResourceAccessStage::eNone,
     };
     node->imported = true;
     graph_nodes_.emplace_back(std::move(node));
@@ -76,7 +73,6 @@ TextureHandle RenderGraph::ImportTexture(const std::string &name, Ref<gfx::Textu
         .texture = texture,
         .index = static_cast<size_t>(-1),
         .access_type = gfx::ResourceAccessType::eNone,
-        .access_stage = gfx::ResourceAccessStage::eNone,
     };
     node->imported = true;
     graph_nodes_.emplace_back(std::move(node));
@@ -147,7 +143,7 @@ void RenderGraph::AddComputePass(const std::string &name,
     node->resource.write_buffers_ = std::move(builder.write_buffers_);
     node->resource.read_textures_ = std::move(builder.read_textures_);
     node->resource.write_textures_ = std::move(builder.write_textures_);
-    
+
     for (const auto &[_, handle] : node->resource.read_buffers_) {
         AddEdge(graph_nodes_[handle.node_index_], node.AsRef());
     }
@@ -164,21 +160,56 @@ void RenderGraph::AddComputePass(const std::string &name,
     graph_nodes_.emplace_back(std::move(node));
 }
 
+void RenderGraph::AddPresentPass(TextureHandle texture) {
+    auto node = Ptr<PresentPassNode>::Make();
+    node->index = graph_nodes_.size();
+    node->name = "present pass";
+    node->texture = texture;
+    AddEdge(graph_nodes_[texture.node_index_], node.AsRef());
+    present_pass_index_ = graph_nodes_.size();
+    graph_nodes_.emplace_back(std::move(node));
+}
+
 void RenderGraph::AddEdge(Ref<Node> from, Ref<Node> to) {
     from->out_nodes.push_back(to);
     to->in_nodes.push_back(from);
 }
 
 void RenderGraph::Compile() {
+    // cull unused passes using prsent pass node
+    Vec<bool> used(graph_nodes_.size(), false);
+    Vec<size_t> queue(graph_nodes_.size(), 0);
+    size_t ql = 0, qr = 0;
+    if (present_pass_index_ < graph_nodes_.size()) {
+        queue[qr++] = present_pass_index_;
+        used[present_pass_index_] = true;
+        while (ql < qr) {
+            size_t index = queue[ql++];
+            for (const auto &v : graph_nodes_[index]->in_nodes) {
+                if (!used[v->index]) {
+                    used[v->index] = true;
+                    queue[qr++] = v->index;
+                }
+            }
+        }
+    } else {
+        std::fill(used.begin(), used.end(), true);
+    }
+
+    // toposort
     graph_order_.clear();
     graph_order_.reserve(graph_nodes_.size());
     resources_to_create_.resize(graph_nodes_.size(), {});
     resources_to_destroy_.resize(graph_nodes_.size(), {});
 
-    Vec<size_t> queue(graph_nodes_.size(), 0);
-    size_t ql = 0, qr = 0;
+    queue.resize(graph_nodes_.size(), 0);
+    ql = 0;
+    qr = 0;
     Vec<size_t> in_degs(graph_nodes_.size(), 0);
     for (size_t i = 0; i < graph_nodes_.size(); i++) {
+        if (!used[i]) {
+            continue;
+        }
         in_degs[i] = graph_nodes_[i]->in_nodes.size();
         if (in_degs[i] == 0) {
             queue[qr++] = i;
@@ -192,7 +223,7 @@ void RenderGraph::Compile() {
         graph_order_.push_back(index);
 
         for (const auto &v : graph_nodes_[index]->out_nodes) {
-            if (--in_degs[v->index] == 0) {
+            if (used[v->index] && --in_degs[v->index] == 0) {
                 queue[qr++] = v->index;
             }
         }
@@ -245,10 +276,9 @@ void RenderGraph::RenderPassNode::SetBarriers(const Ptr<gfx::CommandEncoder> &cm
     Vec<gfx::BufferBarrier> buffer_barriers;
     Vec<gfx::TextureBarrier> texture_barriers;
 
-    resource.GetShaderBarriers(rg, gfx::ResourceAccessStage::eRenderShader, buffer_barriers, texture_barriers);
+    resource.GetShaderBarriers(rg, true, buffer_barriers, texture_barriers);
 
-    auto target_access_type = gfx::ResourceAccessType::eRenderAttachmentWrite;
-    auto target_access_stage = gfx::ResourceAccessStage::eColorAttachment;
+    auto target_access_type = gfx::ResourceAccessType::eColorAttachmentWrite;
     for (size_t i = 0; i < gfx::kMaxRenderTargetsCount; i++) {
         const auto &target_opt = color_targets[i];
         if (!target_opt.has_value()) {
@@ -257,32 +287,26 @@ void RenderGraph::RenderPassNode::SetBarriers(const Ptr<gfx::CommandEncoder> &cm
 
         const auto &target = target_opt.value();
         auto &texture = rg.Texture(target.handle);
-        if (target_access_type != texture.access_type || target_access_stage != texture.access_stage) {
+        if (target_access_type != texture.access_type) {
             texture_barriers.push_back(gfx::TextureBarrier {
                 .texture = { texture.texture },
                 .src_access_type = texture.access_type,
-                .src_access_stage = texture.access_stage,
                 .dst_access_type = target_access_type,
-                .dst_access_stage = target_access_stage,
             });
             texture.access_type = target_access_type;
-            texture.access_stage = target_access_stage;
         }
     }
     if (depth_stencil_target.has_value()) {
-        target_access_stage = gfx::ResourceAccessStage::eDepthStencilAttachment;
+        target_access_type = gfx::ResourceAccessType::eDepthStencilAttachmentWrite;
         const auto &target = depth_stencil_target.value();
         auto &texture = rg.Texture(target.handle);
-        if (target_access_type != texture.access_type || target_access_stage != texture.access_stage) {
+        if (target_access_type != texture.access_type) {
             texture_barriers.push_back(gfx::TextureBarrier {
                 .texture = { texture.texture },
                 .src_access_type = texture.access_type,
-                .src_access_stage = texture.access_stage,
                 .dst_access_type = target_access_type,
-                .dst_access_stage = target_access_stage,
             });
             texture.access_type = target_access_type;
-            texture.access_stage = target_access_stage;
         }
     }
 
@@ -344,7 +368,7 @@ void RenderGraph::ComputePassNode::SetBarriers(const Ptr<gfx::CommandEncoder> &c
     Vec<gfx::BufferBarrier> buffer_barriers;
     Vec<gfx::TextureBarrier> texture_barriers;
 
-    resource.GetShaderBarriers(rg, gfx::ResourceAccessStage::eComputeShader, buffer_barriers, texture_barriers);
+    resource.GetShaderBarriers(rg, false, buffer_barriers, texture_barriers);
 
     cmd_encoder->ResourceBarrier(buffer_barriers, texture_barriers);
 }
@@ -354,7 +378,21 @@ void RenderGraph::ComputePassNode::Execute(const Ptr<gfx::CommandEncoder> &cmd_e
     execute_func(compute_encoder.AsRef(), resource);
 }
 
-void RenderGraph::Execute() {
+void RenderGraph::PresentPassNode::SetBarriers(const Ptr<gfx::CommandEncoder> &cmd_encoder, RenderGraph &rg) {
+    auto target_access_type = gfx::ResourceAccessType::ePresent;
+    auto &rg_texture = rg.Texture(texture);
+    if (rg_texture.access_type != target_access_type) {
+        gfx::TextureBarrier barrier {
+            .texture = { rg_texture.texture },
+            .src_access_type = rg_texture.access_type,
+            .dst_access_type = target_access_type,
+        };
+        cmd_encoder->ResourceBarrier({}, { barrier });
+    }
+}
+
+void RenderGraph::Execute(Span<Ref<gfx::Semaphore>> wait_semaphores, Span<Ref<gfx::Semaphore>> signal_semaphores,
+    gfx::Fence *signal_fence) {
     contexts_[curr_frame_]->Reset();
     auto cmd_encoder = contexts_[curr_frame_]->GetCommandEncoder();
 
@@ -373,94 +411,19 @@ void RenderGraph::Execute() {
             resource_node->Destroy(*this);
         }
     }
+
+    queue_->SubmitCommandBuffer({ cmd_encoder->Finish() }, wait_semaphores, signal_semaphores, signal_fence);
+
+    Clear();
+    curr_frame_ = (curr_frame_ + 1) % contexts_.size();
 }
 
-void PassResource::GetShaderBarriers(RenderGraph &rg, gfx::ResourceAccessStage target_access_stage,
-    Vec<gfx::BufferBarrier> &buffer_barriers, Vec<gfx::TextureBarrier> &texture_barriers) {
-    for (auto &[name, handle] : read_buffers_) {
-        auto read_type = read_buffers_type_[name];
-        auto target_access_type = read_type == BufferReadType::eStorage
-            ? gfx::ResourceAccessType::eStorageResourceRead
-            : gfx::ResourceAccessType::eUniformBufferRead;
-
-        auto &buffer = rg.Buffer(handle);
-        if (target_access_type != buffer.access_type || target_access_stage != buffer.access_stage) {
-            buffer_barriers.push_back(gfx::BufferBarrier {
-                .buffer = buffer.buffer,
-                .src_access_type = buffer.access_type,
-                .src_access_stage = buffer.access_stage,
-                .dst_access_type = target_access_type,
-                .dst_access_stage = target_access_stage,
-            });
-            buffer.access_type = target_access_type;
-            buffer.access_stage = target_access_stage;
-        }
-    }
-    auto target_access_type = gfx::ResourceAccessType::eStorageResourceRead;
-    for (auto &[_, handle] : read_textures_) {
-        auto &texture = rg.Texture(handle);
-        if (target_access_type != texture.access_type || target_access_stage != texture.access_stage) {
-            texture_barriers.push_back(gfx::TextureBarrier {
-                .texture = { texture.texture },
-                .src_access_type = texture.access_type,
-                .src_access_stage = texture.access_stage,
-                .dst_access_type = target_access_type,
-                .dst_access_stage = target_access_stage,
-            });
-            texture.access_type = target_access_type;
-            texture.access_stage = target_access_stage;
-        }
-    }
-
-    target_access_type = gfx::ResourceAccessType::eStorageResourceWrite;
-    for (auto &[_, handle] : write_buffers_) {
-        auto &buffer = rg.Buffer(handle);
-        if (target_access_type != buffer.access_type || target_access_stage != buffer.access_stage) {
-            buffer_barriers.push_back(gfx::BufferBarrier {
-                .buffer = buffer.buffer,
-                .src_access_type = buffer.access_type,
-                .src_access_stage = buffer.access_stage,
-                .dst_access_type = target_access_type,
-                .dst_access_stage = target_access_stage,
-            });
-            buffer.access_type = target_access_type;
-            buffer.access_stage = target_access_stage;
-        }
-    }
-    for (auto &[_, handle] : write_textures_) {
-        auto &texture = rg.Texture(handle);
-        if (target_access_type != texture.access_type || target_access_stage != texture.access_stage) {
-            texture_barriers.push_back(gfx::TextureBarrier {
-                .texture = { texture.texture },
-                .src_access_type = texture.access_type,
-                .src_access_stage = texture.access_stage,
-                .dst_access_type = target_access_type,
-                .dst_access_stage = target_access_stage,
-            });
-            texture.access_type = target_access_type;
-            texture.access_stage = target_access_stage;
-        }
-    }
-}
-
-Ref<gfx::Buffer> PassResource::Buffer(const std::string &name) const {
-    if (read_buffers_.contains(name)) {
-        auto handle = read_buffers_.at(name);
-        return graph_->Buffer(handle).buffer;
-    } else {
-        auto handle = write_buffers_.at(name);
-        return graph_->Buffer(handle).buffer;
-    }
-}
-
-Ref<gfx::Texture> PassResource::Texture(const std::string &name) const {
-    if (read_textures_.contains(name)) {
-        auto handle = read_textures_.at(name);
-        return graph_->Texture(handle).texture;
-    } else {
-        auto handle = write_textures_.at(name);
-        return graph_->Texture(handle).texture;
-    }
+void RenderGraph::Clear() {
+    graph_nodes_.clear();
+    graph_order_.clear();
+    resources_to_create_.clear();
+    resources_to_destroy_.clear();
+    present_pass_index_ = static_cast<size_t>(-1);
 }
 
 ResourcePool::Buffer &RenderGraph::Buffer(BufferHandle handle) {

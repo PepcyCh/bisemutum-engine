@@ -8,6 +8,7 @@
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/shader_compiler.hpp"
+#include "render_graph/graph.hpp"
 
 using namespace bismuth;
 
@@ -54,11 +55,9 @@ int main(int argc, char **argv) {
     auto graphics_queue = device->GetQueue(gfx::QueueType::eGraphics);
     auto swap_chain = device->CreateSwapChain(graphics_queue, width, height);
 
-    Ptr<gfx::FrameContext> frames[kNumFrames] = {
-        device->CreateFrameContext(),
-        device->CreateFrameContext(),
-        device->CreateFrameContext(),
-    };
+    auto rg = gfxrg::RenderGraph(device, graphics_queue, kNumFrames);
+
+    auto init_context = device->CreateFrameContext();
     Ptr<gfx::Semaphore> acquire_semaphores[kNumFrames] = {
         device->CreateSemaphore(),
         device->CreateSemaphore(),
@@ -98,8 +97,8 @@ int main(int argc, char **argv) {
     auto index_buffer = device->CreateBuffer(index_buffer_desc);
 
     {
-        frames[0]->Reset();
-        auto cmd_encoder = frames[0]->GetCommandEncoder();
+        init_context->Reset();
+        auto cmd_encoder = init_context->GetCommandEncoder();
 
         gfx::BufferDesc vertex_upload_buffer_desc {
             .name = "vertex upload buffer",
@@ -182,8 +181,8 @@ int main(int argc, char **argv) {
     };
     auto texture = device->CreateTexture(texture_desc);
     {
-        frames[0]->Reset();
-        auto cmd_encoder = frames[0]->GetCommandEncoder();
+        init_context->Reset();
+        auto cmd_encoder = init_context->GetCommandEncoder();
 
         size_t texture_data_size = texture_width * texture_height * texture_channels * sizeof(uint8_t);
         gfx::BufferDesc texture_upload_buffer_desc {
@@ -313,66 +312,40 @@ int main(int argc, char **argv) {
 
         fences[curr_frame]->Wait();
 
-        frames[curr_frame]->Reset();
-
         if (!swap_chain->AcquireNextTexture(acquire_semaphores[curr_frame].AsRef())) {
             BI_WARN(gGeneralLogger, "Failed to acquire swap chain texture");
             break;
         }
 
-        auto back_buffer = gfx::TextureView { swap_chain->GetCurrentTexture() };
-        
-        auto cmd_encoder = frames[curr_frame]->GetCommandEncoder();
+        auto back_buffer = rg.ImportTexture("back buffer", swap_chain->GetCurrentTexture());
+        rg.AddRenderPass("render",
+            [&](gfxrg::RenderPassBuilder &builfer) {
+                builfer.Color(0, gfxrg::RenderPassColorTargetBuilder(back_buffer).ClearColor(0.2f, 0.3f, 0.5f));
+            },
+            [&](Ref<gfx::RenderCommandEncoder> render_encoder, const gfxrg::PassResource &resources) {
+                gfx::Viewport viewport {
+                    .width = static_cast<float>(width),
+                    .height = static_cast<float>(height),
+                };
+                render_encoder->SetViewports({ viewport });
+                gfx::Scissor scissor {
+                    .width = static_cast<uint32_t>(width),
+                    .height = static_cast<uint32_t>(height),
+                };
+                render_encoder->SetScissors({ scissor });
 
-        gfx::TextureBarrier present_to_color_target {
-            .texture = back_buffer,
-            .src_access_type = gfx::ResourceAccessType::eNone,
-            .dst_access_type = gfx::ResourceAccessType::eColorAttachmentWrite,
-        };
-        cmd_encoder->ResourceBarrier({}, { present_to_color_target });
+                render_encoder->SetPipeline(pipeline.AsRef());
+                render_encoder->BindShaderParams(0, { { gfx::TextureView { texture.AsRef() } } });
+                render_encoder->BindShaderParams(1, { { std::monostate {} } });
+                render_encoder->BindVertexBuffer({ { vertex_buffer } });
+                render_encoder->BindIndexBuffer(index_buffer, 0, gfx::IndexType::eUInt16);
+                render_encoder->DrawIndexed(6);
+            }
+        );
+        rg.AddPresentPass(back_buffer);
 
-        {
-            gfx::RenderTargetDesc rt_desc {
-                .colors = {
-                    gfx::ColorAttachmentDesc {
-                        .texture = back_buffer,
-                        .clear_color = { 0.2f, 0.3f, 0.5f, 1.0f },
-                        .clear = true,
-                        .store = true,
-                    },
-                },
-            };
-            auto render_encoder = cmd_encoder->BeginRenderPass({ "Texture" }, rt_desc);
-
-            gfx::Viewport viewport {
-                .width = static_cast<float>(width),
-                .height = static_cast<float>(height),
-            };
-            render_encoder->SetViewports({ viewport });
-            gfx::Scissor scissor {
-                .width = static_cast<uint32_t>(width),
-                .height = static_cast<uint32_t>(height),
-            };
-            render_encoder->SetScissors({ scissor });
-
-            render_encoder->SetPipeline(pipeline.AsRef());
-            render_encoder->BindShaderParams(0, { { gfx::TextureView { texture.AsRef() } } });
-            render_encoder->BindShaderParams(1, { { std::monostate {} } });
-            render_encoder->BindVertexBuffer({ { vertex_buffer } });
-            render_encoder->BindIndexBuffer(index_buffer, 0, gfx::IndexType::eUInt16);
-            render_encoder->DrawIndexed(6);
-        }
-
-        gfx::TextureBarrier color_target_to_present {
-            .texture = back_buffer,
-            .src_access_type = gfx::ResourceAccessType::eColorAttachmentWrite,
-            .dst_access_type = gfx::ResourceAccessType::ePresent,
-        };
-        cmd_encoder->ResourceBarrier({}, { color_target_to_present });
-
-        graphics_queue->SubmitCommandBuffer({ cmd_encoder->Finish() },
-            { acquire_semaphores[curr_frame] }, { signal_semaphores[curr_frame] },
-            fences[curr_frame].Get());
+        rg.Compile();
+        rg.Execute({ acquire_semaphores[curr_frame] }, { signal_semaphores[curr_frame] }, fences[curr_frame].Get());
 
         swap_chain->Present({ signal_semaphores[curr_frame] });
 

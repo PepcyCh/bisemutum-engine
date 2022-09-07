@@ -61,7 +61,6 @@ public:
         Ref<gfx::Buffer> buffer;
         size_t index;
         gfx::ResourceAccessType access_type;
-        gfx::ResourceAccessStage access_stage;
     };
     Buffer GetBuffer(const gfx::BufferDesc &desc);
     void RemoveBuffer(const gfx::BufferDesc &desc, const Buffer &buffer);
@@ -71,7 +70,6 @@ public:
         Ref<gfx::Texture> texture;
         size_t index;
         gfx::ResourceAccessType access_type;
-        gfx::ResourceAccessStage access_stage;
     };
     Texture GetTexure(const gfx::TextureDesc &desc);
     void RemoveTexture(const gfx::TextureDesc &desc, const Texture &texture);
@@ -81,14 +79,16 @@ private:
 
     struct BufferPool {
         Vec<Ptr<gfx::Buffer>> created_buffers;
-        Vec<std::pair<gfx::ResourceAccessType, gfx::ResourceAccessStage>> access;
+        // only updated when creating & deleting, used for initial state
+        Vec<gfx::ResourceAccessType> access;
         Vec<size_t> recycled_index;
     };
     HashMap<BufferKey, BufferPool> buffer_pools_;
 
     struct TexturePool {
         Vec<Ptr<gfx::Texture>> created_textures;
-        Vec<std::pair<gfx::ResourceAccessType, gfx::ResourceAccessStage>> access;
+        // only updated when creating & deleting, used for initial state
+        Vec<gfx::ResourceAccessType> access;
         Vec<size_t> recycled_index;
     };
     HashMap<TextureKey, TexturePool> texture_pools_;

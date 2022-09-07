@@ -69,18 +69,14 @@ struct RenderTargetDesc {
 struct BufferBarrier {
     Ref<Buffer> buffer;
     BitFlags<ResourceAccessType> src_access_type;
-    BitFlags<ResourceAccessStage> src_access_stage;
     BitFlags<ResourceAccessType> dst_access_type;
-    BitFlags<ResourceAccessStage> dst_access_stage;
     class Queue *src_queue = nullptr;
     class Queue *dst_queue = nullptr;
 };
 struct TextureBarrier {
     TextureView texture;
     BitFlags<ResourceAccessType> src_access_type;
-    BitFlags<ResourceAccessStage> src_access_stage;
     BitFlags<ResourceAccessType> dst_access_type;
-    BitFlags<ResourceAccessStage> dst_access_stage;
     class Queue *src_queue = nullptr;
     class Queue *dst_queue = nullptr;
 };
