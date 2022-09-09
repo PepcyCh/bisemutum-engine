@@ -79,7 +79,7 @@ struct RenderPassDepthStencilTarget {
     uint32_t base_layer = 0;
     uint32_t layers = 1;
     uint32_t level = 0;
-    float clear_depth = 0.0f;
+    float clear_depth = 1.0f;
     uint8_t clear_stencil = 0;
     bool clear = false;
     bool store = true;
@@ -92,7 +92,7 @@ public:
 
     RenderPassDepthStencilTargetBuilder &ArrayLayer(uint32_t base_layer, uint32_t layers = 1);
     RenderPassDepthStencilTargetBuilder &MipLevel(uint32_t level);
-    RenderPassDepthStencilTargetBuilder &ClearDepthStencil(float depth = 0.0f, uint8_t stencil = 0);
+    RenderPassDepthStencilTargetBuilder &ClearDepthStencil(float depth = 1.0f, uint8_t stencil = 0);
     RenderPassDepthStencilTargetBuilder &DontStore();
 
 private:

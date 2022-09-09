@@ -192,6 +192,13 @@ void RenderGraph::Compile() {
                 }
             }
         }
+        for (size_t i = 0; i < graph_nodes_.size(); i++) {
+            if (used[i] && !graph_nodes_[i]->IsResource()) {
+                for (const auto &v : graph_nodes_[i]->out_nodes) {
+                    used[v->index] = true;
+                }
+            }
+        }
     } else {
         std::fill(used.begin(), used.end(), true);
     }

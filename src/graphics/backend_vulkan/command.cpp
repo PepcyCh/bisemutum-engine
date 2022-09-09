@@ -404,10 +404,12 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
     Extent3D extent;
 
     Vec<VkRenderingAttachmentInfoKHR> color_attachments_vk(desc.colors.size());
+    color_formats_.resize(desc.colors.size(), ResourceFormat::eUndefined);
     for (size_t i = 0; i < desc.colors.size(); i++) {
         auto texture_vk = desc.colors[i].texture.texture.CastTo<TextureVulkan>();
         const auto &clear_color = desc.colors[i].clear_color;
         extent = texture_vk->Desc().extent;
+        color_formats_[i] = texture_vk->Desc().format;
 
         color_attachments_vk[i] = VkRenderingAttachmentInfoKHR {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
@@ -438,11 +440,13 @@ RenderCommandEncoderVulkan::RenderCommandEncoderVulkan(Ref<DeviceVulkan> device,
     bool has_depth_stencil = desc.depth_stencil.has_value();
     bool has_stencil = false;
     VkRenderingAttachmentInfoKHR depth_stencil_attachment_vk;
+    depth_stencil_format_ = ResourceFormat::eUndefined;
     if (has_depth_stencil) {
         const auto &depth_stencil = desc.depth_stencil.value();
         auto texture_vk = depth_stencil.texture.texture.CastTo<TextureVulkan>();
-        has_stencil = IsDepthStencilFormat(texture_vk->Desc().format);
+        has_stencil = !IsDepthOnlyFormat(texture_vk->Desc().format);
         extent = texture_vk->Desc().extent;
+        depth_stencil_format_ = texture_vk->Desc().format;
 
         depth_stencil_attachment_vk = VkRenderingAttachmentInfoKHR {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
@@ -523,13 +527,8 @@ void RenderCommandEncoderVulkan::PopLabel() {
 
 void RenderCommandEncoderVulkan::SetPipeline(Ref<RenderPipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<RenderPipelineVulkan>().Get();
+    curr_pipeline_->SetTargetFormats(color_formats_, depth_stencil_format_);
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->RawPipeline());
-
-    // descriptor_sets_.resize(curr_pipeline_->ShaderInfo().bindings.bindings.size(), nullptr);
-    // for (size_t set = 0; set < descriptor_sets_.size(); set++) {
-    //     descriptor_sets_[set] = base_encoder_->context_->GetDescriptorSet(curr_pipeline_, set);
-    //     raw_descriptor_sets_[set] = descriptor_sets_[set]->Raw();
-    // }
 }
 
 void RenderCommandEncoderVulkan::BindShaderParams(uint32_t set_index, const ShaderParams &values) {
@@ -641,12 +640,6 @@ void ComputeCommandEncoderVulkan::PopLabel() {
 void ComputeCommandEncoderVulkan::SetPipeline(Ref<ComputePipeline> pipeline) {
     curr_pipeline_ = pipeline.CastTo<ComputePipelineVulkan>().Get();
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->RawPipeline());
-
-    // descriptor_sets_.resize(curr_pipeline_->ShaderInfo().bindings.bindings.size(), nullptr);
-    // for (size_t set = 0; set < descriptor_sets_.size(); set++) {
-    //     descriptor_sets_[set] = base_encoder_->context_->GetDescriptorSet(curr_pipeline_, set);
-    //     raw_descriptor_sets_[set] = descriptor_sets_[set]->Raw();
-    // }
 }
 
 void ComputeCommandEncoderVulkan::BindShaderParams(uint32_t set_index, const ShaderParams &values) {

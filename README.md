@@ -11,7 +11,11 @@ TODO
   * [ ] tessellation
   * [ ] multi-queue
 
-* [ ] Render graph on that RHI
+* [x] Render graph on that RHI
+
+* [ ] basic components, serde
+
+* [ ] shader manager & material system
 
 ...
 

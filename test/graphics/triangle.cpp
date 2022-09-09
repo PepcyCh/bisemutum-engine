@@ -50,7 +50,12 @@ int main(int argc, char **argv) {
     auto device = gfx::Device::Create(device_desc);
 
     auto graphics_queue = device->GetQueue(gfx::QueueType::eGraphics);
-    auto swap_chain = device->CreateSwapChain(graphics_queue, width, height);
+    gfx::SwapChainDesc swap_chain_desc {
+        .queue = graphics_queue,
+        .width = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
+    };
+    auto swap_chain = device->CreateSwapChain(swap_chain_desc);
 
     Ptr<gfx::FrameContext> frames[kNumFrames] = {
         device->CreateFrameContext(),

@@ -3,22 +3,40 @@
 #include "core/logger.hpp"
 #include "utils.hpp"
 #include "device.hpp"
-#include "queue.hpp"
 #include "sync.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-SwapChainVulkan::SwapChainVulkan(Ref<DeviceVulkan> device, Ref<QueueVulkan> queue, uint32_t width, uint32_t height)
-    : device_(device), queue_(queue) {
+namespace {
+
+VkImageUsageFlags ToVkImageUsage(BitFlags<TextureUsage> usage) {
+    VkImageUsageFlags vk_usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+        | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (usage.Contains(TextureUsage::eSampled)) {
+        vk_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+    if (usage.Contains(TextureUsage::eStorage)) {
+        vk_usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    }
+    if (usage.Contains(TextureUsage::eDepthStencilAttachment)) {
+        vk_usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    return vk_usage;
+}
+
+}
+
+SwapChainVulkan::SwapChainVulkan(Ref<DeviceVulkan> device, const SwapChainDesc &desc)
+    : device_(device), queue_(desc.queue.CastTo<QueueVulkan>()), usages_(desc.usages) {
     surface_ = device_->RawSurface();
 
     VkSurfaceCapabilitiesKHR surface_caps {};
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device_->RawPhysicalDevice(), surface_, &surface_caps);
     swap_chain_ = VK_NULL_HANDLE;
 
-    CreateSwapChain(width, height, surface_caps.currentTransform);
+    CreateSwapChain(desc.width, desc.height, surface_caps.currentTransform);
 
     BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", num_textures_, width_, height_);
 }
@@ -39,7 +57,7 @@ void SwapChainVulkan::CreateSwapChain(uint32_t width, uint32_t height, VkSurface
         .imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
         .imageExtent = { width, height },
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = ToVkImageUsage(usages_),
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 1,
         .pQueueFamilyIndices = &queue_family_index,

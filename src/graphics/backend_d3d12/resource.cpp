@@ -2,6 +2,13 @@
 
 #include "device.hpp"
 
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
@@ -51,10 +58,14 @@ D3D12_HEAP_TYPE ToDxHeapType(BufferMemoryProperty prop) {
 }
 
 BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : device_(device), size_(desc.size) {
+    if (desc.usages.Contains(BufferUsage::eUniform)) {
+        size_ = (desc.size + 255) >> 8 << 8;
+    }
+
     D3D12_RESOURCE_DESC resource_desc {
         .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
         .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-        .Width = desc.size,
+        .Width = size_,
         .Height = 1,
         .DepthOrArraySize = 1,
         .MipLevels = 1,
@@ -115,11 +126,13 @@ DescriptorHandle BufferD3D12::GetView(const BufferViewD3D12Desc &view_desc) cons
 
     auto handle = device_->Heap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->AllocateDecriptor();
     cached_views_.insert({view_desc, handle});
+    UINT size_bytes = static_cast<UINT>(std::min(size_ - view_desc.offset,
+        view_desc.size == 0 ? size_ - view_desc.offset : view_desc.size));
     switch (view_desc.descriptor_type) {
         case DescriptorType::eUniformBuffer: {
             D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc {
                 .BufferLocation = resource_->GetGPUVirtualAddress() + view_desc.offset,
-                .SizeInBytes = static_cast<UINT>(view_desc.size == 0 ? size_ - view_desc.offset : view_desc.size),
+                .SizeInBytes = size_bytes,
             };
             device_->Raw()->CreateConstantBufferView(&cbv_desc, handle.cpu);
             break;
@@ -131,8 +144,7 @@ DescriptorHandle BufferD3D12::GetView(const BufferViewD3D12Desc &view_desc) cons
                 .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                 .Buffer = D3D12_BUFFER_SRV {
                     .FirstElement = view_desc.offset / view_desc.struct_stride,
-                    .NumElements = static_cast<UINT>(view_desc.size == 0 ? size_ - view_desc.offset : view_desc.size)
-                        / view_desc.struct_stride,
+                    .NumElements = size_bytes / view_desc.struct_stride,
                     .StructureByteStride = view_desc.struct_stride,
                     .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
                 },
@@ -146,8 +158,7 @@ DescriptorHandle BufferD3D12::GetView(const BufferViewD3D12Desc &view_desc) cons
                 .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
                 .Buffer = D3D12_BUFFER_UAV {
                     .FirstElement = view_desc.offset / view_desc.struct_stride,
-                    .NumElements = static_cast<UINT>(view_desc.size == 0 ? size_ - view_desc.offset : view_desc.size)
-                        / view_desc.struct_stride,
+                    .NumElements = size_bytes / view_desc.struct_stride,
                     .StructureByteStride = view_desc.struct_stride,
                     .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
                 },

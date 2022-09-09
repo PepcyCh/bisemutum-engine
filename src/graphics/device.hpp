@@ -33,7 +33,7 @@ public:
 
     virtual Ptr<Queue> GetQueue(QueueType type) = 0;
 
-    virtual Ptr<SwapChain> CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) = 0;
+    virtual Ptr<SwapChain> CreateSwapChain(const SwapChainDesc &desc) = 0;
 
     virtual Ptr<Fence> CreateFence() = 0;
 

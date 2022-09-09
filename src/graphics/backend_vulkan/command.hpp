@@ -98,6 +98,9 @@ private:
     std::string label_;
     VkCommandBuffer cmd_buffer_;
 
+    Vec<ResourceFormat> color_formats_;
+    ResourceFormat depth_stencil_format_;
+
     class RenderPipelineVulkan *curr_pipeline_ = nullptr;
 };
 

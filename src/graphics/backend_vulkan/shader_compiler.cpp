@@ -216,7 +216,8 @@ Vec<uint32_t> ShaderCompilerVulkan::HlslToSpirv(const std::string &src_filename,
     if (!shader.parse(&kDefaultTBuiltInResource, 100, false, EShMsgHlslLegalization)) {
         const std::string log(shader.getInfoLog());
         const std::string debug_log(shader.getInfoDebugLog());
-        BI_CRTICAL(gGraphicsLogger, "Failed to compile shader '{}', info:\n{}\n{}", src_filename, log, debug_log);
+        BI_CRTICAL(gGraphicsLogger, "Failed to compile shader '{}' (entry point: '{}'), info:\n{}\n{}",
+            src_filename, entry, log, debug_log);
     }
 
     glslang::TProgram program {};
@@ -224,7 +225,8 @@ Vec<uint32_t> ShaderCompilerVulkan::HlslToSpirv(const std::string &src_filename,
     if (!program.link(EShMsgHlslLegalization)) {
         const std::string log(program.getInfoLog());
         const std::string debug_log(program.getInfoDebugLog());
-        BI_CRTICAL(gGraphicsLogger, "Failed to link shader '{}', info:\n{}\n{}", src_filename, log, debug_log);
+        BI_CRTICAL(gGraphicsLogger, "Failed to link shader '{}' (entry point '{}'), info:\n{}\n{}",
+            src_filename, entry, log, debug_log);
     }
 
     glslang::TIntermediate *intermediate = program.getIntermediate(glslang_stage);

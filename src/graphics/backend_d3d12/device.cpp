@@ -147,8 +147,8 @@ Ptr<Queue> DeviceD3D12::GetQueue(QueueType type) {
     return Ptr<QueueD3D12>::Make(RefThis(), type_dx);
 }
 
-Ptr<SwapChain> DeviceD3D12::CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) {
-    return Ptr<SwapChainD3D12>::Make(RefThis(), queue.CastTo<QueueD3D12>(), width, height);
+Ptr<SwapChain> DeviceD3D12::CreateSwapChain(const SwapChainDesc &desc) {
+    return Ptr<SwapChainD3D12>::Make(RefThis(), desc);
 }
 
 Ptr<Fence> DeviceD3D12::CreateFence() {

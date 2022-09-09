@@ -4,6 +4,7 @@
 
 #include "graphics/swap_chain.hpp"
 #include "resource.hpp"
+#include "queue.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -11,7 +12,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class SwapChainVulkan : public SwapChain {
 public:
-    SwapChainVulkan(Ref<class DeviceVulkan> device, Ref<class QueueVulkan> queue, uint32_t width, uint32_t height);
+    SwapChainVulkan(Ref<class DeviceVulkan> device, const SwapChainDesc &desc);
     ~SwapChainVulkan();
 
     void Resize(uint32_t width, uint32_t height) override;
@@ -29,6 +30,7 @@ private:
 
     Ref<DeviceVulkan> device_;
     Ref<QueueVulkan> queue_;
+    BitFlags<TextureUsage> usages_;
     
     VkSwapchainKHR swap_chain_;
     VkSurfaceKHR surface_;

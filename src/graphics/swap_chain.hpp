@@ -3,10 +3,18 @@
 #include "core/ptr.hpp"
 #include "core/span.hpp"
 #include "sync.hpp"
+#include "resource.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
+
+struct SwapChainDesc {
+    Ref<Queue> queue;
+    uint32_t width;
+    uint32_t height;
+    BitFlags<TextureUsage> usages = {};
+};
 
 class SwapChain {
 public:

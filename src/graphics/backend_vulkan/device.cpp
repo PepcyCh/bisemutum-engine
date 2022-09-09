@@ -305,8 +305,8 @@ Ptr<Queue> DeviceVulkan::GetQueue(QueueType type) {
     return Ptr<QueueVulkan>::Make(RefThis(), queue_family_indices[static_cast<uint8_t>(type)]);
 }
 
-Ptr<SwapChain> DeviceVulkan::CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) {
-    return Ptr<SwapChainVulkan>::Make(RefThis(), queue.CastTo<QueueVulkan>(), width, height);
+Ptr<SwapChain> DeviceVulkan::CreateSwapChain(const SwapChainDesc &desc) {
+    return Ptr<SwapChainVulkan>::Make(RefThis(), desc);
 }
 
 Ptr<Fence> DeviceVulkan::CreateFence() {

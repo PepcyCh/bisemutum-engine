@@ -12,6 +12,8 @@ public:
     RenderPipelineVulkan(Ref<class DeviceVulkan> device, const RenderPipelineDesc &desc);
     ~RenderPipelineVulkan() override;
 
+    void SetTargetFormats(Span<ResourceFormat> color_formats, ResourceFormat depth_stencil_format);
+
     const RenderPipelineDesc &Desc() const { return desc_; }
 
     VkPipeline RawPipeline() const { return pipeline_; }

@@ -18,7 +18,7 @@ public:
 
     Ptr<Queue> GetQueue(QueueType type) override;
 
-    Ptr<SwapChain> CreateSwapChain(Ref<Queue> queue, uint32_t width, uint32_t height) override;
+    Ptr<SwapChain> CreateSwapChain(const SwapChainDesc &desc) override;
 
     Ptr<Fence> CreateFence() override;
 

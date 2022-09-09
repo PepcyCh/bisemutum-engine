@@ -53,7 +53,12 @@ int main(int argc, char **argv) {
     auto device = gfx::Device::Create(device_desc);
 
     auto graphics_queue = device->GetQueue(gfx::QueueType::eGraphics);
-    auto swap_chain = device->CreateSwapChain(graphics_queue, width, height);
+    gfx::SwapChainDesc swap_chain_desc {
+        .queue = graphics_queue,
+        .width = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
+    };
+    auto swap_chain = device->CreateSwapChain(swap_chain_desc);
 
     auto rg = gfxrg::RenderGraph(device, graphics_queue, kNumFrames);
 
@@ -319,8 +324,8 @@ int main(int argc, char **argv) {
 
         auto back_buffer = rg.ImportTexture("back buffer", swap_chain->GetCurrentTexture());
         rg.AddRenderPass("render",
-            [&](gfxrg::RenderPassBuilder &builfer) {
-                builfer.Color(0, gfxrg::RenderPassColorTargetBuilder(back_buffer).ClearColor(0.2f, 0.3f, 0.5f));
+            [&](gfxrg::RenderPassBuilder &builder) {
+                builder.Color(0, gfxrg::RenderPassColorTargetBuilder(back_buffer).ClearColor(0.2f, 0.3f, 0.5f));
             },
             [&](Ref<gfx::RenderCommandEncoder> render_encoder, const gfxrg::PassResource &resources) {
                 gfx::Viewport viewport {

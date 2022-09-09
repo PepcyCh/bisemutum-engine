@@ -49,8 +49,8 @@ void PassResource::GetShaderBarriers(RenderGraph &rg, bool is_render_pass,
         }
     }
     auto target_access_type = is_render_pass
-        ? gfx::ResourceAccessType::eRenderShaderStorageResourceRead
-        : gfx::ResourceAccessType::eComputeShaderStorageResourceRead;
+        ? gfx::ResourceAccessType::eRenderShaderSampledTextureRead
+        : gfx::ResourceAccessType::eComputeShaderSampledTextureRead;
     for (auto &[_, handle] : read_textures_) {
         auto &texture = rg.Texture(handle);
         if (target_access_type != texture.access_type) {

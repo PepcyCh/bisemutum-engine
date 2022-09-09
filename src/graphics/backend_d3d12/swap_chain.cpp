@@ -1,7 +1,6 @@
 #include "swap_chain.hpp"
 
 #include "device.hpp"
-#include "queue.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -19,17 +18,25 @@ DXGI_FORMAT FormatRemoveSrgb(DXGI_FORMAT format) {
     }
 }
 
+DXGI_USAGE ToDxUsage(BitFlags<TextureUsage> usage) {
+    DXGI_USAGE dx_usage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    if (usage.Contains(TextureUsage::eRWStorage)) {
+        dx_usage |= DXGI_USAGE_UNORDERED_ACCESS;
+    }
+    return dx_usage;
 }
 
-SwapChainD3D12::SwapChainD3D12(Ref<DeviceD3D12> device, Ref<QueueD3D12> queue, uint32_t width, uint32_t height)
-    : device_(device), queue_(queue), width_(width), height_(height) {
+}
+
+SwapChainD3D12::SwapChainD3D12(Ref<DeviceD3D12> device, const SwapChainDesc &desc)
+    : device_(device), queue_(desc.queue.CastTo<QueueD3D12>()), width_(desc.width), height_(desc.height) {
     DXGI_SWAP_CHAIN_DESC1 swap_chain_desc {
-        .Width = width,
-        .Height = height,
+        .Width = desc.width,
+        .Height = desc.height,
         .Format = FormatRemoveSrgb(device_->RawSurfaceFormat()),
         .Stereo = false,
         .SampleDesc = { .Count = 1, .Quality = 0 },
-        .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+        .BufferUsage = ToDxUsage(desc.usages),
         .BufferCount = kNumSwapChainBuffers,
         .Scaling = DXGI_SCALING_STRETCH,
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,

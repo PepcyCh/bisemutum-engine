@@ -97,7 +97,7 @@ enum class TextureDimension : uint8_t {
 struct TextureDesc {
     std::string name = "";
     Extent3D extent = {};
-    uint32_t levels = 0;
+    uint32_t levels = 1;
     ResourceFormat format = ResourceFormat::eUndefined;
     TextureDimension dim = TextureDimension::e2D;
     BitFlags<TextureUsage> usages = TextureUsage::eNone;

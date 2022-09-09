@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include "graphics/swap_chain.hpp"
 #include "resource.hpp"
+#include "queue.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -10,7 +11,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class SwapChainD3D12 : public SwapChain {
 public:
-    SwapChainD3D12(Ref<class DeviceD3D12> device, Ref<class QueueD3D12> queue, uint32_t width, uint32_t height);
+    SwapChainD3D12(Ref<class DeviceD3D12> device, const SwapChainDesc &desc);
     ~SwapChainD3D12() override;
 
     void Resize(uint32_t width, uint32_t height) override;

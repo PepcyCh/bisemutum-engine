@@ -82,7 +82,8 @@ Vec<uint8_t> ShaderCompilerD3D12::Compile(const fs::path &src_path, const std::s
     HRESULT status;
     result->GetStatus(&status);
     if (FAILED(status)) {
-        BI_CRTICAL(gGraphicsLogger, "Failed to compile shader '{}', info:\n{}", src_filename, errors->GetStringPointer());
+        BI_CRTICAL(gGraphicsLogger, "Failed to compile shader '{}' (entry point '{}'), info:\n{}",
+            src_filename, entry, errors->GetStringPointer());
     }
 
     ComPtr<IDxcBlob> dxil_binary;
