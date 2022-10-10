@@ -66,7 +66,7 @@ void CS(int3 dtid : SV_DispatchThreadID) {
         float4 value21 = src_texture[pixel_coord_src + uint2(2, 1)];
         result = Op(result, Op(value20, value21));
 #if MIPMAP_MODE == MIPMAP_MODE_AVG
-        uint num_pixels += 2;
+        num_pixels += 2;
 #endif
     }
     if (is_odd.y) {
@@ -74,14 +74,14 @@ void CS(int3 dtid : SV_DispatchThreadID) {
         float4 value12 = src_texture[pixel_coord_src + uint2(1, 2)];
         result = Op(result, Op(value02, value12));
 #if MIPMAP_MODE == MIPMAP_MODE_AVG
-        uint num_pixels += 2;
+        num_pixels += 2;
 #endif
     }
     if (is_odd.x && is_odd.y) {
         float4 value22 = src_texture[pixel_coord_src + uint2(2, 2)];
         result = Op(result, value22);
 #if MIPMAP_MODE == MIPMAP_MODE_AVG
-        uint num_pixels += 1;
+        num_pixels += 1;
 #endif
     }
 

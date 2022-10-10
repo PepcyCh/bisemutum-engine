@@ -7,6 +7,7 @@
 #include <stb_image_write.h>
 
 #include "core/logger.hpp"
+#include "graphics/examples.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/shader_compiler.hpp"
@@ -54,7 +55,8 @@ int main(int argc, char **argv) {
     auto context = device->CreateFrameContext();
 
     int texture_width, texture_height, texture_channels;
-    uint8_t *texture_data = stbi_load("../../../../test/graphics/texture.png", &texture_width, &texture_height,
+    auto texture_path = std::filesystem::path(kExamplesDir) / "graphics/texture.png";
+    uint8_t *texture_data = stbi_load(texture_path.string().c_str(), &texture_width, &texture_height,
         &texture_channels, 0);
     size_t texture_data_size = texture_width * texture_height * texture_channels * sizeof(uint8_t);
     gfx::ResourceFormat texture_format =
@@ -170,7 +172,7 @@ int main(int argc, char **argv) {
         .push_constants_size = sizeof(BlurParams),
     };
 
-    std::filesystem::path shader_file = "../../../../test/graphics/compute.hlsl";
+    std::filesystem::path shader_file = std::filesystem::path(kExamplesDir) / "graphics/compute.hlsl";
     auto shader_compiler = device->GetShaderCompiler();
     auto vert_blur_cs_bytes = shader_compiler->Compile(shader_file, "VertBlurCS", gfx::ShaderStage::eCompute);
     auto vert_blur_cs = device->CreateShaderModule(vert_blur_cs_bytes);

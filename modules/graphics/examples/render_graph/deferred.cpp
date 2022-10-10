@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "core/logger.hpp"
+#include "graphics/examples.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/shader_compiler.hpp"
@@ -260,13 +261,13 @@ int main(int argc, char **argv) {
 
     auto shader_compiler = device->GetShaderCompiler();
 
-    std::filesystem::path gbuffer_shader = "../../../../test/render_graph/deferred_gbuffer.hlsl";
+    std::filesystem::path gbuffer_shader = std::filesystem::path(kExamplesDir) / "render_graph/deferred_gbuffer.hlsl";
     auto gbuffer_vs_bytes = shader_compiler->Compile(gbuffer_shader, "VS", gfx::ShaderStage::eVertex);
     auto gbuffer_vs_sm = device->CreateShaderModule(gbuffer_vs_bytes);
     auto gbuffer_fs_bytes = shader_compiler->Compile(gbuffer_shader, "FS", gfx::ShaderStage::eFragment);
     auto gbuffer_fs_sm = device->CreateShaderModule(gbuffer_fs_bytes);
 
-    std::filesystem::path lighting_shader = "../../../../test/render_graph/deferred_lighting.hlsl";
+    std::filesystem::path lighting_shader = std::filesystem::path(kExamplesDir) / "render_graph/deferred_lighting.hlsl";
     auto lighting_vs_bytes = shader_compiler->Compile(lighting_shader, "VS", gfx::ShaderStage::eVertex);
     auto lighting_vs_sm = device->CreateShaderModule(lighting_vs_bytes);
     auto lighting_fs_bytes = shader_compiler->Compile(lighting_shader, "FS", gfx::ShaderStage::eFragment);

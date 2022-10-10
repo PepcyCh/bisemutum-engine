@@ -57,3 +57,14 @@ struct std::hash<std::pair<T1, T2>> {
         return bismuth::Hash(v.first, v.second);
     }
 };
+
+template<typename T> requires bismuth::Hashable<T, std::hash<T>>
+struct std::hash<std::vector<T>> {
+    size_t operator()(const std::vector<T> &v) const noexcept {
+        size_t hash = 0;
+        for (const auto &elem : v) {
+            hash = bismuth::HashCombine(hash, elem);
+        }
+        return hash;
+    }
+};

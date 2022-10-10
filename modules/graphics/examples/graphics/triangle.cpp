@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "core/logger.hpp"
+#include "graphics/examples.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/shader_compiler.hpp"
@@ -174,7 +175,7 @@ int main(int argc, char **argv) {
         graphics_queue->WaitIdle();
     }
 
-    std::filesystem::path shader_file = "../../../../test/graphics/triangle.hlsl";
+    std::filesystem::path shader_file = std::filesystem::path(kExamplesDir) / "graphics/triangle.hlsl";
     auto shader_compiler = device->GetShaderCompiler();
     auto vs_bytes = shader_compiler->Compile(shader_file, "VS", gfx::ShaderStage::eVertex);
     auto vs_sm = device->CreateShaderModule(vs_bytes);

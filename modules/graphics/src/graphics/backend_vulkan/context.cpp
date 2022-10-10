@@ -61,11 +61,12 @@ Ptr<CommandEncoder> FrameContextVulkan::GetCommandEncoder(QueueType queue) {
 
 VkDescriptorSet FrameContextVulkan::GetDescriptorSet(VkDescriptorSetLayout layout_vk, const DescriptorSetLayout &layout,
     const ShaderParams &values) {
-    if (auto it = descriptor_sets_.find(values); it != descriptor_sets_.end()) {
+    auto key = std::make_pair(layout, values);
+    if (auto it = descriptor_sets_.find(key); it != descriptor_sets_.end()) {
         return it->second;
     }
     auto descriptor_set = descriptor_pool_->AllocateAndWriteSet(layout_vk, layout, values);
-    descriptor_sets_.insert({values, descriptor_set});
+    descriptor_sets_.insert({key, descriptor_set});
     return descriptor_set;
 }
 

@@ -50,9 +50,15 @@ struct DescriptorSetLayoutBinding {
     uint32_t count = 1;
     uint32_t struct_stride = 0;
     Span<Ref<Sampler>> immutable_samplers = {};
+
+    bool operator==(const DescriptorSetLayoutBinding &rhs) const {
+        return type == rhs.type && count == rhs.count;
+    }
 };
 struct DescriptorSetLayout {
     Vec<DescriptorSetLayoutBinding> bindings;
+
+    bool operator==(const DescriptorSetLayout &rhs) const = default;
 };
 
 template <typename T>

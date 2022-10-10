@@ -45,7 +45,8 @@ Ptr<CommandEncoder> FrameContextD3D12::GetCommandEncoder(QueueType queue) {
 }
 
 DescriptorHandle FrameContextD3D12::GetDescriptorSet(const DescriptorSetLayout &layout, const ShaderParams &values) {
-    if (auto it = descriptor_sets_.find(values); it != descriptor_sets_.end()) {
+    auto key = std::make_pair(layout, values);
+    if (auto it = descriptor_sets_.find(key); it != descriptor_sets_.end()) {
         return it->second;
     }
     
@@ -61,7 +62,7 @@ DescriptorHandle FrameContextD3D12::GetDescriptorSet(const DescriptorSetLayout &
 
     auto descriptor_set =
         (use_sampler_heap ? sampler_heap_ : cbv_srv_uav_heap_)->AllocateAndWriteDescriptors(layout, values);
-    descriptor_sets_.insert({values, descriptor_set});
+    descriptor_sets_.insert({key, descriptor_set});
     return descriptor_set;
 }
 

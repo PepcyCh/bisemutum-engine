@@ -27,7 +27,7 @@ private:
     size_t available_command_buffer_index_;
 
     Ptr<DescriptorSetPoolVulkan> descriptor_pool_;
-    HashMap<ShaderParams, VkDescriptorSet> descriptor_sets_;
+    HashMap<std::pair<DescriptorSetLayout, ShaderParams>, VkDescriptorSet> descriptor_sets_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

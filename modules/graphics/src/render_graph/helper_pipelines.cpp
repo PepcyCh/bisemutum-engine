@@ -9,20 +9,20 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-HelperPipelines::HelperPipelines(Ref<gfx::Device> device) : device_(device) {
+HelperPipelines::HelperPipelines(Ref<Device> device) : device_(device) {
     shader_manager_ = Ptr<ShaderManager>::Make(device, CurrentExecutablePath() / "shader_binary");
     
     InitBlitPipelines();
     InitMipmapPipelines();
 }
 
-void HelperPipelines::BlitTexture(Ref<gfx::CommandEncoder> cmd_encoder, const gfx::TextureView &src_view,
-    const gfx::TextureView &dst_view) const {
-    gfx::ResourceFormat dst_format = dst_view.texture->Desc().format;
+void HelperPipelines::BlitTexture(Ref<CommandEncoder> cmd_encoder, const TextureView &src_view,
+    const TextureView &dst_view) const {
+    ResourceFormat dst_format = dst_view.texture->Desc().format;
 
-    if (gfx::IsDepthStencilFormat(dst_format)) {
-        gfx::RenderTargetDesc rt_desc {
-            .depth_stencil = gfx::DepthStencilAttachmentDesc {
+    if (IsDepthStencilFormat(dst_format)) {
+        RenderTargetDesc rt_desc {
+            .depth_stencil = DepthStencilAttachmentDesc {
                 .texture = dst_view,
                 .store = true,
             }
@@ -32,10 +32,10 @@ void HelperPipelines::BlitTexture(Ref<gfx::CommandEncoder> cmd_encoder, const gf
         render_encoder->BindShaderParams(0, { { src_view } });
         render_encoder->BindShaderParams(1, { { std::monostate {} } });
         render_encoder->Draw(3);
-    } else if (gfx::IsSrgbFormat(dst_format)) {
-        gfx::RenderTargetDesc rt_desc {
+    } else if (IsSrgbFormat(dst_format)) {
+        RenderTargetDesc rt_desc {
             .colors = {
-                gfx::ColorAttachmentDesc {
+                ColorAttachmentDesc {
                     .texture = dst_view,
                     .store = true,
                 }
@@ -49,26 +49,26 @@ void HelperPipelines::BlitTexture(Ref<gfx::CommandEncoder> cmd_encoder, const gf
     }
 }
 
-void HelperPipelines::GenerateMipmaps2D(Ref<gfx::CommandEncoder> cmd_encoder, Ref<gfx::Texture> texture,
-    gfx::ResourceAccessType &tex_access_type, MipmapMode mode) const {
+void HelperPipelines::GenerateMipmaps2D(Ref<CommandEncoder> cmd_encoder, Ref<Texture> texture,
+    ResourceAccessType &tex_access_type, MipmapMode mode) const {
     const auto &texture_desc = texture->Desc();
-    gfx::ResourceFormat format = texture_desc.format;
+    ResourceFormat format = texture_desc.format;
     uint32_t width = texture_desc.extent.width;
     uint32_t height = texture_desc.extent.height;
 
-    gfx::ResourceAccessType read_access_type;
-    gfx::ResourceAccessType write_access_type;
-    std::function<void(const gfx::TextureView &, const gfx::TextureView &)> execute_func;
-    if (gfx::IsDepthStencilFormat(format)) {
+    ResourceAccessType read_access_type;
+    ResourceAccessType write_access_type;
+    std::function<void(const TextureView &, const TextureView &)> execute_func;
+    if (IsDepthStencilFormat(format)) {
         auto pipeline = mode == MipmapMode::eAverage ? mipmap_pipeline_avg_depth_.AsRef()
             : mode == MipmapMode::eMin ? mipmap_pipeline_min_depth_.AsRef() : mipmap_pipeline_max_depth_.AsRef();
 
-        read_access_type = gfx::ResourceAccessType::eRenderShaderSampledTextureRead;
-        write_access_type = gfx::ResourceAccessType::eDepthStencilAttachmentWrite;
+        read_access_type = ResourceAccessType::eRenderShaderSampledTextureRead;
+        write_access_type = ResourceAccessType::eDepthStencilAttachmentWrite;
 
-        execute_func = [&](const gfx::TextureView &src_view, const gfx::TextureView &dst_view) {
-            gfx::RenderTargetDesc rt_desc {
-                .depth_stencil = gfx::DepthStencilAttachmentDesc {
+        execute_func = [&](const TextureView &src_view, const TextureView &dst_view) {
+            RenderTargetDesc rt_desc {
+                .depth_stencil = DepthStencilAttachmentDesc {
                     .texture = dst_view,
                     .store = true,
                 }
@@ -83,17 +83,17 @@ void HelperPipelines::GenerateMipmaps2D(Ref<gfx::CommandEncoder> cmd_encoder, Re
             render_encoder->PushConstants(tex_size, 2 * sizeof(uint32_t));
             render_encoder->Draw(3);
         };
-    } else if (gfx::IsSrgbFormat(format)) {
+    } else if (IsSrgbFormat(format)) {
         auto pipeline = mode == MipmapMode::eAverage ? mipmap_pipeline_avg_render_.AsRef()
             : mode == MipmapMode::eMin ? mipmap_pipeline_min_render_.AsRef() : mipmap_pipeline_max_render_.AsRef();
 
-        read_access_type = gfx::ResourceAccessType::eRenderShaderSampledTextureRead;
-        write_access_type = gfx::ResourceAccessType::eColorAttachmentWrite;
+        read_access_type = ResourceAccessType::eRenderShaderSampledTextureRead;
+        write_access_type = ResourceAccessType::eColorAttachmentWrite;
 
-        execute_func = [&](const gfx::TextureView &src_view, const gfx::TextureView &dst_view) {
-            gfx::RenderTargetDesc rt_desc {
+        execute_func = [&](const TextureView &src_view, const TextureView &dst_view) {
+            RenderTargetDesc rt_desc {
                 .colors = {
-                    gfx::ColorAttachmentDesc {
+                    ColorAttachmentDesc {
                         .texture = dst_view,
                         .store = true,
                     }
@@ -113,10 +113,10 @@ void HelperPipelines::GenerateMipmaps2D(Ref<gfx::CommandEncoder> cmd_encoder, Re
         auto pipeline = mode == MipmapMode::eAverage ? mipmap_pipeline_avg_compute_.AsRef()
             : mode == MipmapMode::eMin ? mipmap_pipeline_min_compute_.AsRef() : mipmap_pipeline_max_compute_.AsRef();
 
-        read_access_type = gfx::ResourceAccessType::eComputeShaderSampledTextureRead;
-        write_access_type = gfx::ResourceAccessType::eComputeShaderStorageResourceWrite;
+        read_access_type = ResourceAccessType::eComputeShaderSampledTextureRead;
+        write_access_type = ResourceAccessType::eComputeShaderStorageResourceWrite;
 
-        execute_func = [&](const gfx::TextureView &src_view, const gfx::TextureView &dst_view) {
+        execute_func = [&](const TextureView &src_view, const TextureView &dst_view) {
             auto compute_encoder = cmd_encoder->BeginComputePass({ "mipmap compute "});
             compute_encoder->SetPipeline(pipeline);
             compute_encoder->BindShaderParams(0, { {
@@ -132,22 +132,22 @@ void HelperPipelines::GenerateMipmaps2D(Ref<gfx::CommandEncoder> cmd_encoder, Re
 
     uint32_t level = 0;
     while (width > 1 || height > 1) {
-        gfx::TextureView src_view {
+        TextureView src_view {
             .texture = texture,
             .base_level = level,
             .levels = 1,
         };
-        gfx::TextureBarrier src_barrier {
+        TextureBarrier src_barrier {
             .texture = src_view,
             .src_access_type = level == 0 ? tex_access_type : write_access_type,
             .dst_access_type = read_access_type,
         };
-        gfx::TextureView dst_view {
+        TextureView dst_view {
             .texture = texture,
             .base_level = level + 1,
             .levels = 1,
         };
-        gfx::TextureBarrier dst_barrier {
+        TextureBarrier dst_barrier {
             .texture = dst_view,
             .src_access_type = tex_access_type,
             .dst_access_type = write_access_type,
@@ -161,12 +161,12 @@ void HelperPipelines::GenerateMipmaps2D(Ref<gfx::CommandEncoder> cmd_encoder, Re
         ++level;
     }
 
-    gfx::TextureView final_view {
+    TextureView final_view {
         .texture = texture,
         .base_level = level,
         .levels = 1,
     };
-    gfx::TextureBarrier final_barrier {
+    TextureBarrier final_barrier {
         .texture = final_view,
         .src_access_type = write_access_type,
         .dst_access_type = read_access_type,
@@ -197,7 +197,7 @@ void HelperPipelines::InitBlitPipelines() {
                 .bindings = {
                     DescriptorSetLayoutBinding {
                         .type = DescriptorType::eSampledTexture,
-                        .tex_dim = gfx::TextureViewDimension::e2D,
+                        .tex_dim = TextureViewDimension::e2D,
                         .count = 1,
                     },
                 }
@@ -266,10 +266,10 @@ void HelperPipelines::InitMipmapPipelines() {
             .sets_layout = {
                 DescriptorSetLayout {
                     .bindings = {
-                        DescriptorSetLayoutBinding { .type = gfx::DescriptorType::eNone },
+                        DescriptorSetLayoutBinding { .type = DescriptorType::eNone },
                         DescriptorSetLayoutBinding {
                             .type = DescriptorType::eSampledTexture,
-                            .tex_dim = gfx::TextureViewDimension::e2D,
+                            .tex_dim = TextureViewDimension::e2D,
                             .count = 1,
                         },
                     }
@@ -320,7 +320,7 @@ void HelperPipelines::InitMipmapPipelines() {
 
         mipmap_layout.sets_layout[0].bindings.push_back(DescriptorSetLayoutBinding {
             .type = DescriptorType::eRWStorageTexture,
-            .tex_dim = gfx::TextureViewDimension::e2D,
+            .tex_dim = TextureViewDimension::e2D,
             .count = 1,
         });
         ComputePipelineDesc mipmap_compute_desc {

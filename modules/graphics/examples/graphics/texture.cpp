@@ -5,6 +5,7 @@
 #include <stb_image.h>
 
 #include "core/logger.hpp"
+#include "graphics/examples.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/shader_compiler.hpp"
@@ -173,7 +174,8 @@ int main(int argc, char **argv) {
     }
 
     int texture_width, texture_height, texture_channels;
-    uint8_t *texture_data = stbi_load("../../../../test/graphics/texture.png", &texture_width, &texture_height,
+    auto texture_path = std::filesystem::path(kExamplesDir) / "graphics/texture.png";
+    uint8_t *texture_data = stbi_load(texture_path.string().c_str(), &texture_width, &texture_height,
         &texture_channels, 0);
     gfx::ResourceFormat texture_format =
         texture_channels == 3 ? gfx::ResourceFormat::eRgb8Srgb : gfx::ResourceFormat::eRgba8Srgb;
@@ -248,7 +250,7 @@ int main(int argc, char **argv) {
     };
     auto sampler = device->CreateSampler(sampler_desc);
 
-    std::filesystem::path shader_file = "../../../../test/graphics/texture.hlsl";
+    std::filesystem::path shader_file = std::filesystem::path(kExamplesDir) / "graphics/texture.hlsl";
     auto shader_compiler = device->GetShaderCompiler();
     auto vs_bytes = shader_compiler->Compile(shader_file, "VS", gfx::ShaderStage::eVertex);
     auto vs_sm = device->CreateShaderModule(vs_bytes);

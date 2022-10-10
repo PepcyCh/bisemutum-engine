@@ -39,13 +39,18 @@ target("bismuth-graphics")
         add_linkdirs("thirdparty/WinPixEventRuntime/bin/x64")
         add_links("WinPixEventRuntime")
         after_build(function (target)
-            os.cp("thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll", target:targetdir())
+            -- os.cp("thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll", target:targetdir())
+            os.cp("modules/graphics/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll", target:targetdir())
         end)
     end
 target_end()
 
 if has_config("build_example") then
     add_requires("stb", "glm")
+
+    set_configvar("EXAMPLES_DIR", "$(curdir)/modules/graphics/examples")
+    add_configfiles("examples/examples.hpp.in", {prefixdir = "graphics"})
+    add_includedirs("$(buildir)")
 
     target("bismuth-graphics-example-triangle")
         set_kind("binary")
@@ -74,6 +79,12 @@ if has_config("build_example") then
     target("bismuth-render_graph-example-deferred")
         set_kind("binary")
         add_files("examples/render_graph/deferred.cpp")
+        add_deps("bismuth-graphics")
+        add_packages("glfw", "glm")
+
+    target("bismuth-render_graph-example-mipmapgen")
+        set_kind("binary")
+        add_files("examples/render_graph/mipmapgen.cpp")
         add_deps("bismuth-graphics")
         add_packages("glfw", "glm")
 end

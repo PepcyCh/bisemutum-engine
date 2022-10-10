@@ -28,7 +28,7 @@ private:
     Ptr<ShaderVisibleDescriptorHeapD3D12> cbv_srv_uav_heap_;
     Ptr<ShaderVisibleDescriptorHeapD3D12> sampler_heap_;
 
-    HashMap<ShaderParams, DescriptorHandle> descriptor_sets_;
+    HashMap<std::pair<DescriptorSetLayout, ShaderParams>, DescriptorHandle> descriptor_sets_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

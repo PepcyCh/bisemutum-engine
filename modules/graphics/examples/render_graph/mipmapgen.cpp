@@ -1,8 +1,6 @@
 #include <iostream>
 
 #include <GLFW/glfw3.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 #include "core/logger.hpp"
 #include "graphics/examples.hpp"
@@ -172,91 +170,51 @@ int main(int argc, char **argv) {
         graphics_queue->WaitIdle();
     }
 
-    int texture_width, texture_height, texture_channels;
-    auto texture_path = std::filesystem::path(kExamplesDir) / "graphics/texture.png";
-    uint8_t *texture_data = stbi_load(texture_path.string().c_str(), &texture_width, &texture_height,
-        &texture_channels, 0);
-    gfx::ResourceFormat texture_format =
-        texture_channels == 3 ? gfx::ResourceFormat::eRgb8Srgb : gfx::ResourceFormat::eRgba8Srgb;
-    gfx::TextureDesc texture_desc {
-        .name = "texture",
-        .extent = { static_cast<uint32_t>(texture_width), static_cast<uint32_t>(texture_height) },
-        .levels = 1,
-        .format = texture_format,
-        .dim = gfx::TextureDimension::e2D,
-        .usages = { gfx::TextureUsage::eSampled },
+    auto shader_compiler = device->GetShaderCompiler();
+
+    std::filesystem::path gentex_shader = std::filesystem::path(kExamplesDir) / "render_graph/gentex.hlsl";
+    auto gentex_cs_bytes = shader_compiler->Compile(gentex_shader, "CS", gfx::ShaderStage::eCompute);
+    auto gentex_cs_sm = device->CreateShaderModule(gentex_cs_bytes);
+
+    std::filesystem::path showtex_shader = std::filesystem::path(kExamplesDir) / "render_graph/showtex.hlsl";
+    auto showtex_vs_bytes = shader_compiler->Compile(showtex_shader, "VS", gfx::ShaderStage::eVertex);
+    auto showtex_vs_sm = device->CreateShaderModule(showtex_vs_bytes);
+    auto showtex_fs_bytes = shader_compiler->Compile(showtex_shader, "FS", gfx::ShaderStage::eFragment);
+    auto showtex_fs_sm = device->CreateShaderModule(showtex_fs_bytes);
+
+    gfx::PipelineLayout gentex_pipeline_layout {
+        .sets_layout = {
+            gfx::DescriptorSetLayout {
+                .bindings = {
+                    gfx::DescriptorSetLayoutBinding { .type = gfx::DescriptorType::eNone },
+                    gfx::DescriptorSetLayoutBinding {
+                        .type = gfx::DescriptorType::eRWStorageTexture,
+                        .tex_dim = gfx::TextureViewDimension::e2D,
+                        .count = 1,
+                    }
+                },
+            },
+        },
+        .push_constants_size = 2 * sizeof(uint32_t),
     };
-    auto texture = device->CreateTexture(texture_desc);
-    {
-        init_context->Reset();
-        auto cmd_encoder = init_context->GetCommandEncoder();
-
-        size_t texture_data_size = texture_width * texture_height * texture_channels * sizeof(uint8_t);
-        gfx::BufferDesc texture_upload_buffer_desc {
-            .name = "texture upload buffer",
-            .size = texture_data_size,
-            .usages = {},
-            .memory_property = gfx::BufferMemoryProperty::eCpuToGpu,
-        };
-        auto texture_upload_buffer = device->CreateBuffer(texture_upload_buffer_desc);
-
-        gfx::BufferBarrier buffer_barrier {
-            .buffer = texture_upload_buffer.AsRef(),
-            .src_access_type = gfx::ResourceAccessType::eNone,
-            .dst_access_type = gfx::ResourceAccessType::eTransferRead,
-        };
-        gfx::TextureBarrier texture_barrier {
-            .texture = gfx::TextureView { texture.AsRef() },
-            .src_access_type = gfx::ResourceAccessType::eNone,
-            .dst_access_type = gfx::ResourceAccessType::eTransferWrite,
-        };
-        
-        cmd_encoder->ResourceBarrier({ buffer_barrier }, { texture_barrier });
-
-        void *mapped_ptr = texture_upload_buffer->Map();
-        memcpy(mapped_ptr, texture_data, texture_data_size);
-        texture_upload_buffer->Unmap();
-        gfx::BufferTextureCopyDesc copy_desc {
-            .buffer_offset = 0,
-            .buffer_bytes_per_row = static_cast<uint32_t>(texture_width * texture_channels * sizeof(uint8_t)),
-            .buffer_rows_per_texture = static_cast<uint32_t>(texture_height),
-            .texture_offset = {},
-            .texture_extent = texture_desc.extent,
-            .texture_level = 0,
-        };
-        cmd_encoder->CopyBufferToTexture(texture_upload_buffer.AsRef(), texture.AsRef(), { copy_desc });
-
-        texture_barrier = gfx::TextureBarrier {
-            .texture = gfx::TextureView { texture.AsRef() },
-            .src_access_type = gfx::ResourceAccessType::eTransferWrite,
-            .dst_access_type = gfx::ResourceAccessType::eRenderShaderSampledTextureRead,
-        };
-        
-        cmd_encoder->ResourceBarrier({}, { texture_barrier });
-
-        graphics_queue->SubmitCommandBuffer({ cmd_encoder->Finish() });
-        graphics_queue->WaitIdle();
-    }
-    stbi_image_free(texture_data);
+    gfx::ComputePipelineDesc gentex_pipeline_desc {
+        .name = "gentex pipeline",
+        .layout = gentex_pipeline_layout,
+        .thread_group = { 16, 16, 1 },
+        .compute = gentex_cs_sm.AsRef(),
+    };
+    auto gentex_pipeline = device->CreateComputePipeline(gentex_pipeline_desc);
 
     gfx::SamplerDesc sampler_desc {
-        .mag_filter = gfx::SamplerFilterMode::eNearest,
-        .min_filter = gfx::SamplerFilterMode::eNearest,
-        .mipmap_mode = gfx::SamplerMipmapMode::eNearest,
+        .mag_filter = gfx::SamplerFilterMode::eLinear,
+        .min_filter = gfx::SamplerFilterMode::eLinear,
+        .mipmap_mode = gfx::SamplerMipmapMode::eLinear,
         .address_mode_u = gfx::SamplerAddressMode::eRepeat,
         .address_mode_v = gfx::SamplerAddressMode::eRepeat,
         .address_mode_w = gfx::SamplerAddressMode::eRepeat,
     };
     auto sampler = device->CreateSampler(sampler_desc);
-
-    std::filesystem::path shader_file = std::filesystem::path(kExamplesDir) / "graphics/texture.hlsl";
-    auto shader_compiler = device->GetShaderCompiler();
-    auto vs_bytes = shader_compiler->Compile(shader_file, "VS", gfx::ShaderStage::eVertex);
-    auto vs_sm = device->CreateShaderModule(vs_bytes);
-    auto fs_bytes = shader_compiler->Compile(shader_file, "FS", gfx::ShaderStage::eFragment);
-    auto fs_sm = device->CreateShaderModule(fs_bytes);
-
-    gfx::PipelineLayout pipeline_layout {
+    gfx::PipelineLayout showtex_pipeline_layout {
         .sets_layout = {
             gfx::DescriptorSetLayout {
                 .bindings = {
@@ -265,7 +223,7 @@ int main(int argc, char **argv) {
                         .tex_dim = gfx::TextureViewDimension::e2D,
                         .count = 1,
                     }
-                }
+                },
             },
             gfx::DescriptorSetLayout {
                 .bindings = {
@@ -275,13 +233,13 @@ int main(int argc, char **argv) {
                         .immutable_samplers = { sampler.AsRef() },
                     }
                 }
-            }
+            },
         },
         .push_constants_size = 0,
     };
-    gfx::RenderPipelineDesc pipeline_desc {
-        .name = "texture pipeline",
-        .layout = pipeline_layout,
+    gfx::RenderPipelineDesc showtex_pipeline_desc {
+        .name = "showtex pipeline",
+        .layout = showtex_pipeline_layout,
         .vertex_input_buffers = {
             gfx::VertexInputBufferDesc {
                 .stride = 4 * sizeof(float),
@@ -298,11 +256,11 @@ int main(int argc, char **argv) {
             .attachments = { {} }
         },
         .shaders = {
-            .vertex = vs_sm.AsRef(),
-            .fragment = fs_sm.AsRef(),
+            .vertex = showtex_vs_sm.AsRef(),
+            .fragment = showtex_fs_sm.AsRef(),
         }
     };
-    auto pipeline = device->CreateRenderPipeline(pipeline_desc);
+    auto showtex_pipeline = device->CreateRenderPipeline(showtex_pipeline_desc);
 
     uint32_t curr_frame = 0;
     while (!glfwWindowShouldClose(window)) {
@@ -325,9 +283,36 @@ int main(int argc, char **argv) {
         }
 
         auto back_buffer = rg.ImportTexture("back buffer", swap_chain->GetCurrentTexture());
-        rg.AddRenderPass("render",
+        const uint32_t texture_width = 512;
+        const uint32_t texture_height = 512;
+        auto texture = rg.AddTexture("texture",
+            [&](gfx::TextureBuilder &builder) {
+                builder
+                    .Dim2D(gfx::ResourceFormat::eRgba8UNorm, texture_width, texture_height)
+                    .Mipmap()
+                    .Usage({ gfx::TextureUsage::eRWStorage, gfx::TextureUsage::eSampled });
+            }
+        );
+        rg.AddComputePass("gentex",
+            [&](gfx::ComputePassBuilder &builder) {
+                builder.Write("output", texture, true);
+            },
+            [&](Ref<gfx::ComputeCommandEncoder> compute_encoder, const gfx::PassResource &resources) {
+                compute_encoder->SetPipeline(gentex_pipeline.AsRef());
+                uint32_t texture_size[2] = { texture_width, texture_height };
+                compute_encoder->PushConstants(texture_size, 2 * sizeof(uint32_t));
+                compute_encoder->BindShaderParams(0, { {
+                    std::monostate {},
+                    gfx::TextureView { resources.Texture("output") },
+                } });
+                compute_encoder->Dispatch(texture_width, texture_height, 1);
+            }
+        );
+        rg.AddRenderPass("showtex",
             [&](gfx::RenderPassBuilder &builder) {
-                builder.Color(0, gfx::RenderPassColorTargetBuilder(back_buffer).ClearColor(0.2f, 0.3f, 0.5f));
+                builder
+                    .Color(0, gfx::RenderPassColorTargetBuilder(back_buffer).ClearColor(0.2f, 0.3f, 0.5f))
+                    .Read("texture", texture);
             },
             [&](Ref<gfx::RenderCommandEncoder> render_encoder, const gfx::PassResource &resources) {
                 gfx::Viewport viewport {
@@ -341,8 +326,8 @@ int main(int argc, char **argv) {
                 };
                 render_encoder->SetScissors({ scissor });
 
-                render_encoder->SetPipeline(pipeline.AsRef());
-                render_encoder->BindShaderParams(0, { { gfx::TextureView { texture.AsRef() } } });
+                render_encoder->SetPipeline(showtex_pipeline.AsRef());
+                render_encoder->BindShaderParams(0, { { gfx::TextureView { resources.Texture("texture") } } });
                 render_encoder->BindShaderParams(1, { { std::monostate {} } });
                 render_encoder->BindVertexBuffer({ { vertex_buffer } });
                 render_encoder->BindIndexBuffer(index_buffer, 0, gfx::IndexType::eUInt16);

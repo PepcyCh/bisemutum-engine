@@ -16,34 +16,34 @@ enum class MipmapMode : uint8_t {
 
 class HelperPipelines {
 public:
-    HelperPipelines(Ref<gfx::Device> device);
+    HelperPipelines(Ref<Device> device);
 
-    void BlitTexture(Ref<gfx::CommandEncoder> cmd_encoder, const gfx::TextureView &src_view,
-        const gfx::TextureView &dst_view) const;
+    void BlitTexture(Ref<CommandEncoder> cmd_encoder, const TextureView &src_view,
+        const TextureView &dst_view) const;
 
-    void GenerateMipmaps2D(Ref<gfx::CommandEncoder> cmd_encoder, Ref<gfx::Texture> texture,
-        gfx::ResourceAccessType &tex_access_type, MipmapMode mode = MipmapMode::eAverage) const;
+    void GenerateMipmaps2D(Ref<CommandEncoder> cmd_encoder, Ref<Texture> texture,
+        ResourceAccessType &tex_access_type, MipmapMode mode = MipmapMode::eAverage) const;
 
 private:
     void InitBlitPipelines();
     void InitMipmapPipelines();
 
-    Ref<gfx::Device> device_;
+    Ref<Device> device_;
     Ptr<ShaderManager> shader_manager_;
 
-    Ptr<gfx::RenderPipeline> blit_pipeline_;
-    Ptr<gfx::RenderPipeline> blit_pipeline_depth_;
-    Ptr<gfx::Sampler> blit_sampler_;
+    Ptr<RenderPipeline> blit_pipeline_;
+    Ptr<RenderPipeline> blit_pipeline_depth_;
+    Ptr<Sampler> blit_sampler_;
 
-    Ptr<gfx::RenderPipeline> mipmap_pipeline_avg_render_;
-    Ptr<gfx::RenderPipeline> mipmap_pipeline_min_render_;
-    Ptr<gfx::RenderPipeline> mipmap_pipeline_max_render_;
-    Ptr<gfx::ComputePipeline> mipmap_pipeline_avg_compute_;
-    Ptr<gfx::ComputePipeline> mipmap_pipeline_min_compute_;
-    Ptr<gfx::ComputePipeline> mipmap_pipeline_max_compute_;
-    Ptr<gfx::RenderPipeline> mipmap_pipeline_avg_depth_;
-    Ptr<gfx::RenderPipeline> mipmap_pipeline_min_depth_;
-    Ptr<gfx::RenderPipeline> mipmap_pipeline_max_depth_;
+    Ptr<RenderPipeline> mipmap_pipeline_avg_render_;
+    Ptr<RenderPipeline> mipmap_pipeline_min_render_;
+    Ptr<RenderPipeline> mipmap_pipeline_max_render_;
+    Ptr<ComputePipeline> mipmap_pipeline_avg_compute_;
+    Ptr<ComputePipeline> mipmap_pipeline_min_compute_;
+    Ptr<ComputePipeline> mipmap_pipeline_max_compute_;
+    Ptr<RenderPipeline> mipmap_pipeline_avg_depth_;
+    Ptr<RenderPipeline> mipmap_pipeline_min_depth_;
+    Ptr<RenderPipeline> mipmap_pipeline_max_depth_;
 };
 
 BISMUTH_GFX_NAMESPACE_END

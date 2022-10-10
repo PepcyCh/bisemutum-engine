@@ -33,9 +33,43 @@ public:
     const T *end() const { return data_ + size_; }
     const size_t size() const { return size_; }
 
+    bool operator==(const Span &rhs) const {
+        if (size_ != rhs.size_) {
+            return false;
+        }
+        for (size_t i = 0; i < size_; i++) {
+            if (data_[i] != rhs.data_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    bool operator!=(const Span &rhs) const {
+        if (size_ != rhs.size_) {
+            return true;
+        }
+        for (size_t i = 0; i < size_; i++) {
+            if (data_[i] != rhs.data_[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     const T *data_;
     size_t size_;
 };
 
 BISMUTH_NAMESPACE_END
+
+template<typename T> requires bismuth::Hashable<T, std::hash<T>>
+struct std::hash<bismuth::Span<T>> {
+    size_t operator()(const bismuth::Span<T> &v) const noexcept {
+        size_t hash = 0;
+        for (const auto &elem : v) {
+            hash = bismuth::HashCombine(hash, elem);
+        }
+        return hash;
+    }
+};
