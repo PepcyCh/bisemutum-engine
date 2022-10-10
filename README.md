@@ -7,6 +7,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 TODO
 
 * [x] A simple RHI on Vulkan and D3D12
+  * [ ] pipeline cache
   * [ ] multisample texture and resolve
   * [ ] tessellation
   * [ ] multi-queue
@@ -15,7 +16,7 @@ TODO
 
 * [ ] basic components, serde
 
-* [ ] shader manager & material system
+* [ ] material system
 
 ...
 

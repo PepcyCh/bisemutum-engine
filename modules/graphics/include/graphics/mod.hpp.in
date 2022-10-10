@@ -1,0 +1,27 @@
+#pragma once
+
+#include "bismuth.hpp"
+#include "core/log.hpp"
+
+BISMUTH_NAMESPACE_BEGIN
+
+#define BISMUTH_VULKAN_VERSION_MAJOR 1
+#define BISMUTH_VULKAN_VERSION_MINOR 3
+
+#define BISMUTH_D3D12_FEATURE_LEVEL_MAJOR 12
+#define BISMUTH_D3D12_FEATURE_LEVEL_MINOR 1
+
+#define BISMUTH_GFX_NAMESPACE_BEGIN namespace gfx {
+#define BISMUTH_GFX_NAMESPACE_END }
+
+BISMUTH_GFX_NAMESPACE_BEGIN
+
+inline Logger gGraphicsLogger;
+
+inline constexpr const char *kModuleDirectory = R"(${MODULE_DIR})";
+
+void Initialize();
+
+BISMUTH_GFX_NAMESPACE_END
+
+BISMUTH_NAMESPACE_END
