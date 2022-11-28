@@ -10,7 +10,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class SwapChainVulkan : public SwapChain {
+class SwapChainVulkan final : public SwapChain {
 public:
     SwapChainVulkan(Ref<class DeviceVulkan> device, const SwapChainDesc &desc);
     ~SwapChainVulkan();

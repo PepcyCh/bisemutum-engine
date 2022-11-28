@@ -8,7 +8,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class FenceD3D12 : public Fence {
+class FenceD3D12 final : public Fence {
 public:
     FenceD3D12(Ref<class DeviceD3D12> device);
     ~FenceD3D12() override;
@@ -29,7 +29,7 @@ private:
     UINT64 fence_value_;
 };
 
-class SemaphoreD3D12 : public Semaphore {};
+class SemaphoreD3D12 final : public Semaphore {};
 
 BISMUTH_GFX_NAMESPACE_END
 

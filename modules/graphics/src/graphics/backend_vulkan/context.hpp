@@ -7,7 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class FrameContextVulkan : public FrameContext, public RefFromThis<FrameContextVulkan> {
+class FrameContextVulkan final : public FrameContext, public RefFromThis<FrameContextVulkan> {
 public:
     FrameContextVulkan(Ref<class DeviceVulkan> device);
     ~FrameContextVulkan() override;

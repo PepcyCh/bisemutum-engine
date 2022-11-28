@@ -1,5 +1,7 @@
 #include "render_graph/graph.hpp"
 
+#include <core/module_manager.hpp>
+
 BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
@@ -281,7 +283,7 @@ void RenderGraph::Compile() {
     // check
     for (const auto &node : graph_nodes_) {
         if (used[node->index] && in_degs[node->index] > 0) {
-            BI_WARN(gGraphicsLogger, "Cycle has been found in render graph.");
+            BI_WARN(ModuleManager::Get<GraphicsModule>()->Lgr(), "Cycle has been found in render graph.");
             break;
         }
     }

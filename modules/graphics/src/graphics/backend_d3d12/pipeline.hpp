@@ -7,7 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class RenderPipelineD3D12 : public RenderPipeline {
+class RenderPipelineD3D12 final : public RenderPipeline {
 public:
     RenderPipelineD3D12(Ref<class DeviceD3D12> device, const RenderPipelineDesc &desc);
     ~RenderPipelineD3D12() override;
@@ -32,7 +32,7 @@ private:
     D3D12_PRIMITIVE_TOPOLOGY topology_;
 };
 
-class ComputePipelineD3D12 : public ComputePipeline {
+class ComputePipelineD3D12 final : public ComputePipeline {
 public:
     ComputePipelineD3D12(Ref<class DeviceD3D12> device, const ComputePipelineDesc &desc);
     ~ComputePipelineD3D12() override;

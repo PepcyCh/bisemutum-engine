@@ -7,7 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class RenderPipelineVulkan : public RenderPipeline {
+class RenderPipelineVulkan final : public RenderPipeline {
 public:
     RenderPipelineVulkan(Ref<class DeviceVulkan> device, const RenderPipelineDesc &desc);
     ~RenderPipelineVulkan() override;
@@ -31,7 +31,7 @@ private:
     VkPipeline pipeline_;
 };
 
-class ComputePipelineVulkan : public ComputePipeline {
+class ComputePipelineVulkan final : public ComputePipeline {
 public:
     ComputePipelineVulkan(Ref<class DeviceVulkan> device, const ComputePipelineDesc &desc);
     ~ComputePipelineVulkan() override;

@@ -11,7 +11,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class DeviceVulkan : public Device, public RefFromThis<DeviceVulkan> {
+class DeviceVulkan final : public Device, public RefFromThis<DeviceVulkan> {
 public:
     DeviceVulkan(const DeviceDesc &desc);
     ~DeviceVulkan() override;

@@ -4,11 +4,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include "core/logger.hpp"
-#include "graphics/examples.hpp"
-#include "graphics/device.hpp"
-#include "graphics/pipeline.hpp"
-#include "graphics/shader_compiler.hpp"
+#include <core/module_manager.hpp>
+#include <graphics/examples.hpp>
+#include <graphics/device.hpp>
+#include <graphics/pipeline.hpp>
+#include <graphics/shader_compiler.hpp>
 
 using namespace bismuth;
 
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow *window = glfwCreateWindow(width, height, "Bismuth", nullptr, nullptr);
 
-    gfx::Initialize();
+    ModuleManager::Load<gfx::GraphicsModule>();
 
     gfx::DeviceDesc device_desc {
         .backend = backend,

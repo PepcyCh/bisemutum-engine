@@ -5,7 +5,8 @@
 
 #include <GLFW/glfw3.h>
 
-#include "core/logger.hpp"
+#include <core/module_manager.hpp>
+
 #include "utils.hpp"
 #include "swap_chain.hpp"
 #include "sync.hpp"
@@ -149,12 +150,12 @@ void DeviceVulkan::PickDevice(const DeviceDesc &desc) {
     }
     if (physical_device_ == VK_NULL_HANDLE) {
         if (available_device == VK_NULL_HANDLE) {
-            BI_CRTICAL(gGraphicsLogger, "No available GPU found");
+            BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(), "No available GPU found");
         }
         physical_device_ = available_device;
         vkGetPhysicalDeviceProperties(physical_device_, &physical_device_props_);
     }
-    BI_INFO(gGraphicsLogger, "Use GPU: {}", physical_device_props_.deviceName);
+    BI_INFO(ModuleManager::Get<GraphicsModule>()->Lgr(), "Use GPU: {}", physical_device_props_.deviceName);
 
     uint32_t num_queue_family;
     vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &num_queue_family, nullptr);

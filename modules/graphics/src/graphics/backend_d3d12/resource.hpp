@@ -34,7 +34,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class BufferD3D12 : public Buffer {
+class BufferD3D12 final : public Buffer {
 public:
     BufferD3D12(Ref<class DeviceD3D12> device, const BufferDesc &desc);
     ~BufferD3D12() override;
@@ -106,7 +106,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class TextureD3D12 : public Texture {
+class TextureD3D12 final : public Texture {
 public:
     TextureD3D12(Ref<class DeviceD3D12> device, const TextureDesc &desc);
     // external image

@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class FenceVulkan : public Fence {
+class FenceVulkan final : public Fence {
 public:
     FenceVulkan(Ref<class DeviceVulkan> device);
     ~FenceVulkan() override;
@@ -32,7 +32,7 @@ private:
     bool signaled_ = false;
 };
 
-class SemaphoreVulkan : public Semaphore {
+class SemaphoreVulkan final : public Semaphore {
 public:
     SemaphoreVulkan(Ref<class DeviceVulkan> device);
     ~SemaphoreVulkan() override;

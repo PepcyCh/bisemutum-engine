@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class ShaderCompilerD3D12 : public ShaderCompiler {
+class ShaderCompilerD3D12 final : public ShaderCompiler {
 public:
     ShaderCompilerD3D12();
     ~ShaderCompilerD3D12() override;

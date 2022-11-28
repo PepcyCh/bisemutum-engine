@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class SwapChainD3D12 : public SwapChain {
+class SwapChainD3D12 final : public SwapChain {
 public:
     SwapChainD3D12(Ref<class DeviceD3D12> device, const SwapChainDesc &desc);
     ~SwapChainD3D12() override;

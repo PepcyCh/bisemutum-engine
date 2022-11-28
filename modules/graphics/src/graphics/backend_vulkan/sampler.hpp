@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class SamplerVulkan : public Sampler {
+class SamplerVulkan final : public Sampler {
 public:
     SamplerVulkan(Ref<class DeviceVulkan> device, const SamplerDesc &desc);
     ~SamplerVulkan() override;

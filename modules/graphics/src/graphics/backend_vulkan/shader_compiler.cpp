@@ -5,6 +5,7 @@
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <spirv_cross/spirv_glsl.hpp>
+#include <core/module_manager.hpp>
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -213,7 +214,7 @@ Vec<uint8_t> ShaderCompilerVulkan::Compile(const fs::path &src_path, const std::
     const HashMap<std::string, std::string> &defines, const Vec<fs::path> &include_dirs) const {
     std::string src_filename = src_path.string();
     if (!fs::exists(src_path)) {
-        BI_CRTICAL(gGraphicsLogger, "Shader file '{}' doesn't exist", src_filename);
+        BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(), "Shader file '{}' doesn't exist", src_filename);
     }
 
     // glslang may generate invalid SPIR-V 1.5/1.6 codes (see https://github.com/KhronosGroup/glslang/issues/2411)
@@ -262,7 +263,8 @@ Vec<uint32_t> ShaderCompilerVulkan::HlslToSpirv(const std::string &src_filename,
     if (!shader.parse(&kDefaultTBuiltInResource, 100, false, EShMsgHlslLegalization, includer)) {
         const std::string log(shader.getInfoLog());
         const std::string debug_log(shader.getInfoDebugLog());
-        BI_CRTICAL(gGraphicsLogger, "Failed to compile shader '{}' (entry point: '{}'), info:\n{}\n{}",
+        BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(),
+            "Failed to compile shader '{}' (entry point: '{}'), info:\n{}\n{}",
             src_filename, entry, log, debug_log);
     }
 
@@ -271,7 +273,8 @@ Vec<uint32_t> ShaderCompilerVulkan::HlslToSpirv(const std::string &src_filename,
     if (!program.link(EShMsgHlslLegalization)) {
         const std::string log(program.getInfoLog());
         const std::string debug_log(program.getInfoDebugLog());
-        BI_CRTICAL(gGraphicsLogger, "Failed to link shader '{}' (entry point '{}'), info:\n{}\n{}",
+        BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(),
+            "Failed to link shader '{}' (entry point '{}'), info:\n{}\n{}",
             src_filename, entry, log, debug_log);
     }
 

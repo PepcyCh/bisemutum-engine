@@ -7,7 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class QueueD3D12 : public Queue {
+class QueueD3D12 final : public Queue {
 public:
     QueueD3D12(Ref<class DeviceD3D12> device, D3D12_COMMAND_LIST_TYPE type);
     ~QueueD3D12() override;

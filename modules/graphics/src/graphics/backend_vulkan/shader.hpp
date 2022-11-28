@@ -11,7 +11,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class ShaderModuleVulkan : public ShaderModule {
+class ShaderModuleVulkan final : public ShaderModule {
 public:
     ShaderModuleVulkan(Ref<class DeviceVulkan> device, const Vec<uint8_t> &src_bytes);
     ~ShaderModuleVulkan() override;

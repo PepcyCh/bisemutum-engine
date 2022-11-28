@@ -1,5 +1,7 @@
 #include "shader_compiler.hpp"
 
+#include <core/module_manager.hpp>
+
 #include "dxc_helper.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -34,7 +36,7 @@ Vec<uint8_t> ShaderCompilerD3D12::Compile(const fs::path &src_path, const std::s
     const HashMap<std::string, std::string> &defines, const Vec<fs::path> &include_dirs) const {
     std::string src_filename = src_path.string();
     if (!fs::exists(src_path)) {
-        BI_CRTICAL(gGraphicsLogger, "Shader file '{}' doesn't exist", src_filename);
+        BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(), "Shader file '{}' doesn't exist", src_filename);
     }
 
     std::wstring src_filename_w = CharsToWString(src_filename.c_str());
@@ -92,7 +94,8 @@ Vec<uint8_t> ShaderCompilerD3D12::Compile(const fs::path &src_path, const std::s
     HRESULT status;
     result->GetStatus(&status);
     if (FAILED(status)) {
-        BI_CRTICAL(gGraphicsLogger, "Failed to compile shader '{}' (entry point '{}'), info:\n{}",
+        BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(),
+            "Failed to compile shader '{}' (entry point '{}'), info:\n{}",
             src_filename, entry, errors->GetStringPointer());
     }
 

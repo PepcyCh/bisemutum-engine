@@ -8,7 +8,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class QueueVulkan : public Queue {
+class QueueVulkan final : public Queue {
 public:
     QueueVulkan(Ref<class DeviceVulkan> device, uint32_t family_index);
     ~QueueVulkan() override;

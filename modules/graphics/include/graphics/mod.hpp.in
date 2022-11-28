@@ -1,7 +1,6 @@
 #pragma once
 
-#include "bismuth.hpp"
-#include "core/log.hpp"
+#include <core/module.hpp>
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -16,11 +15,18 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-inline Logger gGraphicsLogger;
+class GraphicsModule final : public Module {
+public:
+    GraphicsModule();
 
-inline constexpr const char *kModuleDirectory = R"(${MODULE_DIR})";
+    static constexpr const char *kName = "graphics";
+    static constexpr const char *kDir = R"(${MODULE_DIR})";
 
-void Initialize();
+    Logger Lgr() const override { return logger_; }
+
+private:
+    Logger logger_;
+};
 
 BISMUTH_GFX_NAMESPACE_END
 

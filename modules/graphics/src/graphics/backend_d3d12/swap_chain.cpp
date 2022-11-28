@@ -1,5 +1,7 @@
 #include "swap_chain.hpp"
 
+#include <core/module_manager.hpp>
+
 #include "device.hpp"
 
 BISMUTH_NAMESPACE_BEGIN
@@ -60,7 +62,8 @@ SwapChainD3D12::SwapChainD3D12(Ref<DeviceD3D12> device, const SwapChainDesc &des
 
     CreateSwapChainTexture();
 
-    BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", kNumSwapChainBuffers, width_, height_);
+    BI_INFO(ModuleManager::Get<GraphicsModule>()->Lgr(),
+        "Swapchain created with {} textures, {} x {}", kNumSwapChainBuffers, width_, height_);
 }
 
 SwapChainD3D12::~SwapChainD3D12() {}
@@ -91,7 +94,8 @@ void SwapChainD3D12::Resize(uint32_t width, uint32_t height) {
             FormatRemoveSrgb(device_->RawSurfaceFormat()), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
         CreateSwapChainTexture();
 
-        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures", width_, height_, kNumSwapChainBuffers);
+        BI_INFO(ModuleManager::Get<GraphicsModule>()->Lgr(),
+            "Swapchain resized to {} x {} with {} textures", width_, height_, kNumSwapChainBuffers);
     }
 }
 

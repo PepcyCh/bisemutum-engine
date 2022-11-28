@@ -6,8 +6,8 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-void Initialize() {
-    gGraphicsLogger = LoggerManager::Get().RegisterLogger("Graphics");
+GraphicsModule::GraphicsModule() {
+    logger_ = LoggerManager::Get().RegisterLogger("Graphics");
 }
 
 BISMUTH_GFX_NAMESPACE_END

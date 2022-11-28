@@ -4,7 +4,8 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
-#include "core/container.hpp"
+#include <core/module_manager.hpp>
+
 #include "queue.hpp"
 #include "swap_chain.hpp"
 #include "sync.hpp"
@@ -68,9 +69,9 @@ DeviceD3D12::DeviceD3D12(const DeviceDesc &desc) {
         break;
     }
     if (selected_adapter == nullptr) {
-        BI_CRTICAL(gGraphicsLogger, "No available GPU found");
+        BI_CRTICAL(ModuleManager::Get<GraphicsModule>()->Lgr(), "No available GPU found");
     }
-    BI_INFO(gGraphicsLogger, "Use GPU: {}", WCharsToString(adapter_desc.Description));
+    BI_INFO(ModuleManager::Get<GraphicsModule>()->Lgr(), "Use GPU: {}", WCharsToString(adapter_desc.Description));
 
     D3D12CreateDevice(selected_adapter, kD3D12FeatureLevel, IID_PPV_ARGS(&device_));
 

@@ -116,6 +116,11 @@ public:
         return Ptr(new T(std::forward<Args>(args)...));
     }
 
+    static Ptr UnsafeMake(T *ptr) noexcept {
+        BI_ASSERT_MSG(ptr != nullptr, "initialize Ptr from null pointer");
+        return Ptr(ptr);
+    }
+
     ~Ptr() noexcept {
         if (ptr_.ptr) {
             ptr_.Deleter()(ptr_.ptr);
@@ -169,6 +174,10 @@ public:
         return Ref<T>(ptr_.ptr);
     }
 
+    bool IsInitialized() const {
+        return ptr_.ptr != nullptr;
+    }
+
 private:
     explicit Ptr(T *ptr) noexcept : ptr_(ptr) {}
 
@@ -197,6 +206,11 @@ public:
         return Ref<T>(static_cast<T *>(this));
     }
 };
+
+template <typename T>
+using Rc = std::shared_ptr<T>;
+template <typename T>
+using Weak = std::weak_ptr<T>;
 
 BISMUTH_NAMESPACE_END
 

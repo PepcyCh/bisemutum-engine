@@ -6,7 +6,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class ShaderCompilerVulkan : public ShaderCompiler {
+class ShaderCompilerVulkan final : public ShaderCompiler {
 public:
     ShaderCompilerVulkan();
     ~ShaderCompilerVulkan() override;

@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class ShaderModuleD3D12 : public ShaderModule {
+class ShaderModuleD3D12 final : public ShaderModule {
 public:
     ShaderModuleD3D12(Ref<class DeviceD3D12> device, const Vec<uint8_t> &src_bytes);
     ~ShaderModuleD3D12() override;

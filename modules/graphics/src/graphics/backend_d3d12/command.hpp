@@ -10,7 +10,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 
 class DeviceD3D12;
 
-class CommandBufferD3D12 : public CommandBuffer {
+class CommandBufferD3D12 final : public CommandBuffer {
 public:
     CommandBufferD3D12(Ref<DeviceD3D12> device, ID3D12GraphicsCommandList4 *cmd_list);
 
@@ -24,7 +24,7 @@ private:
 class RenderCommandEncoderD3D12;
 class ComputeCommandEncoderD3D12;
 
-class CommandEncoderD3D12 : public CommandEncoder, public RefFromThis<CommandEncoderD3D12> {
+class CommandEncoderD3D12 final : public CommandEncoder, public RefFromThis<CommandEncoderD3D12> {
 public:
     CommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<FrameContextD3D12> context,
         ID3D12GraphicsCommandList4 *cmd_list);
@@ -63,7 +63,7 @@ private:
     ID3D12GraphicsCommandList4 *cmd_list_;
 };
 
-class RenderCommandEncoderD3D12 : public RenderCommandEncoder {
+class RenderCommandEncoderD3D12 final : public RenderCommandEncoder {
 public:
     RenderCommandEncoderD3D12(Ref<DeviceD3D12> device, const RenderTargetDesc &desc,
         Ref<CommandEncoderD3D12> base_encoder, const std::string &label);
@@ -104,7 +104,7 @@ private:
     class RenderPipelineD3D12 *curr_pipeline_ = nullptr;
 };
 
-class ComputeCommandEncoderD3D12 : public ComputeCommandEncoder {
+class ComputeCommandEncoderD3D12 final : public ComputeCommandEncoder {
 public:
     ComputeCommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<CommandEncoderD3D12> base_encoder, const std::string &label);
     ~ComputeCommandEncoderD3D12();

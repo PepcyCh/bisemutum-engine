@@ -7,7 +7,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class FrameContextD3D12 : public FrameContext, public RefFromThis<FrameContextD3D12> {
+class FrameContextD3D12 final : public FrameContext, public RefFromThis<FrameContextD3D12> {
 public:
     FrameContextD3D12(Ref<class DeviceD3D12> device);
     ~FrameContextD3D12() override;

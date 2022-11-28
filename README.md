@@ -28,6 +28,8 @@ This project use [Xmake](https://xmake.io/) to build.
 
 * spdlog
 * stb
+* entt
+* nlohmann json
 * glfw
 * glm
 * volk

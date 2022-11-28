@@ -10,7 +10,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class BufferVulkan : public Buffer {
+class BufferVulkan final : public Buffer {
 public:
     BufferVulkan(Ref<class DeviceVulkan> device, const BufferDesc &desc);
     ~BufferVulkan() override;
@@ -59,7 +59,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class TextureVulkan : public Texture {
+class TextureVulkan final : public Texture {
 public:
     TextureVulkan(Ref<class DeviceVulkan> device, const TextureDesc &desc);
     // external image

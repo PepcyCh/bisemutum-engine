@@ -3,7 +3,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include "core/utils.hpp"
+#include <core/utils.hpp>
 
 BISMUTH_NAMESPACE_BEGIN
 
@@ -183,13 +183,13 @@ void HelperPipelines::InitBlitPipelines() {
     blit_sampler_ = device_->CreateSampler(sampler_desc);
 
     auto blit_vs = shader_manager_->GetShaderModule("gfx-helper_piplines-blit-vs",
-        fs::path(kModuleDirectory) / "shaders/blit.hlsl", "VS", ShaderStage::eVertex);
+        fs::path(GraphicsModule::kDir) / "shaders/blit.hlsl", "VS", ShaderStage::eVertex);
     auto blit_fs = shader_manager_->GetShaderModule("gfx-helper_piplines-blit-fs",
-        fs::path(kModuleDirectory) / "shaders/blit.hlsl", "FS", ShaderStage::eFragment);
+        fs::path(GraphicsModule::kDir) / "shaders/blit.hlsl", "FS", ShaderStage::eFragment);
     HashMap<std::string, std::string> defines;
     defines["BLIT_DEPTH"] = "";
     auto blit_fs_depth = shader_manager_->GetShaderModule("gfx-helper_piplines-blit-fs",
-        fs::path(kModuleDirectory) / "shaders/blit.hlsl", "FS", ShaderStage::eFragment, defines);
+        fs::path(GraphicsModule::kDir) / "shaders/blit.hlsl", "FS", ShaderStage::eFragment, defines);
 
     PipelineLayout blit_layout {
         .sets_layout = {
@@ -250,17 +250,17 @@ void HelperPipelines::InitMipmapPipelines() {
         defines["MIPMAP_MODE"] = std::to_string(i);
 
         auto mipmap_vs = shader_manager_->GetShaderModule("gfx-helper_piplines-mipmap-vs",
-            fs::path(kModuleDirectory) / "shaders/mipmap.hlsl", "VS", ShaderStage::eVertex, defines);
+            fs::path(GraphicsModule::kDir) / "shaders/mipmap.hlsl", "VS", ShaderStage::eVertex, defines);
         auto mipmap_fs = shader_manager_->GetShaderModule("gfx-helper_piplines-mipmap-fs",
-            fs::path(kModuleDirectory) / "shaders/mipmap.hlsl", "FS", ShaderStage::eFragment, defines);
+            fs::path(GraphicsModule::kDir) / "shaders/mipmap.hlsl", "FS", ShaderStage::eFragment, defines);
         defines["MIPMAP_DEPTH"] = "";
         auto mipmap_fs_depth = shader_manager_->GetShaderModule("gfx-helper_piplines-mipmap-fs",
-            fs::path(kModuleDirectory) / "shaders/mipmap.hlsl", "FS", ShaderStage::eFragment, defines);
+            fs::path(GraphicsModule::kDir) / "shaders/mipmap.hlsl", "FS", ShaderStage::eFragment, defines);
 
         defines.erase("MIPMAP_DEPTH");
         defines["USE_CS"] = "";
         auto mipmap_cs = shader_manager_->GetShaderModule("gfx-helper_piplines-mipmap-cs",
-            fs::path(kModuleDirectory) / "shaders/mipmap.hlsl", "CS", ShaderStage::eCompute, defines);
+            fs::path(GraphicsModule::kDir) / "shaders/mipmap.hlsl", "CS", ShaderStage::eCompute, defines);
 
         PipelineLayout mipmap_layout {
             .sets_layout = {

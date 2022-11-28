@@ -11,7 +11,7 @@ BISMUTH_GFX_NAMESPACE_BEGIN
 class DeviceVulkan;
 class FrameContextVulkan;
 
-class CommandBufferVulkan : public CommandBuffer {
+class CommandBufferVulkan final : public CommandBuffer {
 public:
     CommandBufferVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer);
 
@@ -25,7 +25,7 @@ private:
 class RenderCommandEncoderVulkan;
 class ComputeCommandEncoderVulkan;
 
-class CommandEncoderVulkan : public CommandEncoder, public RefFromThis<CommandEncoderVulkan> {
+class CommandEncoderVulkan final : public CommandEncoder, public RefFromThis<CommandEncoderVulkan> {
 public:
     CommandEncoderVulkan(Ref<DeviceVulkan> device, Ref<FrameContextVulkan> context, VkCommandBuffer cmd_buffer);
     ~CommandEncoderVulkan();
@@ -63,7 +63,7 @@ private:
     VkCommandBuffer cmd_buffer_;
 };
 
-class RenderCommandEncoderVulkan : public RenderCommandEncoder {
+class RenderCommandEncoderVulkan final : public RenderCommandEncoder {
 public:
     RenderCommandEncoderVulkan(Ref<DeviceVulkan> device, const RenderTargetDesc &desc,
         Ref<CommandEncoderVulkan> base_encoder, const std::string &label);
@@ -104,7 +104,7 @@ private:
     class RenderPipelineVulkan *curr_pipeline_ = nullptr;
 };
 
-class ComputeCommandEncoderVulkan : public ComputeCommandEncoder {
+class ComputeCommandEncoderVulkan final : public ComputeCommandEncoder {
 public:
     ComputeCommandEncoderVulkan(Ref<DeviceVulkan> device, Ref<CommandEncoderVulkan> base_encoder, const std::string &label);
     ~ComputeCommandEncoderVulkan();

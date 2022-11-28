@@ -1,6 +1,7 @@
 #include "swap_chain.hpp"
 
-#include "core/logger.hpp"
+#include <core/module_manager.hpp>
+
 #include "utils.hpp"
 #include "device.hpp"
 #include "sync.hpp"
@@ -38,7 +39,8 @@ SwapChainVulkan::SwapChainVulkan(Ref<DeviceVulkan> device, const SwapChainDesc &
 
     CreateSwapChain(desc.width, desc.height, surface_caps.currentTransform);
 
-    BI_INFO(gGraphicsLogger, "Swapchain created with {} textures, {} x {}", num_textures_, width_, height_);
+    BI_INFO(ModuleManager::Get<GraphicsModule>()->Lgr(),
+        "Swapchain created with {} textures, {} x {}", num_textures_, width_, height_);
 }
 
 SwapChainVulkan::~SwapChainVulkan() {
@@ -93,7 +95,8 @@ void SwapChainVulkan::Resize(uint32_t width, uint32_t height) {
     if (width != width_ || height != height_) {
         CreateSwapChain(width, height, transform_);
         
-        BI_INFO(gGraphicsLogger, "Swapchain resized to {} x {} with {} textures", width_, height_, kNumSwapChainBuffers);
+        BI_INFO(ModuleManager::Get<GraphicsModule>()->Lgr(),
+            "Swapchain resized to {} x {} with {} textures", width_, height_, kNumSwapChainBuffers);
     }
 }
 

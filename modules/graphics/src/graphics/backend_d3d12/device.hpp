@@ -9,7 +9,7 @@ BISMUTH_NAMESPACE_BEGIN
 
 BISMUTH_GFX_NAMESPACE_BEGIN
 
-class DeviceD3D12 : public Device, public RefFromThis<DeviceD3D12> {
+class DeviceD3D12 final : public Device, public RefFromThis<DeviceD3D12> {
 public:
     DeviceD3D12(const DeviceDesc &desc);
     ~DeviceD3D12() override;
