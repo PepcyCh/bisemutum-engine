@@ -1,3 +1,0 @@
-#pragma once
-
-inline constexpr const char *kExamplesDir = R"(${EXAMPLES_DIR})";

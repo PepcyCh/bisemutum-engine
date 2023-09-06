@@ -1,0 +1,63 @@
+#include <bisemutum/math/transform.hpp>
+
+#include <glm/gtx/transform.hpp>
+#include <glm/gtx/quaternion.hpp>
+
+namespace bi {
+
+auto Transform::matrix() const -> float4x4 {
+    return float4x4(
+        float4(rotation[0] * scaling.x, 0.0f),
+        float4(rotation[1] * scaling.y, 0.0f),
+        float4(rotation[2] * scaling.z, 0.0f),
+        float4(translation, 1.0f)
+    );
+}
+
+auto Transform::from_matrix(float4x4 const& matrix) -> Transform {
+    Transform trans{};
+    trans.translation = matrix[3];
+    trans.rotation = matrix;
+    trans.scaling.x = glm::length(trans.rotation[0]);
+    if (trans.scaling.x != 0.0f) { trans.rotation[0] /= trans.scaling.x; }
+    trans.scaling.y = glm::length(trans.rotation[1]);
+    if (trans.scaling.y != 0.0f) { trans.rotation[1] /= trans.scaling.y; }
+    trans.scaling.z = glm::length(trans.rotation[2]);
+    if (trans.scaling.z != 0.0f) { trans.rotation[2] /= trans.scaling.z; }
+    return trans;
+}
+
+auto Transform::transform_position(float3 const& pos) const -> float3 {
+    return rotation * (scaling * pos) + translation;
+}
+
+auto Transform::transform_direction(float3 const& dir) const -> float3 {
+    return rotation * (scaling * dir);
+}
+
+auto Transform::transform_bounding_box(BoundingBox const& bbox) const -> BoundingBox {
+    auto p0 = transform_position(float3(bbox.p_min.x, bbox.p_min.y, bbox.p_min.z));
+    auto p1 = transform_position(float3(bbox.p_min.x, bbox.p_min.y, bbox.p_max.z));
+    auto p2 = transform_position(float3(bbox.p_min.x, bbox.p_max.y, bbox.p_min.z));
+    auto p3 = transform_position(float3(bbox.p_min.x, bbox.p_max.y, bbox.p_max.z));
+    auto p4 = transform_position(float3(bbox.p_max.x, bbox.p_min.y, bbox.p_min.z));
+    auto p5 = transform_position(float3(bbox.p_max.x, bbox.p_min.y, bbox.p_max.z));
+    auto p6 = transform_position(float3(bbox.p_max.x, bbox.p_max.y, bbox.p_min.z));
+    auto p7 = transform_position(float3(bbox.p_max.x, bbox.p_max.y, bbox.p_max.z));
+    return BoundingBox{
+        .p_min = math::min(
+            math::min(math::min(p0, p1), math::min(p2, p3)),
+            math::min(math::min(p4, p5), math::min(p6, p7))
+        ),
+        .p_max = math::max(
+            math::max(math::max(p0, p1), math::max(p2, p3)),
+            math::max(math::max(p4, p5), math::max(p6, p7))
+        ),
+    };
+}
+
+auto Transform::operator*(Transform const& rhs) const -> Transform {
+    return from_matrix(matrix() * rhs.matrix());
+}
+
+}

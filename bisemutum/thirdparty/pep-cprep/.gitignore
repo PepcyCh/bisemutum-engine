@@ -1,0 +1,11 @@
+.DS_Store
+.vs
+.vscode
+.idea
+.cache
+.clangd
+
+build
+build-*
+cmake-build-*
+out

@@ -1,40 +1,68 @@
-# Bismuth Renderer
+# Bisemutum Engine
 
-WIP slowly...
+WIP very slowly...
 
 My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
-TODO
+## Modules and TODO
 
-* [x] A simple RHI on Vulkan and D3D12
-  * [ ] pipeline cache
-  * [ ] multisample texture and resolve
+* [x] core
+  * [x] main loop
+  * [x] some helpers
+* [x] RHI on Vulkan and D3D12
+  * [ ] ImGUI integration
   * [ ] tessellation
-  * [ ] multi-queue
-
-* [x] Render graph on that RHI
-
-* [ ] basic components, serde
-
-* [ ] material system
-
-...
+  * [ ] meshlet pipeline
+  * [ ] raytracing pipeline
+  * [ ] multisample texture and resolve
+* [x] graphics
+  * [x] render graph
+  * [x] mipmap generation
+  * [x] shader resources definition and pipeline layout generated from C++ structs
+  * [ ] PBR material
+* [x] runtime
+  * [x] window and inputs based on GLFW
+  * [x] scene objects hierarchy
+  * [x] virtual filesystem
+    * [ ] pak file ?
+  * [x] ECS wrapper over EnTT
+  * [x] simple asset manager
+    * [ ] async load ?
+  * [x] simple frame timer
+* [ ] basic scene objects
+  * [ ] camera
+  * [ ] static mesh
+  * [ ] material
+  * [ ] lights
+* [ ] basic renderer
+  * [ ] forward pipeline
+  * [ ] deferred pipeline
 
 ## Build
 
-This project use [Xmake](https://xmake.io/) to build.
+This project uses [Xmake](https://xmake.io/) to build.
 
-## Dependencies
+On Windows, clang-cl is preferred.
 
-* spdlog
-* stb
-* entt
-* nlohmann json
-* glfw
-* glm
-* volk
-* Vulkan Memory Allocator
-* SPIRV-reflect
-* glslang
-* DirectXShaderCompiler (Windows only)
-* D3D12 Memory Allocator (through vcpkg) (Windows only)
+## Used Thirdparty
+
+in source
+
+* AnyAny (Apache-2.0)
+* volk (MIT)
+* pep-cprep (MIT)
+
+directly via xmake
+
+* fmt ([LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE))
+* spdlog (MIT)
+* EnTT (MIT)
+* nlohmann json (MIT)
+* GLFW (zlib)
+* GLM (MIT)
+* Vulkan Memory Allocator (MIT)
+* D3D12 Memory Allocator (MIT)
+* DirectXShaderCompiler ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
+* crypto algorithms (public)
+* assimp ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))
+
