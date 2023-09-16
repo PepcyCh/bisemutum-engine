@@ -3,6 +3,7 @@
 #include "resource.hpp"
 #include "shader_param.hpp"
 #include "../math/math.hpp"
+#include "../utils/serde.hpp"
 
 namespace bi::gfx {
 
@@ -32,6 +33,7 @@ struct Camera final {
     float near_z = 0.001f;
     float far_z = 100000.0f;
     ProjectionType projection_type = ProjectionType::perspective;
+
 private:
     friend GraphicsManager;
     auto update_shader_params() -> void;

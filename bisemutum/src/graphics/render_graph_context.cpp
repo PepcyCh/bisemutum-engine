@@ -224,8 +224,9 @@ auto GraphicsPassContext::render_list(RenderedObjectList& list, ShaderParameter&
             cmd_encoder, graphics_set_fragment, params
         );
         for (auto drawable : item.drawables) {
+            drawable->mesh->fill_shader_params(drawable);
             resource_binding_ctx_->set_shader_params(
-                cmd_encoder, graphics_set_mesh, drawable->mesh->shader_params()
+                cmd_encoder, graphics_set_mesh, drawable->shader_params
             );
             resource_binding_ctx_->set_shader_params(
                 cmd_encoder, graphics_set_material, drawable->material->shader_parameters

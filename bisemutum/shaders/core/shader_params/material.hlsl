@@ -1,0 +1,3 @@
+#pragma once
+
+$GRAPHICS_MATERIAL_SHADER_PARAMS

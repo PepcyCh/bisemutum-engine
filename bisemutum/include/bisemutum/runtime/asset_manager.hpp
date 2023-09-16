@@ -7,7 +7,7 @@
 
 namespace bi::rt {
 
-using AssetLoader = auto(std::string_view) -> std::any;
+using AssetLoader = auto(Dyn<IFile>::Ref) -> AssetAny;
 
 struct AssetManager final : PImpl<AssetManager> {
     struct Impl;
@@ -17,7 +17,7 @@ struct AssetManager final : PImpl<AssetManager> {
 
     template <TAsset Asset>
     auto register_asset() -> void {
-        register_asset(Asset::type_name, Asset::load);
+        register_asset(Asset::asset_type_name, Asset::load);
     }
 
     auto state_of(std::string_view asset_path) -> AssetState;
@@ -26,7 +26,7 @@ private:
     auto register_asset(std::string_view type, std::function<AssetLoader> loader) -> void;
 
     friend AssetPtr;
-    auto load_asset(std::string_view type, std::string_view asset_path) -> std::any*;
+    auto load_asset(std::string_view type, std::string_view asset_path) -> AssetAny*;
 };
 
 }

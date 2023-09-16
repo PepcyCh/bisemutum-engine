@@ -1,0 +1,52 @@
+[[objects]]
+
+[[objects.components]]
+type = "Transform"
+[objects.components.value]
+translation = [ 0.0, -1.0, 0.0 ]
+scaling = [ 5.0, 1.0, 5.0 ]
+
+[[objects.components]]
+type = "StaticMesh"
+[objects.components.value]
+static_mesh = "/project/models/plane.obj"
+
+[[objects.components]]
+type = "MeshRendererComponent"
+[objects.components.value]
+material = "/project/materials/checkerboard.toml"
+
+[[objects]]
+
+[[objects.components]]
+type = "Transform"
+[objects.components.value]
+translation = [ 1.0, 0.0, 1.0 ]
+rotation = [ 0.0, 30.0, 0.0 ]
+
+[[objects.components]]
+type = "StaticMesh"
+[objects.components.value]
+static_mesh = "/project/models/cube.obj"
+
+[[objects.components]]
+type = "MeshRendererComponent"
+[objects.components.value]
+material = "/project/materials/white.toml"
+
+[[objects]]
+
+[[objects.components]]
+type = "Transform"
+[objects.components.value]
+translation = [ -1.0, 0.0, -1.0 ]
+
+[[objects.components]]
+type = "StaticMesh"
+[objects.components.value]
+static_mesh = "/project/models/sphere.obj"
+
+[[objects.components]]
+type = "MeshRendererComponent"
+[objects.components.value]
+material = "/project/materials/textured.toml"

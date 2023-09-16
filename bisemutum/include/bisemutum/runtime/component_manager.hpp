@@ -6,7 +6,7 @@
 
 namespace bi::rt {
 
-using ComponentDeserializer = auto(Ref<SceneObject>, json::json const&) -> void;
+using ComponentDeserializer = auto(Ref<SceneObject>, serde::Value const&) -> void;
 
 struct ComponentManager final : PImpl<ComponentManager> {
     struct Impl;
@@ -17,9 +17,9 @@ struct ComponentManager final : PImpl<ComponentManager> {
     template <TComponent Component>
     auto register_component() {
         register_component(
-            Component::type_name,
-            [](Ref<SceneObject> object, json::json const& component_json) {
-                object->attach_component(component_json.get<Component>());
+            Component::component_type_name,
+            [](Ref<SceneObject> object, serde::Value const& component_value) {
+                object->attach_component(component_value.get<Component>());
             }
         );
     }

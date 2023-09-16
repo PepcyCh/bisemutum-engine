@@ -72,25 +72,28 @@ struct World::Impl final {
         destroyed_objects.clear();
     }
 
-    auto load_scene(std::string_view scene_json_str) -> bool {
+    auto load_scene(std::string_view scene_file_str) -> bool {
         auto scene = create_scene();
         try {
-            auto scene_json = json::json::parse(scene_json_str);
-            auto scene_objects_json = scene_json["objects"];
+            auto scene_value = serde::Value::from_toml(scene_file_str);
+            auto& scene_objects_value = scene_value["objects"].get_ref<serde::Value::Array>();
             std::vector<Ref<SceneObject>> parsed_objects;
-            parsed_objects.reserve(scene_objects_json.size());
+            parsed_objects.reserve(scene_objects_value.size());
             std::vector<int> objects_parent;
-            objects_parent.reserve(scene_objects_json.size());
-            for (auto& object_json : scene_objects_json) {
+            objects_parent.reserve(scene_objects_value.size());
+            for (auto& object_value : scene_objects_value) {
+                auto& object_table = object_value.get_ref<serde::Value::Table>();
                 int parent = -1;
-                if (auto it = object_json.find("parent"); it != object_json.end()) {
-                    parent = it->get<int>();
+                if (auto it = object_table.find("parent"); it != object_table.end()) {
+                    parent = it->second.get<int>();
                 }
                 objects_parent.push_back(parent);
                 parsed_objects.push_back(create_scene_object(scene, nullptr));
-                if (auto it = object_json.find("components"); it != object_json.end()) {
-                    for (auto& component_json : *it) {
-                        auto deserializer = g_engine->component_manager()->get_deserializer(component_json["type"]);
+                if (auto it = object_table.find("components"); it != object_table.end()) {
+                    for (auto& component_json : it->second.get_ref<serde::Value::Array>()) {
+                        auto deserializer = g_engine->component_manager()->get_deserializer(
+                            component_json["type"].get_ref<serde::Value::String>()
+                        );
                         deserializer(parsed_objects.back(), component_json["value"]);
                     }
                 }
@@ -101,7 +104,7 @@ struct World::Impl final {
                 }
             }
             return true;
-        } catch (json::json::exception const& e) {
+        } catch (std::exception const& e) {
             destroy_scene(scene);
             log::error("general", "Scene file is invalid: {}", e.what());
             return false;

@@ -9,7 +9,7 @@ auto AssetPtr::state() const -> AssetState {
     return g_engine->asset_manager()->state_of(asset_path);
 }
 
-auto AssetPtr::load(std::string_view type) const -> std::any* {
+auto AssetPtr::load(std::string_view type) const -> AssetAny* {
     return g_engine->asset_manager()->load_asset(type, asset_path);
 }
 

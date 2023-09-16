@@ -180,7 +180,7 @@ auto CommandHelpers::generate_mipmaps_2d(
         };
     }
 
-    uint32_t num_levels = std::log2(std::max(width, height)) + 1;
+    auto num_levels = std::min<uint32_t>(std::log2(std::max(width, height)) + 1, texture->desc().levels);
     for (uint32_t level = 0; level + 1 < num_levels; level++) {
         cmd_encoder->resource_barriers({}, {
             rhi::TextureBarrier{

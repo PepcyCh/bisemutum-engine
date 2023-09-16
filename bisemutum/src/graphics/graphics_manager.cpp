@@ -199,6 +199,7 @@ struct GraphicsManager::Impl final {
             auto swapchain_rhi_texture = swapchain->current_texture();
             Texture swapchain_texture{swapchain_rhi_texture};
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+
             cmd_encoder->resource_barriers({}, {
                 rhi::TextureBarrier{
                     .texture = swapchain_rhi_texture,
@@ -251,6 +252,15 @@ struct GraphicsManager::Impl final {
         Ref<Texture> dst, uint32_t dst_mip_level, uint32_t dst_array_layer
     ) -> void {
         command_helpers.blit_2d(cmd_encoder, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer);
+    }
+
+    auto generate_mipmaps_2d(
+        Ref<rhi::CommandEncoder> cmd_encoder,
+        Ref<Texture> texture,
+        BitFlags<rhi::ResourceAccessType>& texture_access,
+        MipmapMode mode
+    ) -> void {
+        command_helpers.generate_mipmaps_2d(cmd_encoder, texture, texture_access, mode);
     }
 
     auto compile_pipeline_for_drawable(
@@ -601,6 +611,15 @@ auto GraphicsManager::blit_texture_2d(
     Ref<Texture> dst, uint32_t dst_mip_level, uint32_t dst_array_layer
 ) -> void {
     impl()->blit_texture_2d(cmd_encoder, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer);
+}
+
+auto GraphicsManager::generate_mipmaps_2d(
+    Ref<rhi::CommandEncoder> cmd_encoder,
+    Ref<Texture> texture,
+    BitFlags<rhi::ResourceAccessType>& texture_access,
+    MipmapMode mode
+) -> void {
+    impl()->generate_mipmaps_2d(cmd_encoder, texture, texture_access, mode);
 }
 
 auto GraphicsManager::device() -> Ref<rhi::Device> {

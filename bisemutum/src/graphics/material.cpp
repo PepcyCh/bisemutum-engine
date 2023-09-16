@@ -16,8 +16,8 @@ auto Material::update_shader_parameter() -> void {
     // TODO - material dirty
     if (!shader_parameters) {
         ShaderParameterMetadataList list{};
-        list.params.resize(paramters_value.size());
-        for (size_t i = 0; i < paramters_value.size(); i++) {
+        list.params.resize(value_params.size() + texture_params.size() + sampler_params.size());
+        for (size_t i = 0; i < value_params.size(); i++) {
             std::visit(
                 FunctorsHelper{
                     [i, &list](float) -> void {
@@ -68,24 +68,35 @@ auto Material::update_shader_parameter() -> void {
                         list.params[i].size = sizeof(int4);
                         list.params[i].alignment = sizeof(int4);
                     },
-                    // TODO - sampler for texture ?
-                    [i, &list](Ref<Texture>) -> void {
-                        list.params[i].descriptor_type = rhi::DescriptorType::sampled_texture;
-                        list.params[i].type_name = "Texture2D";
-                        list.params[i].size = sizeof(TextureParam);
-                        list.params[i].alignment = alignof(TextureParam);
-                    },
                 },
-                paramters_value[i].second
+                value_params[i].second
             );
             list.params[i].cpu_alignment = list.params[i].alignment;
-            list.params[i].var_name = paramters_value[i].first;
+            list.params[i].var_name = value_params[i].first;
+        }
+        for (size_t i = 0; i < texture_params.size(); i++) {
+            auto list_i = i + value_params.size();
+            list.params[list_i].descriptor_type = rhi::DescriptorType::sampled_texture;
+            list.params[list_i].type_name = "Texture2D";
+            list.params[list_i].size = sizeof(TextureParam);
+            list.params[list_i].alignment = alignof(TextureParam);
+            list.params[list_i].cpu_alignment = list.params[list_i].alignment;
+            list.params[list_i].var_name = texture_params[i].first;
+        }
+        for (size_t i = 0; i < sampler_params.size(); i++) {
+            auto list_i = i + value_params.size() + texture_params.size();
+            list.params[list_i].descriptor_type = rhi::DescriptorType::sampler;
+            list.params[list_i].type_name = "SamplerState";
+            list.params[list_i].size = sizeof(SamplerState);
+            list.params[list_i].alignment = alignof(SamplerState);
+            list.params[list_i].cpu_alignment = list.params[list_i].alignment;
+            list.params[list_i].var_name = sampler_params[i].first;
         }
         shader_parameters.initialize(std::move(list), true);
     }
 
     size_t cpu_size = 0;
-    for (auto& [_, param_value] : paramters_value) {
+    for (auto& [_, value] : value_params) {
         std::visit(
             FunctorsHelper{
                 [this, &cpu_size](float value) -> void {
@@ -128,15 +139,21 @@ auto Material::update_shader_parameter() -> void {
                     *shader_parameters.mutable_typed_data_offset<int4>(cpu_size) = value;
                     cpu_size += sizeof(int4);
                 },
-                [this, &cpu_size](Ref<Texture> value) -> void {
-                    cpu_size = aligned_size(cpu_size, alignof(TextureParam));
-                    auto texture = shader_parameters.mutable_typed_data_offset<TextureParam>(cpu_size);
-                    texture->texture = value;
-                    cpu_size += sizeof(TextureParam);
-                },
             },
-            param_value
+            value
         );
+    }
+    for (auto& [_, tex] : texture_params) {
+        cpu_size = aligned_size(cpu_size, alignof(TextureParam));
+        auto texture = shader_parameters.mutable_typed_data_offset<TextureParam>(cpu_size);
+        texture->texture = tex;
+        cpu_size += sizeof(TextureParam);
+    }
+    for (auto& [_, samp] : sampler_params) {
+        cpu_size = aligned_size(cpu_size, alignof(SamplerState));
+        auto sampler = shader_parameters.mutable_typed_data_offset<SamplerState>(cpu_size);
+        sampler->sampler = samp;
+        cpu_size += sizeof(SamplerState);
     }
 }
 auto Material::shader_params_metadata() const -> ShaderParameterMetadataList const& {

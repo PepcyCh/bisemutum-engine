@@ -13,6 +13,8 @@ namespace bi::rt {
 
 BI_TRAIT_BEGIN(IFile, move)
     BI_TRAIT_METHOD(is_writable, (const& self) requires (self.is_writable()) -> bool)
+    BI_TRAIT_METHOD(filename, (const& self) requires (self.filename()) -> std::string)
+    BI_TRAIT_METHOD(extension, (const& self) requires (self.extension()) -> std::string)
     BI_TRAIT_METHOD(read_string_data, (&self) requires (self.read_string_data()) -> std::string)
     BI_TRAIT_METHOD(read_binary_data, (&self) requires (self.read_binary_data()) -> std::vector<std::byte>)
     BI_TRAIT_METHOD(write_string_data, (&self, std::string_view data) requires (self.write_string_data(data)) -> bool)
@@ -51,6 +53,8 @@ struct PhysicalFile final {
     PhysicalFile(std::filesystem::path path, bool writable);
 
     auto is_writable() const -> bool { return writable_; }
+    auto filename() const -> std::string { return path_.filename().string(); }
+    auto extension() const -> std::string { return path_.extension().string(); }
 
     auto read_string_data() -> std::string;
     auto read_binary_data() -> std::vector<std::byte>;

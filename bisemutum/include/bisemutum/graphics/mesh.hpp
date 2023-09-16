@@ -10,6 +10,8 @@
 
 namespace bi::gfx {
 
+struct Drawable;
+
 BI_TRAIT_BEGIN(IMesh, move)
     template <typename T>
     static auto helper_primitive_topology(T const& self) -> rhi::PrimitiveTopology {
@@ -54,10 +56,12 @@ BI_TRAIT_BEGIN(IMesh, move)
     )
     BI_TRAIT_METHOD(num_indices, (const& self) requires (self.num_indices()) -> uint32_t)
     BI_TRAIT_METHOD(bind_buffers,
-        (&self, Ref<rhi::GraphicsCommandEncoder> cmd_encoder) requires (self.bind_buffers(cmd_encoder)) -> uint32_t
+        (&self, Ref<rhi::GraphicsCommandEncoder> cmd_encoder) requires (self.bind_buffers(cmd_encoder)) -> void
     )
 
-    BI_TRAIT_METHOD(shader_params, (&self) requires (self.shader_params()) -> ShaderParameter&)
+    BI_TRAIT_METHOD(fill_shader_params,
+        (const& self, Ref<Drawable> drawable) requires (self.fill_shader_params(drawable)) -> void
+    )
     BI_TRAIT_METHOD(shader_params_metadata,
         (const& self) requires (self.shader_params_metadata()) -> ShaderParameterMetadataList const&
     )

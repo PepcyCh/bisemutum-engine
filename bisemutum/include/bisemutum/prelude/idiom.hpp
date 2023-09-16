@@ -40,6 +40,7 @@ struct PImpl {
         if (impl_) { delete impl(); }
         impl_ = rhs.impl_;
         rhs.impl_ = nullptr;
+        return *this;
     }
 
     auto operator==(PImpl const& rhs) const noexcept -> bool = default;

@@ -1,0 +1,10 @@
+surface_model = "lit"
+blend_mode = "opaque"
+
+material_function = '''
+surface.base_color = base_color;
+'''
+
+[[params]]
+name = "base_color"
+value = [ 1.0, 1.0, 1.0 ]

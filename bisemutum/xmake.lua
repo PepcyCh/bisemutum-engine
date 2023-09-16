@@ -1,7 +1,7 @@
-add_requires("fmt", "spdlog", "glm", "entt", "nlohmann_json")
+add_requires("fmt", "spdlog", "glm", "entt", "magic_enum")
 add_requires("glfw", "directxshadercompiler", "crypto-algorithms")
 add_requires("vulkan-headers", "vulkan-memory-allocator")
-add_requires("assimp")
+add_requires("nlohmann_json", "toml++", "assimp", "mikktspace", "stb")
 if is_plat("windows") then
     add_requires("d3d12-memory-allocator")
 end
@@ -18,11 +18,11 @@ target("bisemutum-lib")
     add_deps("anyany", {public = true})
     add_deps("pep-cprep")
 
-    add_packages("fmt", "spdlog", "glm", "entt", "nlohmann_json", {public = true})
+    add_packages("fmt", "spdlog", "glm", "entt", "magic_enum", {public = true})
     add_packages("glfw", "directxshadercompiler", "crypto-algorithms")
     add_packages("vulkan-headers", "vulkan-memory-allocator")
     add_defines("VK_NO_PROTOTYPES")
-    add_packages("assmip")
+    add_packages("nlohmann_json", "toml++", "assimp", "mikktspace", "stb")
     if is_plat("windows") then
         add_defines("VK_USE_PLATFORM_WIN32_KHR", "NOMINMAX")
         add_packages("d3d12-memory-allocator")

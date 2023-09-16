@@ -1,0 +1,3 @@
+#pragma once
+
+$GRAPHICS_CAMERA_SHADER_PARAMS

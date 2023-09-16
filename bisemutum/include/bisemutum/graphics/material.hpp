@@ -30,8 +30,7 @@ using MaterialParameter = std::variant<
     int,
     int2,
     int3,
-    int4,
-    Ref<Texture>
+    int4
 >;
 
 struct Material final {
@@ -47,7 +46,9 @@ struct Material final {
 
     SurfaceModel surface_model = SurfaceModel::lit;
     BlendMode blend_mode = BlendMode::opaque;
-    std::vector<std::pair<std::string, MaterialParameter>> paramters_value;
+    std::vector<std::pair<std::string, MaterialParameter>> value_params;
+    std::vector<std::pair<std::string, Ref<Texture>>> texture_params;
+    std::vector<std::pair<std::string, Ref<Sampler>>> sampler_params;
     ShaderParameter shader_parameters;
     std::string material_function;
 

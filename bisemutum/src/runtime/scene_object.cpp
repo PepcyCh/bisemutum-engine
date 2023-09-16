@@ -7,13 +7,43 @@
 
 namespace bi::rt {
 
-SceneObject::SceneObject(Ref<Scene> scene) : scene_(scene), ecs_registry_(g_engine->ecs_manager()->get_ecs_registry()) {
+SceneObject::SceneObject(Ref<Scene> scene) : scene_(scene), ecs_registry_(g_engine->ecs_manager()->ecs_registry()) {
     ecs_entity_ = ecs_registry_->create();
+    g_engine->ecs_manager()->add_scene_object(unsafe_make_ref(this), ecs_entity_);
+    attach_component(Transform{});
     name_ = fmt::format("scene_object_{}", static_cast<uint32_t>(ecs_entity_));
 }
 
 SceneObject::~SceneObject() {
+    g_engine->ecs_manager()->remove_scene_object(ecs_entity_);
     ecs_registry_->destroy(ecs_entity_);
+}
+
+auto SceneObject::world_transform() const -> Transform const& {
+    std::vector<CRef<SceneObject>> parent_chains;
+    parent_chains.push_back(unsafe_make_ref(this));
+    size_t toppest_dirty_index = 0;
+    for (auto p = parent_; p; p = p->parent_) {
+        parent_chains.push_back(p.value());
+        if (p->world_transform_dirty_) {
+            toppest_dirty_index = parent_chains.size() - 1;
+        }
+    }
+    if (toppest_dirty_index == 0 && !world_transform_dirty_) { return world_transform_; }
+    auto transform = parent_chains[toppest_dirty_index]->parent_
+        ? parent_chains[toppest_dirty_index]->parent_->world_transform_
+        : Transform{};
+    for (size_t i = toppest_dirty_index; i < parent_chains.size(); i--) {
+        auto object = parent_chains[i];
+        object->for_each_children([](CRef<SceneObject> ch) { ch->world_transform_dirty_ = true; });
+        object->world_transform_dirty_ = false;
+        object->world_transform_ = transform = transform * object->local_transform();
+    }
+    return world_transform_;
+}
+
+auto SceneObject::local_transform() const -> Transform const& {
+    return *get_component<Transform>();
 }
 
 auto SceneObject::set_name(std::string_view name) -> void {

@@ -5,9 +5,10 @@
 #include "handles.hpp"
 #include "renderer.hpp"
 #include "displayer.hpp"
+#include "mipmap_mode.hpp"
 #include "../prelude/idiom.hpp"
 #include "../rhi/pipeline.hpp"
-#include "../rhi/defines_serde.hpp"
+#include "../utils/reflection.hpp"
 
 namespace bi::rhi {
 
@@ -22,9 +23,14 @@ struct GraphicsSettings final {
     bool enable_validation = false;
     uint8_t num_swapchain_textures = 3;
     bool swapchain_srgb = true;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GraphicsSettings, backend, enable_validation, num_swapchain_textures, swapchain_srgb)
 };
+BI_SREFL(
+    type(GraphicsSettings),
+    field(backend),
+    field(enable_validation),
+    field(num_swapchain_textures),
+    field(swapchain_srgb)
+)
 
 struct Buffer;
 struct Texture;
@@ -89,6 +95,13 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto blit_texture_2d(Ref<rhi::CommandEncoder> cmd_encoder, Ref<Texture> src, Ref<Texture> dst) -> void {
         blit_texture_2d(cmd_encoder, src, 0, 0, dst, 0, 0);
     }
+
+    auto generate_mipmaps_2d(
+        Ref<rhi::CommandEncoder> cmd_encoder,
+        Ref<Texture> texture,
+        BitFlags<rhi::ResourceAccessType>& texture_access,
+        MipmapMode mode = MipmapMode::average
+    ) -> void;
 
     auto device() -> Ref<rhi::Device>;
     auto render_graph() -> RenderGraph&;

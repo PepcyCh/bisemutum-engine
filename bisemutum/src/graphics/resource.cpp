@@ -82,6 +82,10 @@ auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> v
             target_access.set(rhi::ResourceAccessType::uniform_buffer_read);
         } else if (desc().usages.contains(rhi::BufferUsage::indirect)) {
             target_access.set(rhi::ResourceAccessType::indirect_read);
+        } else if (desc().usages.contains(rhi::BufferUsage::vertex)) {
+            target_access.set(rhi::ResourceAccessType::vertex_buffer_read);
+        } else if (desc().usages.contains(rhi::BufferUsage::index)) {
+            target_access.set(rhi::ResourceAccessType::index_buffer_read);
         } else if (desc().usages.contains(rhi::BufferUsage::storage_read)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }

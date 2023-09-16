@@ -20,7 +20,15 @@ auto bytes_as_hex_string(CSpan<std::byte> data) -> std::string {
     return res;
 }
 
+auto hash_bytes(CSpan<std::byte> data) -> size_t {
+    size_t hash = 0;
+    for (size_t i = 0; i < data.size(); i += sizeof(size_t)) {
+        hash = bi::hash_combine(hash, std::hash<size_t>{}(*reinterpret_cast<size_t const*>(data.data() + i)));
+    }
+    return hash;
 }
+
+} // namespace
 
 auto MD5::as_string() const -> std::string {
     return bytes_as_hex_string({data, size});
@@ -48,4 +56,12 @@ auto sha256(CSpan<std::byte> in_data) -> SHA256 {
     return res;
 }
 
+} // namespace bi::crypto
+
+auto std::hash<bi::crypto::MD5>::operator()(bi::crypto::MD5 const& v) const noexcept -> size_t {
+    return bi::crypto::hash_bytes({v.data, v.size});
+}
+
+auto std::hash<bi::crypto::SHA256>::operator()(bi::crypto::SHA256 const& v) const noexcept -> size_t {
+    return bi::crypto::hash_bytes({v.data, v.size});
 }

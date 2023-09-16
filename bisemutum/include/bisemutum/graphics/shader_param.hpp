@@ -353,7 +353,11 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
 #define BI_SHADER_PARAMETERS_BEGIN(name) struct name final { \
     static constexpr ::bi::ConstexprStringLit type_name{#name}; \
     template <size_t index> struct XParamsTuple { using type = XParamsTuple<index - 1>::type; }; \
-    template <> struct XParamsTuple<__LINE__> { using type = ::bi::TypeList<>; };
+    template <> struct XParamsTuple<__LINE__> { using type = ::bi::TypeList<>; }; \
+    static auto metadata_list() -> ::bi::gfx::ShaderParameterMetadataList const& { \
+        static const auto metadata_list = ::bi::gfx::shader_parameter_metadata_list_of<name>(); \
+        return metadata_list; \
+    }
 
 #define BI_SHADER_PARAMETER(ty, name) ty name; \
     template <> struct XParamsTuple<__LINE__> { \

@@ -1,14 +1,20 @@
+#pragma once
+
 #include "math.hpp"
 #include "bbox.hpp"
+#include "../utils/serde.hpp"
 
 namespace bi {
 
 struct Transform final {
+    static constexpr std::string_view component_type_name = "Transform";
+
     float3 translation = float3(0.0f);
     float3x3 rotation = float3x3(1.0f);
     float3 scaling = float3(1.0f);
 
     auto matrix() const -> float4x4;
+    auto matrix_transposed_inverse() const -> float4x4;
     static auto from_matrix(float4x4 const& matrix) -> Transform;
 
     auto transform_position(float3 const& pos) const -> float3;
@@ -16,6 +22,16 @@ struct Transform final {
     auto transform_bounding_box(BoundingBox const& bbox) const -> BoundingBox;
 
     auto operator*(Transform const& rhs) const -> Transform;
+
+    static auto to_value(serde::Value &v, Transform const& o) -> void;
+    static auto from_value(serde::Value const& v, Transform& o) -> void;
 };
+
+BI_SREFL(
+    type(Transform),
+    field(translation),
+    field(rotation),
+    field(scaling)
+)
 
 }

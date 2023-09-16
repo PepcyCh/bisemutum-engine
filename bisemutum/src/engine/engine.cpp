@@ -15,6 +15,8 @@
 #include <bisemutum/runtime/asset_manager.hpp>
 #include <bisemutum/platform/exe_dir.hpp>
 
+#include "register.hpp"
+
 namespace bi {
 
 namespace {
@@ -31,25 +33,28 @@ auto read_all_from_file(std::ifstream& fin) -> std::string {
 
 struct ProjectSettings final {
     gfx::GraphicsSettings graphics;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(ProjectSettings, graphics)
 };
+BI_SREFL(type(ProjectSettings), field(graphics));
+
 struct ProjectInfo final {
     static constexpr std::string_view type_name = "";
 
     std::string name;
     std::string scene_file;
     ProjectSettings settings;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(ProjectInfo, name, scene_file, settings)
 };
+BI_SREFL(type(ProjectInfo), field(name), field(scene_file), field(settings));
 
 }
 
 Engine* g_engine = nullptr;
 
 struct Engine::Impl final {
-    Impl() : window(1600, 900, "Bisemutum Engine") {}
+    Impl() : window(1600, 900, "Bisemutum Engine") {
+        register_loggers(logger_manager);
+        register_components(component_manager);
+        register_assets(asset_manager);
+    }
 
     auto initialize(int argc, char** argv) -> bool {
         if (!mount_engine_path()) { return false; }
@@ -67,7 +72,7 @@ struct Engine::Impl final {
             rt::PhysicalSubFileSystem{std::filesystem::path{project_path}.parent_path()}
         );
 
-        auto graphics_backend_str = json::json(project_info.settings.graphics.backend).get<std::string>();
+        auto graphics_backend_str = magic_enum::enum_name(project_info.settings.graphics.backend);
         graphics_manager.initialize(project_info.settings.graphics);
         graphics_manager.device()->initialize_pipeline_cache_from(
             fmt::format("/project/binaries/gfx-{}/pipeline_cache", graphics_backend_str)
@@ -76,12 +81,12 @@ struct Engine::Impl final {
         if (!module_manager.initialize()) { return false; }
 
         {
-            std::ifstream fin(project_info.scene_file);
-            if (!fin) {
+            auto scene_file_opt = file_system.get_file(project_info.scene_file);
+            if (!scene_file_opt) {
                 log::critical("general", "Scene file '{}' not founc.", project_info.scene_file);
                 return false;
             }
-            world.load_scene(read_all_from_file(fin));
+            world.load_scene(scene_file_opt.value().read_string_data());
         }
 
         return true;
@@ -106,20 +111,20 @@ struct Engine::Impl final {
         return true;
     }
     auto read_project_file(char const* project_file_path) -> Option<ProjectInfo> {
-        std::string project_json_str{};
+        std::string project_file_str{};
         {
             std::ifstream fin(project_file_path);
             if (!fin) {
                 log::critical("general", "Project file not found.");
                 return {};
             }
-            project_json_str = read_all_from_file(fin);
+            project_file_str = read_all_from_file(fin);
         }
 
         try {
-            auto project_json = json::json::parse(project_json_str);
-            return project_json.get<ProjectInfo>();
-        } catch (json::json::exception const& e) {
+            auto value = serde::Value::from_toml(project_file_str);
+            return value.get<ProjectInfo>();
+        } catch (std::exception const& e) {
             log::critical("general", "Project file is invalid: {}", e.what());
             return {};
         }

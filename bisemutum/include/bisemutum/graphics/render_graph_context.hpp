@@ -1,15 +1,10 @@
 #pragma once
 
+#include "mipmap_mode.hpp"
 #include "renderer_list.hpp"
 #include "../rhi/command.hpp"
 
 namespace bi::gfx {
-
-enum class MipmapMode : uint8_t {
-    average,
-    min,
-    max,
-};
 
 struct ResourceBindingContext final {
     ResourceBindingContext();

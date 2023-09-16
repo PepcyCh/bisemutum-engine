@@ -1,7 +1,8 @@
 #include <bisemutum/math/transform.hpp>
 
 #include <glm/gtx/transform.hpp>
-#include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <bisemutum/math/math_serde.hpp>
 
 namespace bi {
 
@@ -11,6 +12,15 @@ auto Transform::matrix() const -> float4x4 {
         float4(rotation[1] * scaling.y, 0.0f),
         float4(rotation[2] * scaling.z, 0.0f),
         float4(translation, 1.0f)
+    );
+}
+
+auto Transform::matrix_transposed_inverse() const -> float4x4 {
+    return float4x4(
+        float4(rotation[0], -math::dot(rotation[0], translation)) / scaling.x,
+        float4(rotation[1], -math::dot(rotation[1], translation)) / scaling.y,
+        float4(rotation[2], -math::dot(rotation[2], translation)) / scaling.z,
+        float4(0.0f, 0.0f, 0.0f, 1.0f)
     );
 }
 
@@ -58,6 +68,21 @@ auto Transform::transform_bounding_box(BoundingBox const& bbox) const -> Boundin
 
 auto Transform::operator*(Transform const& rhs) const -> Transform {
     return from_matrix(matrix() * rhs.matrix());
+}
+
+auto Transform::to_value(serde::Value &v, Transform const& o) -> void {
+    serde::to_value(v["translation"], o.translation);
+    serde::to_value(v["scaling"], o.scaling);
+    float3 rotation{};
+    math::extractEulerAngleZXY(float4x4{o.rotation}, rotation.z, rotation.x, rotation.y);
+    serde::to_value(v["rotation"], o.rotation);
+}
+
+auto Transform::from_value(serde::Value const& v, Transform& o) -> void {
+    o.translation = v.value("translation", float3{0.0f});
+    o.scaling = v.value("scaling", float3{0.0f});
+    auto rotation = math::radians(v.value("rotation", float3{0.0f}));
+    o.rotation = math::eulerAngleZXY(rotation.z, rotation.x, rotation.y);
 }
 
 }

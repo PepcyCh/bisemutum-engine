@@ -6,11 +6,13 @@
 #include <entt/entity/registry.hpp>
 
 #include "component.hpp"
+#include "../math/transform.hpp"
 #include "../prelude/ref.hpp"
 
 namespace bi::rt {
 
 struct Scene;
+struct TransformSystem;
 
 struct SceneObject final {
     SceneObject(Ref<Scene> scene);
@@ -18,6 +20,9 @@ struct SceneObject final {
 
     auto get_name() const -> std::string_view { return name_; }
     auto set_name(std::string_view name) -> void;
+
+    auto world_transform() const -> Transform const&;
+    auto local_transform() const -> Transform const&;
 
     auto is_enabled() const -> bool { return enabled_; }
     auto set_enabled(bool enabled) -> void;
@@ -49,7 +54,7 @@ struct SceneObject final {
 
     template <TComponent Component>
     auto attach_component(Component&& component) -> void {
-        ecs_registry_->emplace<component>(ecs_entity_, std::move(component));
+        ecs_registry_->emplace<Component>(ecs_entity_, std::move(component));
     }
     template <TComponent Component>
     auto dettach_component() -> void {
@@ -74,14 +79,18 @@ struct SceneObject final {
     }
 
 private:
+    friend TransformSystem;
+
     Ref<Scene> scene_;
     std::string name_;
 
     entt::entity ecs_entity_;
     Ref<entt::registry> ecs_registry_;
+    mutable Transform world_transform_;
 
     bool enabled_ = true;
     bool destroyed_ = false;
+    mutable bool world_transform_dirty_ = false;
 
     Ptr<SceneObject> parent_ = nullptr;
     Ptr<SceneObject> first_child_ = nullptr;

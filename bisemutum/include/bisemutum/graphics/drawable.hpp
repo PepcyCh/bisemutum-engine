@@ -12,6 +12,8 @@ struct Drawable final {
     Dyn<IMesh>::Ptr mesh;
     Ptr<Material> material;
     Transform transform;
+
+    ShaderParameter shader_params;
 };
 
 }

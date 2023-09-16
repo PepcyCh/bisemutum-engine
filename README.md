@@ -30,9 +30,9 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
     * [ ] async load ?
   * [x] simple frame timer
 * [ ] basic scene objects
-  * [ ] camera
-  * [ ] static mesh
-  * [ ] material
+  * [x] camera
+  * [x] static mesh
+  * [x] material
   * [ ] lights
 * [ ] basic renderer
   * [ ] forward pipeline
@@ -57,12 +57,15 @@ directly via xmake
 * fmt ([LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE))
 * spdlog (MIT)
 * EnTT (MIT)
-* nlohmann json (MIT)
+* magic enum (MIT)
 * GLFW (zlib)
 * GLM (MIT)
 * Vulkan Memory Allocator (MIT)
 * D3D12 Memory Allocator (MIT)
 * DirectXShaderCompiler ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
-* crypto algorithms (public)
+* crypto algorithms
+* stb
 * assimp ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))
-
+* nlohmann json (MIT)
+* toml++ (MIT)
+* mikktspace
