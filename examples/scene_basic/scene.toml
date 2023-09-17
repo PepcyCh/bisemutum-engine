@@ -50,3 +50,29 @@ static_mesh = "/project/models/sphere.obj"
 type = "MeshRendererComponent"
 [objects.components.value]
 material = "/project/materials/textured.toml"
+
+[[objects]]
+
+[[objects.components]]
+type = "Transform"
+[objects.components.value]
+rotation = [ 30.0, 0.0, 10.0 ]
+
+[[objects.components]]
+type = "LightComponent"
+[objects.components.value]
+color = [ 1.0, 0.8, 0.7 ]
+strength = 4.0
+type = "directional"
+
+[[objects]]
+
+[[objects.components]]
+type = "Transform"
+[objects.components.value]
+translation = [ 7.0, 3.0, 4.0 ]
+rotation = [ -36.869898, 54.462322, 0.0 ]
+
+[[objects.components]]
+type = "CameraComponent"
+value = {}

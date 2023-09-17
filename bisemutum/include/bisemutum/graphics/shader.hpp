@@ -13,7 +13,7 @@ struct FragmentShader final {
     template <typename ParamsStruct>
     auto set_shader_params_struct() { shader_params_metadata = shader_parameter_metadata_list_of<ParamsStruct>(); }
 
-    auto modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) -> void;
+    auto modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void;
 
     std::string source_path;
     std::string source_entry;

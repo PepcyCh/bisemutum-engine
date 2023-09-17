@@ -23,7 +23,7 @@ enum class RenderedObjectType : uint8_t {
 };
 struct RenderedObjectListDesc final {
     CRef<Camera> camera;
-    Ref<FragmentShader> fragmeng_shader;
+    CRef<FragmentShader> fragmeng_shader;
     BitFlags<RenderedObjectType> type = {RenderedObjectType::all};
 };
 

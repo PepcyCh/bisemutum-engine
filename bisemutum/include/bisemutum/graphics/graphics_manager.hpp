@@ -57,10 +57,10 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto initialize(GraphicsSettings const& settings) -> void;
 
     template <typename Renderer>
-    auto set_renderer() -> void {
-        set_renderer(Renderer{});
+    auto register_renderer() -> void {
+        register_renderer(std::string{Renderer::renderer_type_name}, []() -> Dyn<IRenderer>::Box { return Renderer{}; });
     }
-    auto set_renderer(Dyn<IRenderer>::Box renderer) -> void;
+    auto set_renderer(std::string_view renderer_type_name) -> void;
 
     template <typename Displayer>
     auto set_displayer() -> void {
@@ -109,6 +109,8 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto num_frames_in_flight() const -> uint32_t;
 
 private:
+    auto register_renderer(std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box> creator) -> void;
+
     friend Buffer;
     friend Texture;
     friend Sampler;
@@ -118,7 +120,7 @@ private:
 
     friend GraphicsPassContext;
     auto compile_pipeline_for_drawable(
-        GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, Ref<FragmentShader> fs
+        GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
     ) -> Ref<rhi::GraphicsPipeline>;
 
     friend ResourceBindingContext;

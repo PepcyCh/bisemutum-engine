@@ -10,7 +10,7 @@
 
 namespace bi::rt {
 
-BI_TRAIT_BEGIN(ISystem, move)
+BI_TRAIT_BEGIN(ISystem, move, type_info)
     BI_TRAIT_METHOD(update, (&self) requires (self.update()) -> void)
 BI_TRAIT_END(ISystem)
 
@@ -31,11 +31,16 @@ struct EcsManager final : PImpl<EcsManager> {
     auto register_system() -> void {
         register_system(typeid(System), System{});
     }
+    template <typename System>
+    auto get_system() const -> CPtr<System> {
+        return aa::any_cast<System>(get_system(typeid(System)));
+    }
 
     auto tick() -> void;
 
 private:
     auto register_system(std::type_index type, Dyn<ISystem>::Box system) -> void;
+    auto get_system(std::type_index type) const -> Dyn<ISystem>::CPtr;
 
     friend SceneObject;
     auto add_scene_object(Ref<SceneObject> object, entt::entity entity) -> void;

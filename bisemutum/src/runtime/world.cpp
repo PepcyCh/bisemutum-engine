@@ -90,11 +90,11 @@ struct World::Impl final {
                 objects_parent.push_back(parent);
                 parsed_objects.push_back(create_scene_object(scene, nullptr));
                 if (auto it = object_table.find("components"); it != object_table.end()) {
-                    for (auto& component_json : it->second.get_ref<serde::Value::Array>()) {
+                    for (auto& component_value : it->second.get_ref<serde::Value::Array>()) {
                         auto deserializer = g_engine->component_manager()->get_deserializer(
-                            component_json["type"].get_ref<serde::Value::String>()
+                            component_value["type"].get_ref<serde::Value::String>()
                         );
-                        deserializer(parsed_objects.back(), component_json["value"]);
+                        deserializer(parsed_objects.back(), component_value["value"]);
                     }
                 }
             }

@@ -104,8 +104,8 @@ auto MaterialAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     mat.texture_params.reserve(desc.texture_params.size());
     mat.sampler_params.reserve(desc.texture_params.size());
     for (size_t index = 0; auto& [name, tex] : desc.texture_params) {
-        mat.texture_params[index] = {name, make_ref(tex.asset()->texture)};
-        mat.sampler_params[index] = {std::move(name), tex.asset()->sampler.value()};
+        mat.sampler_params[index] = {name + "_sampler", tex.asset()->sampler.value()};
+        mat.texture_params[index] = {std::move(name), make_ref(tex.asset()->texture)};
         ++index;
     }
     return mat;

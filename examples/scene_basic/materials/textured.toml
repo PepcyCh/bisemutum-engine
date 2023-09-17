@@ -1,0 +1,14 @@
+surface_model = "lit"
+blend_mode = "opaque"
+
+material_function = '''
+surface.base_color = base_color_tex.Sample(base_color_tex_sampler, vertex.texcoord0).xyz;
+surface.normal_map_value = normal_map.Sample(normal_map_sampler, vertex.texcoord0).xyz;
+'''
+
+[[params]]
+name = "base_color_tex"
+value = "/project/textures/earth_diffuse.toml"
+[[params]]
+name = "normal_map"
+value = "/project/textures/earth_normal.toml"

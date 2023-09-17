@@ -2,6 +2,8 @@ name = "Scene Basic"
 
 scene_file = "/project/scene.toml"
 
+renderer = "ForwardRenderer"
+
 [settings.graphics]
 backend = "vulkan"
 enable_validation = true

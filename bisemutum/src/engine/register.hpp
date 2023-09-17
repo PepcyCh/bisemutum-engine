@@ -13,4 +13,12 @@ auto register_systems(Ref<rt::EcsManager> mgr) -> void;
 
 auto register_assets(Ref<rt::AssetManager> mgr) -> void;
 
+namespace gfx {
+
+struct GraphicsManager;
+
+}
+
+auto register_renderers(Ref<gfx::GraphicsManager> mgr) -> void;
+
 }

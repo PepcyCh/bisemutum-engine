@@ -97,8 +97,13 @@ struct GraphicsManager::Impl final {
         render_graph.set_graphics_device(device.ref(), frame_data.size());
     }
 
-    auto set_renderer(Dyn<IRenderer>::Box&& renderer) -> void {
-        this->renderer = std::move(renderer);
+    auto register_renderer(std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box>&& creator) -> void {
+        registered_renderers.insert({std::move(name), std::move(creator)});
+    }
+    auto set_renderer(std::string_view renderer_type_name) -> void {
+        if (auto it = registered_renderers.find(renderer_type_name); it != registered_renderers.end()) {
+            renderer = it->second();
+        }
     }
 
     auto set_displayer(Dyn<IDisplayer>::Ref displayer) -> void {
@@ -182,7 +187,7 @@ struct GraphicsManager::Impl final {
             camera.update_shader_params();
 
             renderer.prepare_renderer_per_camera_data(camera);
-            renderer.render_camera(camera);
+            renderer.render_camera(camera, render_graph);
             render_graph.execute();
 
             graphics_queue->submit_command_buffer(
@@ -264,7 +269,7 @@ struct GraphicsManager::Impl final {
     }
 
     auto compile_pipeline_for_drawable(
-        GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, Ref<FragmentShader> fs
+        GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
     ) -> Ref<rhi::GraphicsPipeline> {
         ShaderCompilationEnvironment shader_env;
         drawable->mesh->modify_compiler_environment(shader_env);
@@ -449,7 +454,7 @@ struct GraphicsManager::Impl final {
         );
         pipeline_desc.bind_groups_layout.push_back(
             camera_shader_params.bind_group_layout(
-                graphics_set_camera, BitFlags{rhi::ShaderStage::all_graphics}.clear(rhi::ShaderStage::fragment)
+                graphics_set_camera, BitFlags{rhi::ShaderStage::all_graphics}
             )
         );
         if (device->properties().separate_sampler_heap) {
@@ -515,6 +520,7 @@ struct GraphicsManager::Impl final {
     Box<rhi::Swapchain> swapchain;
     Window::ResizeCallbackHandle swapchain_resize_callback;
 
+    StringHashMap<std::function<auto() -> Dyn<IRenderer>::Box>> registered_renderers;
     Dyn<IRenderer>::Box renderer;
     Dyn<IDisplayer>::Ptr displayer = nullptr;
 
@@ -550,8 +556,13 @@ auto GraphicsManager::initialize(GraphicsSettings const& settings) -> void {
     impl()->initialize(settings);
 }
 
-auto GraphicsManager::set_renderer(Dyn<IRenderer>::Box renderer) -> void {
-    impl()->set_renderer(std::move(renderer));
+auto GraphicsManager::register_renderer(
+    std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box> creator
+) -> void {
+    impl()->register_renderer(std::move(name), std::move(creator));
+}
+auto GraphicsManager::set_renderer(std::string_view renderer_type_name) -> void {
+    impl()->set_renderer(renderer_type_name);
 }
 
 auto GraphicsManager::set_displayer(Dyn<IDisplayer>::Ref displayer) -> void {
@@ -645,7 +656,7 @@ auto GraphicsManager::cpu_sampler_descriptor_heap() -> Ref<rhi::DescriptorHeap> 
 }
 
 auto GraphicsManager::compile_pipeline_for_drawable(
-    GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, Ref<FragmentShader> fs
+    GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
 ) -> Ref<rhi::GraphicsPipeline> {
     return impl()->compile_pipeline_for_drawable(graphics_context, camera, drawable, fs);
 }

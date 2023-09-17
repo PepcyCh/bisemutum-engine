@@ -16,6 +16,7 @@
 #include <bisemutum/platform/exe_dir.hpp>
 
 #include "register.hpp"
+#include "ui.hpp"
 
 namespace bi {
 
@@ -41,6 +42,7 @@ struct ProjectInfo final {
 
     std::string name;
     std::string scene_file;
+    std::string renderer;
     ProjectSettings settings;
 };
 BI_SREFL(type(ProjectInfo), field(name), field(scene_file), field(settings));
@@ -54,6 +56,7 @@ struct Engine::Impl final {
         register_loggers(logger_manager);
         register_components(component_manager);
         register_assets(asset_manager);
+        register_renderers(graphics_manager);
     }
 
     auto initialize(int argc, char** argv) -> bool {
@@ -77,6 +80,10 @@ struct Engine::Impl final {
         graphics_manager.device()->initialize_pipeline_cache_from(
             fmt::format("/project/binaries/gfx-{}/pipeline_cache", graphics_backend_str)
         );
+        graphics_manager.set_renderer(project_info.renderer);
+
+        ui = create_empty_ui();
+        graphics_manager.set_displayer(ui.displayer());
 
         if (!module_manager.initialize()) { return false; }
 
@@ -145,6 +152,7 @@ struct Engine::Impl final {
     }
 
     Window window;
+    Dyn<IEngineUI>::Box ui;
 
     gfx::GraphicsManager graphics_manager;
 

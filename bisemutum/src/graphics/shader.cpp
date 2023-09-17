@@ -2,7 +2,7 @@
 
 namespace bi::gfx {
 
-auto FragmentShader::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) -> void {
+auto FragmentShader::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void {
     switch (needed_vertex_attributes) {
         case VertexAttributesType::full:
             compilation_environment.set_define("VERTEX_ATTRIBUTES_TYPE_FULL");

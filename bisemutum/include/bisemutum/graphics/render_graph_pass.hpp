@@ -95,10 +95,10 @@ struct GraphicsPassBuilder final {
 
     template <typename PassData>
     auto set_execution_function(
-        std::function<auto(CRef<PassData>, Ref<rhi::GraphicsCommandEncoder>) -> void> func
+        std::function<auto(CRef<PassData>, GraphicsPassContext const&) -> void> func
     ) -> void {
-        set_execution_function_impl([&func](std::any const* pass_data, Ref<rhi::GraphicsCommandEncoder> encoder) {
-            func(unsafe_make_cref(std::any_cast<PassData>(pass_data), encoder));
+        set_execution_function_impl([&func](std::any const* pass_data, GraphicsPassContext const& ctx) {
+            func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
         });
     }
 
@@ -132,10 +132,10 @@ struct ComputePassBuilder final {
 
     template <typename PassData>
     auto set_execution_function(
-        std::function<auto(CRef<PassData>, Ref<rhi::ComputeCommandEncoder>) -> void> func
+        std::function<auto(CRef<PassData>, ComputePassContext const&) -> void> func
     ) -> void {
-        set_execution_function_impl([&func](std::any const* pass_data, Ref<rhi::ComputeCommandEncoder> encoder) {
-            func(unsafe_make_cref(std::any_cast<PassData>(pass_data), encoder));
+        set_execution_function_impl([&func](std::any const* pass_data, ComputePassContext const& ctx) {
+            func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
         });
     }
 

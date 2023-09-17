@@ -28,15 +28,15 @@ struct Window final : PImpl<Window> {
 
     template <typename Callback, auto unregister_func>
     struct CallbackHandle final : MoveOnly {
-        CallbackHandle() = default;
-        ~CallbackHandle() { reset(); }
+        CallbackHandle() noexcept = default;
+        ~CallbackHandle() noexcept { reset(); }
 
-        CallbackHandle(CallbackHandle&& rhs) {
+        CallbackHandle(CallbackHandle&& rhs) noexcept {
             window_ = rhs.window_;
             index_ = rhs.index_;
             rhs.window_ = nullptr;
         }
-        auto operator=(CallbackHandle&& rhs) -> CallbackHandle& {
+        auto operator=(CallbackHandle&& rhs) noexcept -> CallbackHandle& {
             reset();
             window_ = rhs.window_;
             index_ = rhs.index_;
@@ -44,7 +44,7 @@ struct Window final : PImpl<Window> {
             return *this;
         }
 
-        auto reset() -> void {
+        auto reset() noexcept -> void {
             if (window_) {
                 (window_->*unregister_func)(index_);
                 window_ = nullptr;

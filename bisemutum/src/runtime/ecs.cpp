@@ -24,6 +24,13 @@ struct EcsManager::Impl final {
     auto register_system(std::type_index type, Dyn<ISystem>::Box&& system) -> void {
         systems.insert({type, std::move(system)});
     }
+    auto get_system(std::type_index type) const -> Dyn<ISystem>::CPtr {
+        if (auto it = systems.find(type); it != systems.end()) {
+            return &it->second;
+        } else {
+            return nullptr;
+        }
+    }
 
     entt::registry ecs_registry;
     std::unordered_map<entt::entity, Ref<SceneObject>> entity_map;
@@ -52,6 +59,9 @@ auto EcsManager::tick() -> void {
 
 auto EcsManager::register_system(std::type_index type, Dyn<ISystem>::Box system) -> void {
     impl()->register_system(type, std::move(system));
+}
+auto EcsManager::get_system(std::type_index type) const -> Dyn<ISystem>::CPtr {
+    return impl()->get_system(type);
 }
 
 auto EcsManager::add_scene_object(Ref<SceneObject> object, entt::entity entity) -> void {

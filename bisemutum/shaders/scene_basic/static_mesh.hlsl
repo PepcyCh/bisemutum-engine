@@ -1,6 +1,4 @@
-#pragma once
-
-#include "../core/vertex_processer.hlsl"
+#include "../core/vertex_attributes.hlsl"
 
 #include "../core/shader_params/camera.hlsl"
 #include "../core/shader_params/mesh.hlsl"

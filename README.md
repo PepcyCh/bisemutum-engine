@@ -19,7 +19,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * [x] render graph
   * [x] mipmap generation
   * [x] shader resources definition and pipeline layout generated from C++ structs
-  * [ ] PBR material
+  * [x] PBR material
 * [x] runtime
   * [x] window and inputs based on GLFW
   * [x] scene objects hierarchy
@@ -29,11 +29,11 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * [x] simple asset manager
     * [ ] async load ?
   * [x] simple frame timer
-* [ ] basic scene objects
+* [x] basic scene objects
   * [x] camera
   * [x] static mesh
   * [x] material
-  * [ ] lights
+  * [x] lights
 * [ ] basic renderer
   * [ ] forward pipeline
   * [ ] deferred pipeline

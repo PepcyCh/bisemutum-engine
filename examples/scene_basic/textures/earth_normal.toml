@@ -1,0 +1,7 @@
+image_file = "/project/textures/earth_normal.jpg"
+srgb = false
+
+[sampler]
+mag_filter = "linear"
+min_filter = "linear"
+mipmap_mode = "linear"

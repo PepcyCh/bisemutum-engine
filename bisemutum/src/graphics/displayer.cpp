@@ -7,11 +7,13 @@
 namespace bi::gfx {
 
 auto BlitDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<Texture> target_texture) -> void {
-    g_engine->graphics_manager()->blit_texture_2d(
-        cmd_encoder,
-        g_engine->graphics_manager()->get_camera(displayed_camera_)->target_texture(),
-        target_texture
-    );
+    if (displayed_camera_ != CameraHandle::invalid) {
+        g_engine->graphics_manager()->blit_texture_2d(
+            cmd_encoder,
+            g_engine->graphics_manager()->get_camera(displayed_camera_)->target_texture(),
+            target_texture
+        );
+    }
 }
 
 auto BlitDisplayer::set_camera(CameraHandle camera) -> void {
