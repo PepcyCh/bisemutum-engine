@@ -80,7 +80,7 @@ auto Transform::to_value(serde::Value &v, Transform const& o) -> void {
 
 auto Transform::from_value(serde::Value const& v, Transform& o) -> void {
     o.translation = v.value("translation", float3{0.0f});
-    o.scaling = v.value("scaling", float3{0.0f});
+    o.scaling = v.value("scaling", float3{1.0f});
     auto rotation = math::radians(v.value("rotation", float3{0.0f}));
     o.rotation = math::eulerAngleZXY(rotation.z, rotation.x, rotation.y);
 }

@@ -35,6 +35,11 @@ constexpr uint32_t gpu_sampler_desc_heap_size = 1024;
 }
 
 struct GraphicsManager::Impl final {
+    ~Impl() {
+        graphics_queue->wait_idle();
+        compute_queue->wait_idle();
+    }
+
     auto initialize(GraphicsSettings const& settings) -> void {
         device = rhi::Device::create(rhi::DeviceDesc{
             .backend = settings.backend,
@@ -49,15 +54,17 @@ struct GraphicsManager::Impl final {
         auto window = g_engine->window();
         swapchain = device->create_swapchain(rhi::SwapchainDesc{
             .queue = graphics_queue.value(),
-            .width = window->width(),
-            .height = window->height(),
+            .width = window->frame_size().width,
+            .height = window->frame_size().height,
             .window_handle = window->platform_handle(),
         });
-        swapchain_resize_callback = window->register_resize_callback([this](uint32_t width, uint32_t height) {
-            immediate_execution_fence->signal_on(graphics_queue.value());
-            immediate_execution_fence->wait();
-            swapchain->resize(width, height);
-        });
+        swapchain_resize_callback = window->register_resize_callback(
+            [this](WindowSize frame_size, WindowSize logic_size) {
+                immediate_execution_fence->signal_on(graphics_queue.value());
+                immediate_execution_fence->wait();
+                swapchain->resize(frame_size.width, frame_size.height);
+            }
+        );
 
         cpu_resource_heap = device->create_descriptor_heap(rhi::DescriptorHeapDesc{
             .max_count = cpu_resource_desc_heap_size,
@@ -160,7 +167,7 @@ struct GraphicsManager::Impl final {
     }
 
     auto render_frame() -> void {
-        if (!renderer.has_value() || !displayer.has_value()) { return; }
+        if (!renderer.has_value() || !displayer.has_value() || !displayer->is_valid()) { return; }
 
         auto& fd = curr_frame_data();
         swapchain->acquire_next_texture(fd.acquire_semaphore.ref());
@@ -181,6 +188,7 @@ struct GraphicsManager::Impl final {
                 fd.resource_heap.ref(),
                 fd.sampler_heap.ref(),
             });
+            curr_cmd_encoder = cmd_encoder.ref();
             render_graph.set_command_encoder(cmd_encoder.ref());
             render_graph.set_back_buffer(camera.target_texture());
 
@@ -190,6 +198,7 @@ struct GraphicsManager::Impl final {
             renderer.render_camera(camera, render_graph);
             render_graph.execute();
 
+            curr_cmd_encoder = nullptr;
             graphics_queue->submit_command_buffer(
                 {cmd_encoder->finish()},
                 {},
@@ -204,11 +213,15 @@ struct GraphicsManager::Impl final {
             auto swapchain_rhi_texture = swapchain->current_texture();
             Texture swapchain_texture{swapchain_rhi_texture};
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+            cmd_encoder->set_descriptor_heaps({
+                fd.resource_heap.ref(),
+                fd.sampler_heap.ref(),
+            });
+            curr_cmd_encoder = cmd_encoder.ref();
 
             cmd_encoder->resource_barriers({}, {
                 rhi::TextureBarrier{
                     .texture = swapchain_rhi_texture,
-                    .src_access_type = rhi::ResourceAccessType::present,
                     .dst_access_type = rhi::ResourceAccessType::color_attachment_write,
                 },
             });
@@ -228,6 +241,7 @@ struct GraphicsManager::Impl final {
             }
             wait_semaphores.push_back(fd.acquire_semaphore.ref());
 
+            curr_cmd_encoder = nullptr;
             graphics_queue->submit_command_buffer(
                 {cmd_encoder->finish()},
                 wait_semaphores,
@@ -240,12 +254,27 @@ struct GraphicsManager::Impl final {
     }
 
     auto execute_in_this_frame(std::function<auto(Ref<rhi::CommandEncoder>) -> void>&& func) -> void {
-        auto cmd_encoder = curr_frame_data().graphics_cmd_pool->get_command_encoder();
-        func(cmd_encoder.ref());
-        graphics_queue->submit_command_buffer({cmd_encoder->finish()});
+        if (curr_cmd_encoder) {
+            BI_ASSERT_MSG(curr_cmd_encoder->valid(), "`execute_in_this_frame()` cannot be called in pass");
+            func(curr_cmd_encoder.value());
+        } else {
+            auto& fd = curr_frame_data();
+            auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+            cmd_encoder->set_descriptor_heaps({
+                fd.resource_heap.ref(),
+                fd.sampler_heap.ref(),
+            });
+            func(cmd_encoder.ref());
+            graphics_queue->submit_command_buffer({cmd_encoder->finish()});
+        }
     }
     auto execute_immediately(std::function<auto(Ref<rhi::CommandEncoder>) -> void>&& func) -> void {
-        auto cmd_encoder = curr_frame_data().graphics_cmd_pool->get_command_encoder();
+        auto& fd = curr_frame_data();
+        auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+        cmd_encoder->set_descriptor_heaps({
+            fd.resource_heap.ref(),
+            fd.sampler_heap.ref(),
+        });
         func(cmd_encoder.ref());
         graphics_queue->submit_command_buffer({cmd_encoder->finish()}, {}, {}, immediate_execution_fence.ref());
         immediate_execution_fence->wait();
@@ -305,7 +334,7 @@ struct GraphicsManager::Impl final {
         );
         shader_env.set_replace_arg(
             "GRAPHICS_MATERIAL_SHADER_PARAMS",
-            mesh_shader_params.generated_shader_definition(graphics_set_material, graphics_set_samplers)
+            mat_shader_params.generated_shader_definition(graphics_set_material, graphics_set_samplers)
         );
         shader_env.set_replace_arg(
             "GRAPHICS_FRAGMENT_SHADER_PARAMS",
@@ -410,8 +439,9 @@ struct GraphicsManager::Impl final {
         }
 
         pipeline_desc.color_target_state.attachments.resize(graphics_context->color_targets_format.size());
-        if (!graphics_context->color_targets_format.empty()) {
-            auto& color_attachment = pipeline_desc.color_target_state.attachments[0];
+        for (size_t index = 0; auto& color_format : graphics_context->color_targets_format) {
+            auto& color_attachment = pipeline_desc.color_target_state.attachments[index];
+            color_attachment.format = color_format;
             switch (drawable->material->blend_mode) {
                 case BlendMode::opaque:
                     break;
@@ -439,6 +469,7 @@ struct GraphicsManager::Impl final {
                     color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one;
                     break;
             }
+            ++index;
         }
 
         pipeline_desc.bind_groups_layout.push_back(
@@ -539,6 +570,7 @@ struct GraphicsManager::Impl final {
     };
     std::vector<FrameData> frame_data;
     Box<rhi::Fence> immediate_execution_fence;
+    Ptr<rhi::CommandEncoder> curr_cmd_encoder;
 
     RenderGraph render_graph;
     SlotMap<Camera, CameraHandle> cameras;

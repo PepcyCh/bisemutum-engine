@@ -30,6 +30,13 @@ struct Dyn<TypeList<Fs...>> final {
 #define BI_TRAIT_END(name) }; using name = name##_functions::FuncsList<__LINE__ - 1>::type;
 
 
+template <typename Trait, typename T, typename... Args>
+auto make_poly(Args&&... args) -> Dyn<Trait>::Box {
+    typename Dyn<Trait>::Box box;
+    box.template emplace<T>(std::forward<Args>(args)...);
+    return box;
+}
+
 template <typename T>
 auto is_poly_ptr_address_same(typename Dyn<T>::Ptr a, typename Dyn<T>::Ptr b) -> bool {
     return a.raw() == b.raw();

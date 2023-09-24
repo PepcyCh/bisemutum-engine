@@ -194,7 +194,7 @@ auto ShaderParameter::initialize(ShaderParameterMetadataList metadata_list, bool
     size_t cpu_alignment = 0;
     std::vector<UniformRange> temp_uniform_ranges{};
 
-    for (auto& param : metadata_list.params) {
+    for (auto& param : metadata_list_.params) {
         uint32_t count = 1;
         for (auto sz : param.array_sizes) { count *= sz; }
 
@@ -219,7 +219,7 @@ auto ShaderParameter::initialize(ShaderParameterMetadataList metadata_list, bool
     size = aligned_size(size, alignment);
     cpu_size = aligned_size(cpu_size, cpu_alignment);
 
-    data_.resize(cpu_size + cpu_alignment - 1);
+    data_.resize(cpu_size == 0 ? 0 : cpu_size + cpu_alignment - 1);
     auto start_address = aligned_size(reinterpret_cast<size_t>(data_.data()), cpu_alignment);
     data_start_ = reinterpret_cast<std::byte*>(start_address);
 

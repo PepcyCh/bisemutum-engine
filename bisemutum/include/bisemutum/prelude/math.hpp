@@ -11,7 +11,7 @@ auto ceil_div(I a, I b) -> I {
 
 template <std::integral I>
 auto aligned_size(I size, I alignment) -> I {
-    return ceil_div(size, alignment) * alignment;
+    return alignment == 0 ? size : ceil_div(size, alignment) * alignment;
 }
 
 }

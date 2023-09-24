@@ -51,7 +51,9 @@ auto LightsContext::collect_all_lights() -> void {
                     .usage(rhi::BufferUsage::storage_read)
             );
         }
-        buffer.set_data(lights.data(), lights.size());
+        if (!lights.empty()) {
+            buffer.set_data(lights.data(), lights.size());
+        }
     };
     update_buffer(dir_lights_buffer, dir_lights);
     update_buffer(point_lights_buffer, point_lights);

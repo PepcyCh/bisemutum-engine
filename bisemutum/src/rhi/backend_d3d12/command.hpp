@@ -82,6 +82,8 @@ struct CommandEncoderD3D12 final : CommandEncoder {
 
     auto begin_compute_pass(CommandLabel const& label) -> Box<ComputeCommandEncoder> override;
 
+    auto valid() const -> bool override { return cmd_list_ != nullptr; }
+
 private:
     friend GraphicsCommandEncoderD3D12;
     friend ComputeCommandEncoderD3D12;

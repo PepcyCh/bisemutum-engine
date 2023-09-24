@@ -49,6 +49,7 @@ auto generate_mikktspace(StaticMesh& mesh) -> void {
             auto index = mesh->index_at(face * 3 + vert);
             mesh->set_tangent_at(index, float4{tan_in[0], tan_in[1], tan_in[2], sign});
         },
+        .m_setTSpace = nullptr
     };
     SMikkTSpaceContext mikktspace_ctx{
         .m_pInterface = &mikktspace_interface,
@@ -98,7 +99,9 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     mesh.normals_.resize(ai_mesh->mNumVertices);
     std::memcpy(mesh.normals_.data(), ai_mesh->mNormals, ai_mesh->mNumVertices * sizeof(float3));
     mesh.texcoords_.resize(ai_mesh->mNumVertices);
-    std::memcpy(mesh.texcoords_.data(), ai_mesh->mTextureCoords[0], ai_mesh->mNumVertices * sizeof(float3));
+    for (uint32_t i = 0; i < ai_mesh->mNumVertices; i++) {
+        mesh.texcoords_[i] = {ai_mesh->mTextureCoords[0][i].x, ai_mesh->mTextureCoords[0][i].y};
+    }
     mesh.indices_.resize(ai_mesh->mNumFaces * 3);
     for (uint32_t i = 0; i < ai_mesh->mNumFaces; i++) {
         auto& ai_face = ai_mesh->mFaces[i];
@@ -106,6 +109,7 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         mesh.indices_[3 * i + 1] = ai_face.mIndices[1];
         mesh.indices_[3 * i + 2] = ai_face.mIndices[2];
     }
+    mesh.tangents_.resize(ai_mesh->mNumVertices);
     generate_mikktspace(mesh);
 
     auto& aabb = ai_mesh->mAABB;
@@ -170,6 +174,10 @@ auto StaticMesh::fill_shader_params(Ref<gfx::Drawable> drawable) const -> void {
 }
 
 auto StaticMesh::bind_buffers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder) -> void {
+    if (!positions_buffer_.has_value()) {
+        update_gpu_buffer();
+    }
+
     std::array<Ref<rhi::Buffer>, 4> vertex_buffers{
         positions_buffer_.rhi_buffer(),
         normals_buffer_.rhi_buffer(),

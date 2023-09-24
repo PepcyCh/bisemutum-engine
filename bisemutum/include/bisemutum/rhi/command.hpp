@@ -42,7 +42,7 @@ struct BufferCopyDesc final {
 struct TextureCopyDesc final {
     Offset3D src_offset = {};
     Offset3D dst_offset = {};
-    Extent3D extent = {~0u, ~0u, ~0u};
+    Extent3D extent = {~0u, ~0u, 1};
     uint32_t src_level = 0;
     uint32_t src_layer = 0;
     uint32_t dst_level = 0;
@@ -54,7 +54,7 @@ struct BufferTextureCopyDesc final {
     uint32_t buffer_pixels_per_row = 0;
     uint32_t buffer_rows_per_texture = 0;
     Offset3D texture_offset = {0, 0, 0};
-    Extent3D texture_extent = {~0u, ~0u, ~0u};
+    Extent3D texture_extent = {~0u, ~0u, 1};
     uint32_t texture_level = 0;
     uint32_t texture_layer = 0;
 };
@@ -175,6 +175,9 @@ struct CommandEncoder : public CommandEncoderBase {
     ) -> Box<GraphicsCommandEncoder> = 0;
 
     virtual auto begin_compute_pass(CommandLabel const& label) -> Box<ComputeCommandEncoder> = 0;
+
+    // If it is in `{Graphics|Compute}CommandEncoder`, then it is invalid, otherwise valid.
+    virtual auto valid() const -> bool = 0;
 };
 
 struct GraphicsCommandEncoder : public CommandEncoderBase {

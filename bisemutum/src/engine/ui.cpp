@@ -5,7 +5,10 @@
 namespace bi {
 
 auto create_empty_ui() -> Dyn<IEngineUI>::Box {
-    return EmptyEngineUI{};
+    // Dyn<IEngineUI>::Box ui;
+    // ui.emplace<EmptyEngineUI>();
+    // return ui;
+    return make_poly<IEngineUI, EmptyEngineUI>();
 }
 
 }

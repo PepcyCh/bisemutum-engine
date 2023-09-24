@@ -140,7 +140,7 @@ auto to_vk_image_access_type(
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     }
     if (type.contains(ResourceAccessType::present)) {
-        stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
         layout_vk = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     }
 }
@@ -289,6 +289,7 @@ auto CommandEncoderVulkan::copy_buffer_to_texture(
 ) -> void {
     auto src_buffer_vk = src_buffer.cast_to<const BufferVulkan>();
     auto dst_texture_vk = dst_texture.cast_to<TextureVulkan>();
+    auto& extent = dst_texture_vk->desc().extent;
     VkBufferImageCopy region_vk{
         .bufferOffset = region.buffer_offset,
         .bufferRowLength = region.buffer_pixels_per_row,
@@ -305,9 +306,9 @@ auto CommandEncoderVulkan::copy_buffer_to_texture(
             .z = static_cast<int>(region.texture_offset.z),
         },
         .imageExtent = VkExtent3D{
-            .width = region.texture_extent.width,
-            .height = region.texture_extent.height,
-            .depth = region.texture_extent.depth_or_layers,
+            .width = std::min(region.texture_extent.width, extent.width),
+            .height = std::min(region.texture_extent.height, extent.height),
+            .depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
         },
     };
     vkCmdCopyBufferToImage(
@@ -323,6 +324,7 @@ auto CommandEncoderVulkan::copy_texture_to_buffer(
 ) -> void {
     auto src_texture_vk = src_texture.cast_to<const TextureVulkan>();
     auto dst_buffer_vk = dst_buffer.cast_to<BufferVulkan>();
+    auto& extent = src_texture_vk->desc().extent;
     VkBufferImageCopy region_vk{
         .bufferOffset = region.buffer_offset,
         .bufferRowLength = region.buffer_pixels_per_row,
@@ -339,9 +341,9 @@ auto CommandEncoderVulkan::copy_texture_to_buffer(
             .z = static_cast<int>(region.texture_offset.z),
         },
         .imageExtent = VkExtent3D{
-            .width = region.texture_extent.width,
-            .height = region.texture_extent.height,
-            .depth = region.texture_extent.depth_or_layers,
+            .width = std::min(region.texture_extent.width, extent.width),
+            .height = std::min(region.texture_extent.height, extent.height),
+            .depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
         },
     };
     vkCmdCopyImageToBuffer(
@@ -489,7 +491,7 @@ auto CommandEncoderVulkan::set_descriptors(
         }
     }
     vkCmdSetDescriptorBufferOffsetsEXT(
-        cmd_buffer_, bind_point, pipline_layout, from_group_index,
+        cmd_buffer, bind_point, pipline_layout, from_group_index,
         descriptors.size(), heap_indices.data(), heap_offsets.data()
     );
 }
@@ -626,9 +628,12 @@ auto GraphicsCommandEncoderVulkan::set_descriptors(
 }
 
 auto GraphicsCommandEncoderVulkan::push_constants(void const* data, uint32_t size, uint32_t offset) -> void {
-    vkCmdPushConstants(
-        cmd_buffer_, curr_pipeline_->raw_layout(), VK_SHADER_STAGE_ALL_GRAPHICS, offset, size, data
-    );
+    auto stages = curr_pipeline_->push_constants_stages();
+    if (stages != 0) {
+        vkCmdPushConstants(
+            cmd_buffer_, curr_pipeline_->raw_layout(), stages, offset, size, data
+        );
+    }
 }
 
 auto GraphicsCommandEncoderVulkan::set_viewports(CSpan<Viewport> viewports) -> void {
@@ -662,10 +667,12 @@ auto GraphicsCommandEncoderVulkan::set_vertex_buffer(
     CSpan<Ref<Buffer>> buffers, CSpan<uint64_t> offsets, uint32_t first_binding
 ) -> void {
     std::vector<VkBuffer> buffers_vk(buffers.size());
+    std::vector<uint64_t> offsets_vk(buffers.size());
     for (size_t i = 0; i < buffers.size(); i++) {
         buffers_vk[i] = buffers[i].cast_to<BufferVulkan>()->raw();
+        offsets_vk[i] = i < offsets.size() ? offsets[i] : 0;
     }
-    vkCmdBindVertexBuffers(cmd_buffer_, first_binding, buffers_vk.size(), buffers_vk.data(), offsets.data());
+    vkCmdBindVertexBuffers(cmd_buffer_, first_binding, buffers_vk.size(), buffers_vk.data(), offsets_vk.data());
 }
 
 auto GraphicsCommandEncoderVulkan::set_index_buffer(Ref<Buffer> buffer, uint64_t offset, IndexType index_type) -> void {
@@ -729,7 +736,12 @@ auto ComputeCommandEncoderVulkan::set_descriptors(
 }
 
 auto ComputeCommandEncoderVulkan::push_constants(void const* data, uint32_t size, uint32_t offset) -> void {
-    vkCmdPushConstants(cmd_buffer_, curr_pipeline_->raw_layout(), VK_SHADER_STAGE_COMPUTE_BIT, offset, size, data);
+    auto stages = curr_pipeline_->push_constants_stages();
+    if (stages != 0) {
+        vkCmdPushConstants(
+            cmd_buffer_, curr_pipeline_->raw_layout(), stages, offset, size, data
+        );
+    }
 }
 
 void ComputeCommandEncoderVulkan::dispatch(uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z) {

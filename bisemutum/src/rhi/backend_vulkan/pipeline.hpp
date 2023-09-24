@@ -17,6 +17,8 @@ struct GraphicsPipelineVulkan final : GraphicsPipeline {
 
     auto raw_set_layout(uint32_t set_index) const -> VkDescriptorSetLayout { return set_layouts_[set_index]; }
 
+    auto push_constants_stages() const -> VkShaderStageFlags;
+
     auto static_samplers_set() const -> uint32_t;
 
 private:
@@ -36,6 +38,8 @@ struct ComputePipelineVulkan final : ComputePipeline {
     auto raw_layout() const -> VkPipelineLayout { return pipeline_layout_; }
 
     auto raw_set_layout(uint32_t set_index) const -> VkDescriptorSetLayout { return set_layouts_[set_index]; }
+
+    auto push_constants_stages() const -> VkShaderStageFlags;
 
     auto static_samplers_set() const -> uint32_t;
 

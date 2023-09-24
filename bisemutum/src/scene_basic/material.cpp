@@ -1,5 +1,6 @@
 #include <bisemutum/scene_basic/material.hpp>
 
+#include <bisemutum/math/math_serde.hpp>
 #include <bisemutum/runtime/logger.hpp>
 
 namespace bi {
@@ -94,20 +95,22 @@ auto MaterialAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         }
     }
 
-    gfx::Material mat{
-        .surface_model = desc.surface_model,
-        .blend_mode = desc.blend_mode,
-        .value_params = std::move(desc.value_params),
-        .material_function = std::move(desc.material_function),
-        .referenced_material = &desc.referenced_material.asset()->material,
+    MaterialAsset mat{
+        .material = {
+            .surface_model = desc.surface_model,
+            .blend_mode = desc.blend_mode,
+            .value_params = std::move(desc.value_params),
+            .material_function = std::move(desc.material_function),
+            .referenced_material = &desc.referenced_material.asset()->material,
+        },
     };
-    mat.texture_params.reserve(desc.texture_params.size());
-    mat.sampler_params.reserve(desc.texture_params.size());
-    for (size_t index = 0; auto& [name, tex] : desc.texture_params) {
-        mat.sampler_params[index] = {name + "_sampler", tex.asset()->sampler.value()};
-        mat.texture_params[index] = {std::move(name), make_ref(tex.asset()->texture)};
-        ++index;
+    mat.material.texture_params.reserve(desc.texture_params.size());
+    mat.material.sampler_params.reserve(desc.texture_params.size());
+    for (auto& [name, tex] : desc.texture_params) {
+        mat.material.sampler_params.emplace_back(name + "_sampler", tex.asset()->sampler.value());
+        mat.material.texture_params.emplace_back(std::move(name), make_ref(tex.asset()->texture));
     }
+    mat.material.update_shader_parameter();
     return mat;
 }
 

@@ -16,8 +16,8 @@ namespace {
 auto copy_camera_data(Ref<gfx::Camera> camera, Ref<rt::SceneObject> object, CameraComponent const& component) -> void {
     auto& transform = object->world_transform();
     camera->position = transform.transform_position({0.0f, 0.0f, 0.0f});
-    camera->front_dir = transform.transform_position({0.0f, 0.0f, -1.0f});
-    camera->up_dir = transform.transform_position({0.0f, 1.0f, 0.0f});
+    camera->front_dir = transform.transform_direction({0.0f, 0.0f, -1.0f});
+    camera->up_dir = transform.transform_direction({0.0f, 1.0f, 0.0f});
     camera->yfov = component.yfov;
     camera->near_z = component.near_z;
     camera->far_z = component.far_z;
@@ -35,16 +35,18 @@ struct CameraSystem::Impl final {
         g_engine->ecs_manager()->ecs_registry().on_destroy<CameraComponent>().connect<&Impl::on_destroy>(this);
         g_engine->ecs_manager()->ecs_registry().on_update<CameraComponent>().connect<&Impl::on_update>(this);
 
-        window_resize = g_engine->window()->register_resize_callback([this](uint32_t width, uint32_t height) {
-            for (auto entity : window_cameras) {
-                g_engine->ecs_manager()->ecs_registry().patch<CameraComponent>(
-                    entity,
-                    [width, height](CameraComponent& component) {
-                        component.render_target_size = {width, height};
-                    }
-                );
+        window_resize = g_engine->window()->register_resize_callback(
+            [this](WindowSize frame_size, WindowSize logic_size) {
+                for (auto entity : window_cameras) {
+                    g_engine->ecs_manager()->ecs_registry().patch<CameraComponent>(
+                        entity,
+                        [logic_size](CameraComponent& component) {
+                            component.render_target_size = {logic_size.width, logic_size.height};
+                        }
+                    );
+                }
             }
-        });
+        );
     }
 
     auto update() -> void {
@@ -62,8 +64,7 @@ struct CameraSystem::Impl final {
             auto object = g_engine->ecs_manager()->scene_object_of(entity);
             auto handle = camera_handles.at(entity);
             auto camera = g_engine->graphics_manager()->get_camera(handle);
-            auto const& component = g_engine->ecs_manager()->ecs_registry().get<CameraComponent>(entity);
-            copy_camera_data(camera, object, component);
+            auto& component = g_engine->ecs_manager()->ecs_registry().get<CameraComponent>(entity);
 
             auto window_camera_it = window_cameras.find(entity);
             if (
@@ -71,12 +72,18 @@ struct CameraSystem::Impl final {
                 && window_camera_it == window_cameras.end()
             ) {
                 window_cameras.insert(entity);
+                component.render_target_size = {
+                    g_engine->window()->logic_size().width,
+                    g_engine->window()->logic_size().height,
+                };
             } else if (
                 component.render_target_size_mode != CameraRenderTargetSizeMode::window
                 && window_camera_it != window_cameras.end()
             ) {
                 window_cameras.erase(window_camera_it);
             }
+
+            copy_camera_data(camera, object, component);
         }
         dirty_cameras.clear();
     }

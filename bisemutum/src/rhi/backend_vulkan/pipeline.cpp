@@ -303,7 +303,7 @@ GraphicsPipelineVulkan::GraphicsPipelineVulkan(Ref<DeviceVulkan> device, Graphic
         .pNext = nullptr,
         .flags = 0,
         .topology = to_vk_primitive_topology(desc_.rasterization_state.topology),
-        .primitiveRestartEnable = is_primitive_list(desc_.rasterization_state.topology),
+        .primitiveRestartEnable = !is_primitive_list(desc_.rasterization_state.topology),
     };
 
     VkPipelineViewportStateCreateInfo viewport_state{
@@ -485,6 +485,10 @@ GraphicsPipelineVulkan::~GraphicsPipelineVulkan() {
     }
 }
 
+auto GraphicsPipelineVulkan::push_constants_stages() const -> VkShaderStageFlags {
+    return to_vk_shader_stages(desc_.push_constants.visibility);
+}
+
 auto GraphicsPipelineVulkan::static_samplers_set() const -> uint32_t {
     if (desc_.static_samplers.empty()) {
         return ~0u;
@@ -528,6 +532,10 @@ ComputePipelineVulkan::~ComputePipelineVulkan() {
         vkDestroyPipelineLayout(device_->raw(), pipeline_layout_, nullptr);
         pipeline_layout_ = VK_NULL_HANDLE;
     }
+}
+
+auto ComputePipelineVulkan::push_constants_stages() const -> VkShaderStageFlags {
+    return to_vk_shader_stages(desc_.push_constants.visibility);
 }
 
 auto ComputePipelineVulkan::static_samplers_set() const -> uint32_t {

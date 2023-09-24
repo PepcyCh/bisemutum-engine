@@ -235,6 +235,9 @@ auto TextureD3D12::get_render_target_view(
                 .Format = format,
                 .Flags = D3D12_DSV_FLAG_NONE,
             };
+            if (view_type == TextureViewType::automatic) {
+                view_type = get_automatic_view_type();
+            }
             switch (view_type) {
                 case TextureViewType::d1:
                     dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
@@ -258,6 +261,7 @@ auto TextureD3D12::get_render_target_view(
                     break;
                 default: unreachable();
             }
+            device_->raw()->CreateDepthStencilView(resource_.Get(), &dsv_desc, {descriptor.cpu});
         }
         view_it->second = descriptor.cpu;
     }

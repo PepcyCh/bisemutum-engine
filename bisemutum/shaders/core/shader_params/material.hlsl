@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../material.hlsl"
+#include "../vertex_attributes.hlsl"
 
 $GRAPHICS_MATERIAL_SHADER_PARAMS
 

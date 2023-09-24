@@ -37,7 +37,7 @@ struct TAssetPtr final {
     auto state() const -> AssetState {
         return asset_ptr_.state();
     }
-    auto load() -> void {
+    auto load() const -> void {
         asset_ = aa::any_cast<Asset>(asset_ptr_.load(Asset::asset_type_name));
     }
 
@@ -54,7 +54,7 @@ struct TAssetPtr final {
     }
 
 private:
-    Ptr<Asset> asset_;
+    mutable Ptr<Asset> asset_;
     AssetPtr asset_ptr_;
 };
 

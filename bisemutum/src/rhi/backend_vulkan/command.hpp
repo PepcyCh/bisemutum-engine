@@ -82,6 +82,8 @@ struct CommandEncoderVulkan final : CommandEncoder {
 
     auto begin_compute_pass(CommandLabel const& label) -> Box<ComputeCommandEncoder> override;
 
+    auto valid() const -> bool override { return cmd_buffer_ != VK_NULL_HANDLE; }
+
 private:
     auto set_descriptors(
         VkCommandBuffer cmd_buffer, VkPipelineBindPoint bind_point, VkPipelineLayout pipline_layout,

@@ -26,7 +26,7 @@ DescriptorHeapD3D12::DescriptorHeapD3D12(Ref<DeviceD3D12> device, DescriptorHeap
 }
 
 DescriptorHeapD3D12::DescriptorHeapD3D12(Ref<DeviceD3D12> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t max_count)
-    : device_(device)
+    : device_(device), type_(type)
 {
     D3D12_DESCRIPTOR_HEAP_DESC heap_desc{
         .Type = type_,

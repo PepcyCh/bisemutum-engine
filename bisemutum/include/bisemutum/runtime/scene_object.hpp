@@ -15,7 +15,7 @@ struct Scene;
 struct TransformSystem;
 
 struct SceneObject final {
-    SceneObject(Ref<Scene> scene);
+    SceneObject(Ref<Scene> scene, bool with_transform = true);
     ~SceneObject();
 
     auto get_name() const -> std::string_view { return name_; }
@@ -90,7 +90,7 @@ private:
 
     bool enabled_ = true;
     bool destroyed_ = false;
-    mutable bool world_transform_dirty_ = false;
+    mutable bool world_transform_dirty_ = true;
 
     Ptr<SceneObject> parent_ = nullptr;
     Ptr<SceneObject> first_child_ = nullptr;

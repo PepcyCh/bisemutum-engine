@@ -97,9 +97,11 @@ struct GraphicsPassBuilder final {
     auto set_execution_function(
         std::function<auto(CRef<PassData>, GraphicsPassContext const&) -> void> func
     ) -> void {
-        set_execution_function_impl([&func](std::any const* pass_data, GraphicsPassContext const& ctx) {
-            func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
-        });
+        set_execution_function_impl(
+            [func = std::move(func)](std::any const* pass_data, GraphicsPassContext const& ctx) {
+                func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
+            }
+        );
     }
 
 private:
@@ -134,9 +136,11 @@ struct ComputePassBuilder final {
     auto set_execution_function(
         std::function<auto(CRef<PassData>, ComputePassContext const&) -> void> func
     ) -> void {
-        set_execution_function_impl([&func](std::any const* pass_data, ComputePassContext const& ctx) {
-            func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
-        });
+        set_execution_function_impl(
+            [func = std::move(func)](std::any const* pass_data, ComputePassContext const& ctx) {
+                func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
+            }
+        );
     }
 
 private:

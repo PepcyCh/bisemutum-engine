@@ -32,8 +32,10 @@ struct World::Impl final {
         scenes_it_map.erase(it);
     }
 
-    auto create_scene_object(Ref<Scene> scene, Ptr<SceneObject> parent) -> Ref<SceneObject> {
-        auto& object = scene_objects.emplace_front(scene);
+    auto create_scene_object(
+        Ref<Scene> scene, Ptr<SceneObject> parent, bool with_transform = true
+    ) -> Ref<SceneObject> {
+        auto& object = scene_objects.emplace_front(scene, with_transform);
         scene_objects_it_map.insert({&object, scene_objects.begin()});
         if (parent.has_value()) {
             scene->add_child_object(object, parent.value());
@@ -74,7 +76,7 @@ struct World::Impl final {
 
     auto load_scene(std::string_view scene_file_str) -> bool {
         auto scene = create_scene();
-        try {
+        // try {
             auto scene_value = serde::Value::from_toml(scene_file_str);
             auto& scene_objects_value = scene_value["objects"].get_ref<serde::Value::Array>();
             std::vector<Ref<SceneObject>> parsed_objects;
@@ -88,7 +90,7 @@ struct World::Impl final {
                     parent = it->second.get<int>();
                 }
                 objects_parent.push_back(parent);
-                parsed_objects.push_back(create_scene_object(scene, nullptr));
+                parsed_objects.push_back(create_scene_object(scene, nullptr, false));
                 if (auto it = object_table.find("components"); it != object_table.end()) {
                     for (auto& component_value : it->second.get_ref<serde::Value::Array>()) {
                         auto deserializer = g_engine->component_manager()->get_deserializer(
@@ -104,11 +106,11 @@ struct World::Impl final {
                 }
             }
             return true;
-        } catch (std::exception const& e) {
-            destroy_scene(scene);
-            log::error("general", "Scene file is invalid: {}", e.what());
-            return false;
-        }
+        // } catch (std::exception const& e) {
+        //     destroy_scene(scene);
+        //     log::error("general", "Scene file is invalid: {}", e.what());
+        //     return false;
+        // }
     }
 
     std::list<Scene> scenes;

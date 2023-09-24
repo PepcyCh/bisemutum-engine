@@ -29,7 +29,10 @@ struct EcsManager final : PImpl<EcsManager> {
 
     template <typename System>
     auto register_system() -> void {
-        register_system(typeid(System), System{});
+        // Dyn<ISystem>::Box sys;
+        // sys.emplace<System>();
+        // register_system(typeid(System), std::move(sys));
+        register_system(typeid(System), make_poly<ISystem, System>());
     }
     template <typename System>
     auto get_system() const -> CPtr<System> {

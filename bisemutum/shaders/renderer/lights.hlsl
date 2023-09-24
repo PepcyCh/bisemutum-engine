@@ -11,7 +11,7 @@ struct LightData {
 
 float3 dir_light_eval(LightData light, float3 pos, out float3 light_dir) {
     light_dir = light.direction;
-    return emission;
+    return light.emission;
 }
 
 float3 point_light_eval(LightData light, float3 position, out float3 light_dir) {

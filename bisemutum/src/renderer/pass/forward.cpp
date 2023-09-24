@@ -16,7 +16,7 @@ BI_SHADER_PARAMETERS_END(ForwardPassParams)
 ForwardPass::ForwardPass() {
     fragmeng_shader_params.initialize<ForwardPassParams>();
 
-    fragmeng_shader.source_path = "/engine/shaders/renderer/forward_pass.hlsl";
+    fragmeng_shader.source_path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
     fragmeng_shader.source_entry = "forward_pass_fs";
     fragmeng_shader.set_shader_params_struct<ForwardPassParams>();
     fragmeng_shader.cull_mode = rhi::CullMode::back_face;
@@ -57,7 +57,7 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ref
 
     builder.use_color(
         0,
-        gfx::GraphicsPassColorTargetBuilder{pass_data->output}.clear_color()
+        gfx::GraphicsPassColorTargetBuilder{pass_data->output}.clear_color({0.2f, 0.3f, 0.5f, 1.0f})
     );
     builder.use_depth_stencil(gfx::GraphicsPassDepthStencilTargetBuilder{pass_data->depth}.clear_depth_stencil());
 

@@ -5,9 +5,12 @@
 #ifdef interface
 #undef interface
 #endif
+#include <fmt/format.h>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/vfs.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/prelude/misc.hpp>
+#include <bisemutum/prelude/math.hpp>
 
 #include "volk.h"
 #include "utils.hpp"
@@ -83,6 +86,11 @@ DeviceVulkan::DeviceVulkan(DeviceDesc const& desc) {
     }
     std::vector<char const*> enabled_instance_extensions{
         VK_KHR_SURFACE_EXTENSION_NAME,
+#ifdef _WIN32
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+#else
+        VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+#endif
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
     };
@@ -114,6 +122,9 @@ DeviceVulkan::DeviceVulkan(DeviceDesc const& desc) {
 }
 
 DeviceVulkan::~DeviceVulkan() {
+    auto ret = vkDeviceWaitIdle(device_);
+    BI_ASSERT_MSG(ret == VK_SUCCESS, fmt::format("Device error: {}", static_cast<uint32_t>(ret)));
+
     save_pipeline_cache(true);
 
     vmaDestroyAllocator(allocator_);
@@ -296,7 +307,7 @@ auto DeviceVulkan::init_allocator() -> void {
 
 auto DeviceVulkan::init_descriptor_sizes() -> void {
     VkPhysicalDeviceDescriptorBufferPropertiesEXT desc_buffer_props{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT,
         .pNext = nullptr,
     };
     VkPhysicalDeviceProperties2 device_props{
@@ -339,7 +350,7 @@ auto DeviceVulkan::save_pipeline_cache(bool destroy) -> void {
         vkGetPipelineCacheData(device_, pipeline_cache_, &pipeline_cache_size, nullptr);
         std::vector<std::byte> pipeline_cache_data(pipeline_cache_size);
         vkGetPipelineCacheData(device_, pipeline_cache_, &pipeline_cache_size, pipeline_cache_data.data());
-        g_engine->file_system()->get_file(pipeline_cache_file_path_).value().write_binary_data(pipeline_cache_data);
+        g_engine->file_system()->create_file(pipeline_cache_file_path_).value().write_binary_data(pipeline_cache_data);
         if (destroy) {
             vkDestroyPipelineCache(device_, pipeline_cache_, nullptr);
             pipeline_cache_ = VK_NULL_HANDLE;
@@ -397,7 +408,10 @@ auto DeviceVulkan::create_compute_pipeline(ComputePipelineDesc const& desc) -> B
 
 auto DeviceVulkan::create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void {
     auto buffer_vk = buffer_desc.buffer.cast_to<BufferVulkan>();
-    auto specified_size = buffer_desc.size * std::max(1u, buffer_desc.structure_stride);
+    auto specified_size = buffer_desc.size;
+    if (specified_size != static_cast<uint64_t>(-1) && buffer_desc.structure_stride > 0) {
+        specified_size *= buffer_desc.structure_stride;
+    }
     auto available_size = std::min(buffer_vk->desc().size - buffer_desc.offset, specified_size);
     VkDescriptorGetInfoEXT get_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
@@ -481,11 +495,13 @@ auto DeviceVulkan::copy_descriptors(
     CSpan<DescriptorHandle> src_descriptors,
     CSpan<DescriptorType> src_descriptors_type
 ) -> void {
-    auto p_dst = reinterpret_cast<uint8_t*>(dst_desciptor.cpu);
+    auto p_dst = reinterpret_cast<std::byte*>(dst_desciptor.cpu);
+    size_t offset = 0;
     for (size_t i = 0; i < src_descriptors.size(); i++) {
         auto size = size_of_descriptor(src_descriptors_type[i]);
-        std::memcpy(p_dst, reinterpret_cast<void const*>(src_descriptors[i].cpu), size);
-        p_dst += size;
+        offset = aligned_size<size_t>(offset, size);
+        std::memcpy(p_dst + offset, reinterpret_cast<void const*>(src_descriptors[i].cpu), size);
+        offset += size;
     }
 }
 

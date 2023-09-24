@@ -202,13 +202,25 @@ auto CommandHelpers::generate_mipmaps_2d(
         width /= 2;
         height /= 2;
     }
-    cmd_encoder->resource_barriers({}, {
-        rhi::TextureBarrier{
-            .texture = texture->rhi_texture(),
-            .src_access_type = write_access,
-            .dst_access_type = read_access,
-        },
-    });
+    if (num_levels > 1) {
+        cmd_encoder->resource_barriers({}, {
+            rhi::TextureBarrier{
+                .texture = texture->rhi_texture(),
+                .base_level = num_levels - 1,
+                .num_levels = 1,
+                .src_access_type = write_access,
+                .dst_access_type = read_access,
+            },
+        });
+    } else if (texture_access != read_access) {
+        cmd_encoder->resource_barriers({}, {
+            rhi::TextureBarrier{
+                .texture = texture->rhi_texture(),
+                .src_access_type = texture_access,
+                .dst_access_type = read_access,
+            },
+        });
+    }
     texture_access = read_access;
 }
 
@@ -367,7 +379,7 @@ auto CommandHelpers::get_mipmap_pipeline(Ref<Texture> dst_texture, MipmapMode mo
     };
     rhi::PushConstantsDesc push_constants{
         .size = sizeof(uint2),
-        .visibility = rhi::ShaderStage::compute,
+        .visibility = rhi::ShaderStage::fragment,
         .register_ = 0,
         .space = 0,
     };

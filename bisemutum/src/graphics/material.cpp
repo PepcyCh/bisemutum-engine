@@ -147,6 +147,10 @@ auto Material::update_shader_parameter() -> void {
         cpu_size = aligned_size(cpu_size, alignof(TextureParam));
         auto texture = shader_parameters.mutable_typed_data_offset<TextureParam>(cpu_size);
         texture->texture = tex;
+        texture->base_layer = 0;
+        texture->num_layers = ~0u;
+        texture->base_level = 0;
+        texture->num_levels = ~0u;
         cpu_size += sizeof(TextureParam);
     }
     for (auto& [_, samp] : sampler_params) {
@@ -161,7 +165,7 @@ auto Material::shader_params_metadata() const -> ShaderParameterMetadataList con
 }
 
 auto Material::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) -> void {
-    compilation_environment.set_define("MATERIAL_SURAFCE_MODEL", static_cast<uint32_t>(surface_model));
+    compilation_environment.set_define("MATERIAL_SURFACE_MODEL", static_cast<uint32_t>(surface_model));
 
     switch (blend_mode) {
         case BlendMode::opaque:

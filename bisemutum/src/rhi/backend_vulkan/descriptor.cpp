@@ -75,9 +75,12 @@ auto DescriptorHeapVulkan::allocate_descriptor(DescriptorType type) -> Descripto
 auto DescriptorHeapVulkan::allocate_descriptor(BindGroupLayout const& layout) -> DescriptorHandle {
     uint64_t size = 0;
     for (auto const& entry : layout) {
-        size += size_of_descriptor(entry.type) * entry.count;
+        auto type_size = size_of_descriptor(entry.type);
+        size = aligned_size<uint64_t>(size, type_size);
+        size += type_size * entry.count;
     }
     size = aligned_size(size, device_->descriptor_offset_alignment());
+    size = aligned_size(size, 256ull);
     if (size == 0) { return {}; }
     if (curr_pos_ + size > top_pos_) { return {}; }
     DescriptorHandle handle{};

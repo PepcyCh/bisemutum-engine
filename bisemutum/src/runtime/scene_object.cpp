@@ -7,10 +7,14 @@
 
 namespace bi::rt {
 
-SceneObject::SceneObject(Ref<Scene> scene) : scene_(scene), ecs_registry_(g_engine->ecs_manager()->ecs_registry()) {
+SceneObject::SceneObject(Ref<Scene> scene, bool with_transform)
+    : scene_(scene), ecs_registry_(g_engine->ecs_manager()->ecs_registry())
+{
     ecs_entity_ = ecs_registry_->create();
     g_engine->ecs_manager()->add_scene_object(unsafe_make_ref(this), ecs_entity_);
-    attach_component(Transform{});
+    if (with_transform) {
+        attach_component(Transform{});
+    }
     name_ = fmt::format("scene_object_{}", static_cast<uint32_t>(ecs_entity_));
 }
 

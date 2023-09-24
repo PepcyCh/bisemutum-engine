@@ -107,7 +107,7 @@ struct VirtualDirectory final {
                 break;
             }
             if (curr_dir->has_sub_fs()) {
-                sub_fs_pars.emplace_back(normalized_path.substr(p + 1), *&curr_dir->sub_fs_.value());
+                sub_fs_pars.emplace_back(normalized_path.substr(last_p), *&curr_dir->sub_fs_.value());
             }
             if (auto it = curr_dir->name_map_.find(name); it != curr_dir->name_map_.end()) {
                 curr_dir = it->second;
@@ -116,6 +116,9 @@ struct VirtualDirectory final {
             }
             last_p = p + 1;
             p = normalized_path.find('/', last_p);
+        }
+        if (curr_dir->has_sub_fs()) {
+            sub_fs_pars.emplace_back(normalized_path.substr(last_p), *&curr_dir->sub_fs_.value());
         }
         return sub_fs_pars;
     }
@@ -139,7 +142,7 @@ struct VirtualDirectory final {
                 break;
             }
             if (curr_dir->has_sub_fs() && curr_dir->get_sub_fs()->is_writable()) {
-                sub_fs_pars.emplace_back(normalized_path.substr(p + 1), *&curr_dir->sub_fs_.value());
+                sub_fs_pars.emplace_back(normalized_path.substr(last_p), *&curr_dir->sub_fs_.value());
             }
             if (auto it = curr_dir->name_map_.find(name); it != curr_dir->name_map_.end()) {
                 curr_dir = it->second;
@@ -148,6 +151,9 @@ struct VirtualDirectory final {
             }
             last_p = p + 1;
             p = normalized_path.find('/', last_p);
+        }
+        if (curr_dir->has_sub_fs()) {
+            sub_fs_pars.emplace_back(normalized_path.substr(last_p), *&curr_dir->sub_fs_.value());
         }
         return sub_fs_pars;
     }

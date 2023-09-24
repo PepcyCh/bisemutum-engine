@@ -65,7 +65,7 @@ DeviceD3D12::DeviceD3D12(DeviceDesc const& desc) {
             ++i;
         }
     }
-    constexpr D3D_FEATURE_LEVEL d3d12_feature_level = make_d3d12_feature_level(12, 2);
+    constexpr D3D_FEATURE_LEVEL d3d12_feature_level = make_d3d12_feature_level(12, 1);
     IDXGIAdapter3* selected_adapter = nullptr;
     DXGI_ADAPTER_DESC1 adapter_desc{};
     for (auto adapter : adapters) {
@@ -120,6 +120,9 @@ DeviceD3D12::DeviceD3D12(DeviceDesc const& desc) {
 }
 
 DeviceD3D12::~DeviceD3D12() {
+    for (size_t i = 0; i < 3; i++) {
+        queues_[i]->wait_idle();
+    }
     save_pso_cache();
     allocator_->Release();
     allocator_ = nullptr;
@@ -154,7 +157,7 @@ auto DeviceD3D12::save_pso_cache() -> void {
     if (pipeline_library_ && !pso_cache_file_path_.empty()) {
         std::vector<std::byte> pso_cache_data(pipeline_library_->GetSerializedSize(), {});
         pipeline_library_->Serialize(pso_cache_data.data(), pso_cache_data.size());
-        g_engine->file_system()->get_file(pso_cache_file_path_).value().write_binary_data(pso_cache_data);
+        g_engine->file_system()->create_file(pso_cache_file_path_).value().write_binary_data(pso_cache_data);
     }
 }
 
@@ -208,7 +211,10 @@ auto DeviceD3D12::create_compute_pipeline(ComputePipelineDesc const& desc) -> Bo
 
 auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void {
     auto buffer_dx = buffer_desc.buffer.cast_to<BufferD3D12>();
-    auto specified_size = buffer_desc.size * std::max(1u, buffer_desc.structure_stride);
+    auto specified_size = buffer_desc.size;
+    if (specified_size != static_cast<uint64_t>(-1) && buffer_desc.structure_stride > 0) {
+        specified_size *= buffer_desc.structure_stride;
+    }
     auto available_size = std::min<uint32_t>(buffer_dx->size() - buffer_desc.offset, specified_size);
     switch (buffer_desc.type) {
         case DescriptorType::uniform_buffer: {
@@ -226,7 +232,7 @@ auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, Des
                 .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                 .Buffer = D3D12_BUFFER_SRV{
                     .FirstElement = buffer_desc.offset,
-                    .NumElements = available_size,
+                    .NumElements = available_size / std::max(1u, buffer_desc.structure_stride),
                     .StructureByteStride = std::max(1u, buffer_desc.structure_stride),
                     .Flags = buffer_desc.structure_stride == 0 ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
                 },
@@ -240,7 +246,7 @@ auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, Des
                 .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
                 .Buffer = D3D12_BUFFER_UAV{
                     .FirstElement = buffer_desc.offset,
-                    .NumElements = available_size,
+                    .NumElements = available_size / std::max(1u, buffer_desc.structure_stride),
                     .StructureByteStride = std::max(1u, buffer_desc.structure_stride),
                     .CounterOffsetInBytes = 0,
                     .Flags = buffer_desc.structure_stride == 0 ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE,

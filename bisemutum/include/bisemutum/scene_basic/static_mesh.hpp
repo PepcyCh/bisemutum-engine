@@ -36,7 +36,7 @@ struct StaticMesh final {
     }
     auto source_path(rhi::ShaderStage stage) const -> std::string_view {
         if (stage == rhi::ShaderStage::vertex) {
-            return "/engine/shaders/scene_basic/static_mesh.hlsl";
+            return "/bisemutum/shaders/scene_basic/static_mesh.hlsl";
         } else {
             return "";
         }

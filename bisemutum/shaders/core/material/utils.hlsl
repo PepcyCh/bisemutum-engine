@@ -35,12 +35,12 @@ void get_anisotropic_roughness(float roughness, float anisotropy, out float roug
 
 
 float ggx_ndf(float3 local_h, float roughness_x, float roughness_y) {
-    float a = Pow2(local_h.x / roughness_x) + Pow2(local_h.y / roughness_y) + Pow2(local_h.z);
+    float a = pow2(local_h.x / roughness_x) + pow2(local_h.y / roughness_y) + pow2(local_h.z);
     return INV_PI / (roughness_x * roughness_y * a * a);
 }
 
 float ggx_separable_visible(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
-    float v = local_v.z + sqrt(Pow2(roughness_x * local_v.x) + Pow2(roughness_y * local_v.y) + Pow2(local_v.z));
-    float l = local_l.z + sqrt(Pow2(roughness_x * local_l.x) + Pow2(roughness_y * local_l.y) + Pow2(local_l.z));
+    float v = local_v.z + sqrt(pow2(roughness_x * local_v.x) + pow2(roughness_y * local_v.y) + pow2(local_v.z));
+    float l = local_l.z + sqrt(pow2(roughness_x * local_l.x) + pow2(roughness_y * local_l.y) + pow2(local_l.z));
     return 1.0 / max(v * l, 0.0001);
 }

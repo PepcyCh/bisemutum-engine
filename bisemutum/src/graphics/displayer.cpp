@@ -16,6 +16,10 @@ auto BlitDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<Texture> t
     }
 }
 
+auto BlitDisplayer::is_valid() const -> bool {
+    return displayed_camera_ != CameraHandle::invalid;
+}
+
 auto BlitDisplayer::set_camera(CameraHandle camera) -> void {
     displayed_camera_ = camera;
 }

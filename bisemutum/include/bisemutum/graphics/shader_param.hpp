@@ -44,6 +44,7 @@ template <typename T>
 struct TSrvBuffer final {
     Ptr<Buffer> buffer;
     uint64_t offset = 0;
+    uint64_t size = ~0ull;
 };
 template <typename T>
 struct TSrvTexture final {
@@ -58,6 +59,7 @@ template <typename T>
 struct TUavBuffer final {
     Ptr<Buffer> buffer;
     uint64_t offset = 0;
+    uint64_t size = ~0ull;
 };
 template <typename T>
 struct TUavTexture final {

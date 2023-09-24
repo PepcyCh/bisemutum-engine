@@ -70,7 +70,7 @@ auto Buffer::rhi_staging_buffer() const -> CRef<rhi::Buffer> {
 }
 
 auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> void {
-    if (staging_buffers_.empty()) { return; }
+    if (staging_buffers_.empty() || size == 0) { return; }
 
     size = std::min(size, desc().size - offset);
     std::memcpy(rhi_staging_buffer()->typed_map<std::byte>() + offset, data, size);

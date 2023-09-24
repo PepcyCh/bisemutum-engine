@@ -160,7 +160,7 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     rhi::TextureDesc texture_desc = gfx::TextureBuilder()
         .dim_2d(format, width, height)
         .mipmap()
-        .usage(rhi::TextureUsage::sampled);
+        .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::color_attachment});
     TextureAsset texture{
         .texture = texture_desc,
         .sampler = g_engine->graphics_manager()->get_sampler(desc.sampler),
@@ -169,16 +169,22 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     auto image_pitch = width * (num_bits / 8) * num_channels;
     gfx::Buffer temp_buffer{gfx::BufferBuilder().size(image_pitch * height).mem_upload()};
     g_engine->graphics_manager()->execute_immediately(
-        [&temp_buffer, &texture, image_pitch, height](Ref<rhi::CommandEncoder> cmd) {
+        [&temp_buffer, &texture, image_pitch, width, height](Ref<rhi::CommandEncoder> cmd) {
+            auto access = BitFlags{rhi::ResourceAccessType::transfer_write};
+            cmd->resource_barriers({}, {
+                rhi::TextureBarrier{
+                    .texture = texture.texture.rhi_texture(),
+                    .dst_access_type = access,
+                },
+            });
             cmd->copy_buffer_to_texture(
                 temp_buffer.rhi_buffer(),
                 texture.texture.rhi_texture(),
                 rhi::BufferTextureCopyDesc{
-                    .buffer_pixels_per_row = static_cast<uint32_t>(image_pitch),
+                    .buffer_pixels_per_row = static_cast<uint32_t>(width),
                     .buffer_rows_per_texture = static_cast<uint32_t>(height),
                 }
             );
-            auto access = BitFlags{rhi::ResourceAccessType::none};
             g_engine->graphics_manager()->generate_mipmaps_2d(cmd, texture.texture, access);
         }
     );

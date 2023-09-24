@@ -35,8 +35,7 @@ struct Window::Impl final {
     }
 
     auto init(uint32_t width, uint32_t height, std::string_view title) -> void {
-        this->width = width;
-        this->height = height;
+        logic_size = {width, height};
 
         glfwSetErrorCallback(glfw_error_callback);
 
@@ -48,7 +47,7 @@ struct Window::Impl final {
             glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         }
 
-        auto owned_title = std::string{title.begin(), title.end()};
+        auto owned_title = std::string{title};
         window = glfwCreateWindow(width, height, owned_title.c_str(), nullptr, nullptr);
         if (window == nullptr) {
             return;
@@ -61,6 +60,8 @@ struct Window::Impl final {
 
         int frame_width, frame_height;
         glfwGetFramebufferSize(window, &frame_width, &frame_height);
+        frame_size.width = frame_width;
+        frame_size.height = frame_height;
 
         float width_scale, height_scale;
         glfwGetWindowContentScale(window, &width_scale, &height_scale);
@@ -109,7 +110,6 @@ struct Window::Impl final {
             // ImGui::Render();
             // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-            glfwSwapBuffers(window);
             ++frame_count;
         }
     }
@@ -135,8 +135,8 @@ struct Window::Impl final {
         resize_callbacks.remove(index);
     }
 
-    uint32_t width = 0;
-    uint32_t height = 0;
+    WindowSize frame_size;
+    WindowSize logic_size;
 
     GLFWwindow *window = nullptr;
 
@@ -203,11 +203,13 @@ void glfw_resize_callback(GLFWwindow *glfw_window, int width, int height) {
     //     ImGui_ImplOpenGL3_DestroyDeviceObjects();
     // }
 
-    width /= width_scale;
-    height /= height_scale;
-    if (window->width != width || window->height != height) {
+    WindowSize frame_size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    WindowSize logic_size{static_cast<uint32_t>(width / width_scale), static_cast<uint32_t>(height / height_scale)};
+    if (window->frame_size != frame_size) {
+        window->frame_size = frame_size;
+        window->logic_size = logic_size;
         for (auto const& func : window->resize_callbacks) {
-            func(width, height);
+            func(frame_size, logic_size);
         }
     }
 }
@@ -218,8 +220,8 @@ Window::Window(uint32_t width, uint32_t height, std::string_view title) {
 
 Window::~Window() = default;
 
-auto Window::width() const -> uint32_t { return impl()->width; }
-auto Window::height() const -> uint32_t { return impl()->height; }
+auto Window::frame_size() const -> WindowSize { return impl()->frame_size; }
+auto Window::logic_size() const -> WindowSize { return impl()->logic_size; }
 
 auto Window::platform_handle() const -> PlatformWindowHandle {
     return impl()->platform_handle();

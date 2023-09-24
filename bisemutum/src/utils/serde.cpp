@@ -182,16 +182,16 @@ auto value_from_toml(toml::node& t) -> Value {
     Value v{};
     switch (t.type()) {
         case toml::node_type::boolean:
-            v = t.as_boolean();
+            v = t.as_boolean()->get();
             break;
         case toml::node_type::integer:
-            v = t.as_integer();
+            v = t.as_integer()->get();
             break;
         case toml::node_type::floating_point:
-            v = t.as_floating_point();
+            v = t.as_floating_point()->get();
             break;
         case toml::node_type::string:
-            v = t.as_string();
+            v = t.as_string()->get();
             break;
         case toml::node_type::array:
             for (auto& elem : *t.as_array()) {

@@ -59,8 +59,8 @@ auto chars_to_wstring(std::string_view str) -> std::wstring {
     return converter.from_bytes(str.data(), str.data() + str.size());
 }
 
-constexpr std::string_view shader_binaries_directory = "/binaries/shaders/";
-constexpr std::string_view shader_binary_info_file_path = "/binaries/shaders/binary_info.db";
+constexpr std::string_view shader_binaries_directory = "/project/binaries/shaders/";
+constexpr std::string_view shader_binary_info_file_path = "/project/binaries/shaders/binary_info.db";
 constexpr uint32_t shader_binary_info_file_magic_number = 0x5373d269;
 
 } // namespace
@@ -101,7 +101,10 @@ struct ShaderCompiler::Impl final {
             .Size = shader_source.size(),
             .Encoding = DXC_CP_UTF8,
         };
-        auto& shader_binary_info = get_shader_binary_info(source_path, entry);
+        auto shader_key = fmt::format("{} {} {}", source_path, entry, environment.get_config_identifier());
+        auto& shader_binary_info = get_shader_binary_info(std::move(shader_key));
+        shader_binary_info.source_path = source_path;
+        shader_binary_info.entry = entry;
         auto shader_hash = std::hash<std::string>{}(shader_source);
         auto old_shader_binary_path = get_compiled_shader_path(shader_binary_info);
         auto need_to_compile = shader_binary_info.shader_hash != shader_hash;
@@ -113,7 +116,7 @@ struct ShaderCompiler::Impl final {
             g_engine->file_system()->remove_file(old_shader_binary_path);
         }
         if (!need_to_compile) {
-            if (auto it = cached_shader_module.find(shader_binary_info.shader_hash); it != cached_shader_module.end()) {
+            if (auto it = cached_shader_module.find(shader_binary_info.shader_key); it != cached_shader_module.end()) {
                 return it->second.ref();
             }
             auto compiled_shader = compiled_shader_file.value().read_binary_data();
@@ -121,7 +124,7 @@ struct ShaderCompiler::Impl final {
                 .binary_data = compiled_shader,
             };
             auto it = cached_shader_module.insert(
-                {shader_binary_info.shader_hash, device->create_shader_module(sm_desc)}
+                {shader_binary_info.shader_key, device->create_shader_module(sm_desc)}
             ).first;
             return it->second.ref();
         }
@@ -139,31 +142,31 @@ struct ShaderCompiler::Impl final {
         args.push_back(L"-T");
         switch (shader_stage) {
             case rhi::ShaderStage::vertex:
-                args.push_back(L"vs_6_7");
+                args.push_back(L"vs_6_6");
                 break;
             case rhi::ShaderStage::tessellation_control:
-                args.push_back(L"ds_6_7");
+                args.push_back(L"ds_6_6");
                 break;
             case rhi::ShaderStage::tessellation_evaluation:
-                args.push_back(L"hs_6_7");
+                args.push_back(L"hs_6_6");
                 break;
             case rhi::ShaderStage::geometry:
-                args.push_back(L"gs_6_7");
+                args.push_back(L"gs_6_6");
                 break;
             case rhi::ShaderStage::fragment:
-                args.push_back(L"ps_6_7");
+                args.push_back(L"ps_6_6");
                 break;
             case rhi::ShaderStage::compute:
-                args.push_back(L"cs_6_7");
+                args.push_back(L"cs_6_6");
                 break;
             case rhi::ShaderStage::task:
-                args.push_back(L"as_6_7");
+                args.push_back(L"as_6_6");
                 break;
             case rhi::ShaderStage::mesh:
-                args.push_back(L"ms_6_7");
+                args.push_back(L"ms_6_6");
                 break;
             default:
-                args.push_back(L"lib_6_7");
+                args.push_back(L"lib_6_6");
                 break;
         }
 
@@ -191,7 +194,7 @@ struct ShaderCompiler::Impl final {
                 },
             };
             auto it = cached_shader_module.insert(
-                {shader_binary_info.shader_hash, device->create_shader_module(sm_desc)}
+                {shader_binary_info.shader_key, device->create_shader_module(sm_desc)}
             ).first;
             return it->second.ref();
         }
@@ -244,6 +247,7 @@ struct ShaderCompiler::Impl final {
     }
 
     struct ShaderBinaryInfo final {
+        std::string shader_key;
         std::string source_path;
         std::string entry;
         uint64_t shader_hash;
@@ -279,9 +283,7 @@ struct ShaderCompiler::Impl final {
                 p_data += sizeof(uint64_t);
                 shader_binary_infos[i].last_used_timestamp = *reinterpret_cast<uint64_t*>(p_data);
                 p_data += sizeof(uint64_t);
-                shader_binary_info_path_map.insert(
-                    {std::make_pair(shader_binary_infos[i].source_path, shader_binary_infos[i].entry), i}
-                );
+                shader_binary_info_path_map.insert({shader_binary_infos[i].shader_key, i});
             }
         }
     }
@@ -299,35 +301,32 @@ struct ShaderCompiler::Impl final {
             auto const& info = shader_binary_infos.back();
             if (info.last_used_timestamp < remove_time_threshold) {
                 g_engine->file_system()->remove_file(get_compiled_shader_path(info));
-                shader_binary_info_path_map.erase(std::make_pair(info.source_path, info.entry));
+                shader_binary_info_path_map.erase(info.shader_key);
                 shader_binary_infos.pop_back();
             } else {
                 break;
             }
         }
+        // TODO - write file
     }
 
     auto get_compiled_shader_path(ShaderBinaryInfo const& info) -> std::string {
         return fmt::format("{}{}{}", shader_binaries_directory, info.source_path, compiled_shader_suffix);
     }
 
-    auto get_shader_binary_info(std::string_view source_path, std::string_view entry) -> ShaderBinaryInfo& {
-        auto [index_it, need_to_create] = shader_binary_info_path_map.insert(
-            {std::make_pair(source_path, entry), shader_binary_infos.size()}
-        );
+    auto get_shader_binary_info(std::string&& shader_key) -> ShaderBinaryInfo& {
         auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
-        if (need_to_create) {
-            auto& info = shader_binary_infos.emplace_back();
-            info.source_path = source_path;
-            info.entry = entry;
-            info.shader_hash = 0;
-            info.last_used_timestamp = timestamp;
-            return info;
-        } else {
-            auto& info = shader_binary_infos[index_it->second];
+        if (auto it = shader_binary_info_path_map.find(shader_key); it != shader_binary_info_path_map.end()) {
+            auto& info = shader_binary_infos[it->second];
             info.last_used_timestamp = timestamp;
             return info;
         }
+        auto& info = shader_binary_infos.emplace_back();
+        info.shader_key = std::move(shader_key);
+        info.shader_hash = 0;
+        info.last_used_timestamp = timestamp;
+        shader_binary_info_path_map.insert({info.shader_key, shader_binary_infos.size()});
+        return info;
     }
 
     Ptr<rhi::Device> device;
@@ -341,9 +340,8 @@ struct ShaderCompiler::Impl final {
     ShaderIncluder shader_includer;
 
     std::vector<ShaderBinaryInfo> shader_binary_infos;
-    std::unordered_map<std::pair<std::string_view, std::string_view>, size_t> shader_binary_info_path_map;
-
-    std::unordered_map<uint64_t, Box<rhi::ShaderModule>> cached_shader_module;
+    std::unordered_map<std::string_view, size_t> shader_binary_info_path_map;
+    std::unordered_map<std::string_view, Box<rhi::ShaderModule>> cached_shader_module;
 };
 
 ShaderCompiler::ShaderCompiler() = default;

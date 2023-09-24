@@ -12,14 +12,21 @@ struct GLFWwindow;
 
 namespace bi {
 
+struct WindowSize final {
+    uint32_t width = 0;
+    uint32_t height = 0;
+
+    auto operator==(WindowSize const& rhs) const -> bool = default;
+};
+
 struct Window final : PImpl<Window> {
     struct Impl;
 
     Window(uint32_t width, uint32_t height, std::string_view title);
     ~Window();
 
-    auto width() const -> uint32_t;
-    auto height() const -> uint32_t;
+    auto frame_size() const -> WindowSize;
+    auto logic_size() const -> WindowSize;
     auto platform_handle() const -> PlatformWindowHandle;
 
     auto frame_count() const -> uint64_t;
@@ -74,8 +81,9 @@ public:
     using KeyCallbackHandle = CallbackHandle<KeyCallback, &Window::unregister_key_callback>;
     auto register_key_callback(KeyCallback&& callback) -> KeyCallbackHandle;
 
-    using ResizeCallback = std::function<void(uint32_t, uint32_t)>;
-    using ResizeCallbackHandle = CallbackHandle<KeyCallback, &Window::unregister_resize_callback>;
+    // auto (WindowSize frame_size, WindowSize logic_size) -> void
+    using ResizeCallback = std::function<auto(WindowSize, WindowSize) -> void>;
+    using ResizeCallbackHandle = CallbackHandle<ResizeCallback, &Window::unregister_resize_callback>;
     auto register_resize_callback(ResizeCallback&& callback) -> ResizeCallbackHandle;
 };
 

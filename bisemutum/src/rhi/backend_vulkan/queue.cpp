@@ -37,7 +37,7 @@ auto QueueVulkan::submit_command_buffer(
         wait_semaphores_vk[i] = wait_semaphores[i].cast_to<const SemaphoreVulkan>()->raw();
         wait_stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     }
-    std::vector<VkSemaphore> signal_semaphores_vk(wait_semaphores.size());
+    std::vector<VkSemaphore> signal_semaphores_vk(signal_semaphores.size());
     for (size_t i = 0; i < signal_semaphores.size(); i++) {
         signal_semaphores_vk[i] = signal_semaphores[i].cast_to<const SemaphoreVulkan>()->raw();
     }

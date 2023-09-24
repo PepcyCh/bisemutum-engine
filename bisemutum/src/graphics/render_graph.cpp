@@ -900,7 +900,7 @@ auto RenderGraph::add_blit_pass(
 }
 
 auto RenderGraph::set_graphics_device(Ref<rhi::Device> device, uint32_t num_frames) -> void {
-    set_graphics_device(device, num_frames);
+    impl()->set_graphics_device(device, num_frames);
 }
 auto RenderGraph::set_back_buffer(Ref<Texture> texture) -> void {
     impl()->set_back_buffer(texture);

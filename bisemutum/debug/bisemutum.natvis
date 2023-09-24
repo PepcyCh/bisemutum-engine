@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <!-- glm -->
+    <Type Name="glm::vec&lt;1,*,*&gt;">
+        <DisplayString>[{x,g}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x,g</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;2,*,*&gt;">
+        <DisplayString>[{x,g} {y,g}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x,g</Item>
+            <Item Name="y">y,g</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;3,*,*&gt;">
+        <DisplayString>[{x,g} {y,g} {z,g}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x,g</Item>
+            <Item Name="y">y,g</Item>
+            <Item Name="z">z,g</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;4,*,*&gt;">
+        <DisplayString>[{x,g} {y,g} {z,g} {w,g}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x,g</Item>
+            <Item Name="y">y,g</Item>
+            <Item Name="z">z,g</Item>
+            <Item Name="w">w,g</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;1,bool,*&gt;" Priority="High">
+        <DisplayString>[{(int)x}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;2,bool,*&gt;" Priority="High">
+        <DisplayString>[{(int)x} {(int)y}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x</Item>
+            <Item Name="y">y</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;3,bool,*&gt;" Priority="High">
+        <DisplayString>[{(int)x,g} {(int)y,g} {(int)z,g}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x</Item>
+            <Item Name="y">y</Item>
+            <Item Name="z">z</Item>
+        </Expand>
+    </Type>
+    <Type Name="glm::vec&lt;4,bool,*&gt;" Priority="High">
+        <DisplayString>[{(int)x,g} {(int)y,g} {(int)z,g} {(int)w,g}]</DisplayString>
+        <Expand HideRawView="1">
+            <Item Name="x">x</Item>
+            <Item Name="y">y</Item>
+            <Item Name="z">z</Item>
+            <Item Name="w">w</Item>
+        </Expand>
+    </Type>
+    <!-- bisemutum -->
+    <Type Name="bi::Option&lt;*&gt;">
+        <DisplayString>{{}}</DisplayString>
+        <Expand>
+            <Item Name="[has_value]" Optional="true">has_value_</Item>
+            <Item Name="[value]">*($T1 const*)(memory_)</Item>
+        </Expand>
+    </Type>
+    <Type Name="bi::Span&lt;*&gt;">
+        <DisplayString>{{ size = size_ }}</DisplayString>
+        <Expand>
+            <Item Name="[size]">size_</Item>
+            <ArrayItems>
+                <Size>size_</Size>
+                <ValuePointer>data_</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+</AutoVisualizer>

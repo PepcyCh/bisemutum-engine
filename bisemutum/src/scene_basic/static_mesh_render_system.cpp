@@ -47,6 +47,8 @@ struct StaticMeshRenderSystem::Impl final {
             auto drawable = g_engine->graphics_manager()->get_drawable(handle_it->second);
             auto mesh = object->get_component<StaticMeshComponent>();
             auto renderer = object->get_component<MeshRendererComponent>();
+            mesh->static_mesh.load();
+            renderer->material.load();
             drawable->mesh = mesh->static_mesh.asset().get();
             drawable->material = &renderer->material.asset()->material;
             if (dirty_meshes.contains(entity)) {
@@ -67,7 +69,6 @@ struct StaticMeshRenderSystem::Impl final {
     }
 
     auto on_construct(entt::registry& ecs_registry, entt::entity entity) -> void {
-        auto handle = g_engine->graphics_manager()->add_camera();
         dirty_entities.insert(entity);
     }
     auto on_destroy(entt::registry& ecs_registry, entt::entity entity) -> void {

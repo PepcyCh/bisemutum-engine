@@ -102,6 +102,9 @@ auto ResourceBindingContext::set_shader_params(
                 }
                 break;
         }
+        if (param.descriptor_type == rhi::DescriptorType::none) {
+            continue;
+        }
 
         rhi::BindGroupLayoutEntry layout_entry{
             .count = count,
@@ -128,6 +131,7 @@ auto ResourceBindingContext::set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_e
         num_samplers += set_samplers.cpu_descriptors.size();
         num_entries += set_samplers.layout.size();
     }
+    if (num_samplers == 0) { return; }
 
     std::vector<rhi::DescriptorHandle> cpu_descriptors(num_samplers);
     std::vector<rhi::DescriptorType> desc_types(num_samplers, rhi::DescriptorType::sampler);
@@ -202,12 +206,12 @@ auto GraphicsPassContext::get_rendered_object_list(RenderedObjectListDesc const&
                 this, desc.camera, drawables[i], desc.fragmeng_shader
             );
             RenderedObjectListItem item{pipeline};
-            item.drawables.reserve(j - i);
-            for (auto k = i; k < j; k++) {
+            item.drawables.reserve(j - i + 1);
+            for (auto k = i; k <= j; k++) {
                 item.drawables.push_back(drawables[k]);
             }
             list.items.push_back(std::move(item));
-            i = j;
+            i = j + 1;
         }
     }
 

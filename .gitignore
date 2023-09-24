@@ -1,6 +1,7 @@
 .xmake/
 build/
 out/
+*.log
 
 .DS_Store
 

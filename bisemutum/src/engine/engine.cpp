@@ -45,7 +45,7 @@ struct ProjectInfo final {
     std::string renderer;
     ProjectSettings settings;
 };
-BI_SREFL(type(ProjectInfo), field(name), field(scene_file), field(settings));
+BI_SREFL(type(ProjectInfo), field(name), field(scene_file), field(renderer), field(settings));
 
 }
 
@@ -60,6 +60,9 @@ struct Engine::Impl final {
     }
 
     auto initialize(int argc, char** argv) -> bool {
+        // `register_systems` needs engine to be fully constructed
+        register_systems(ecs_manager);
+
         if (!mount_engine_path()) { return false; }
 
         if (argc < 2) {
@@ -87,14 +90,12 @@ struct Engine::Impl final {
 
         if (!module_manager.initialize()) { return false; }
 
-        {
-            auto scene_file_opt = file_system.get_file(project_info.scene_file);
-            if (!scene_file_opt) {
-                log::critical("general", "Scene file '{}' not founc.", project_info.scene_file);
-                return false;
-            }
-            world.load_scene(scene_file_opt.value().read_string_data());
+        auto scene_file_opt = file_system.get_file(project_info.scene_file);
+        if (!scene_file_opt) {
+            log::critical("general", "Scene file '{}' not founc.", project_info.scene_file);
+            return false;
         }
+        if (!world.load_scene(scene_file_opt.value().read_string_data())) { return false; }
 
         return true;
     }
@@ -147,23 +148,26 @@ struct Engine::Impl final {
             frame_timer.tick();
             ecs_manager.tick();
             graphics_manager.render_frame();
+            ui.execute();
             world.do_destroy_scene_objects();
         });
     }
 
+    rt::LoggerManager logger_manager;
+
     Window window;
     Dyn<IEngineUI>::Box ui;
 
-    gfx::GraphicsManager graphics_manager;
-
-    rt::World world;
     rt::FrameTimer frame_timer;
     rt::ModuleManager module_manager;
-    rt::EcsManager ecs_manager;
     rt::FileSystem file_system;
-    rt::LoggerManager logger_manager;
+
+    gfx::GraphicsManager graphics_manager;
+
+    rt::EcsManager ecs_manager;
     rt::ComponentManager component_manager;
     rt::AssetManager asset_manager;
+    rt::World world;
 };
 
 Engine::Engine() = default;
