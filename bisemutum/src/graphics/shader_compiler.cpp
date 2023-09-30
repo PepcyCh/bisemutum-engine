@@ -28,16 +28,14 @@ struct ShaderIncluder final : pep::cprep::ShaderIncluder {
 
         auto rel_path = fmt::format("{}/../{}", file_path, header_name);
         if (auto file = vfs->get_file(rel_path); file) {
-            auto shader = file.value().read_string_data();
-            loaded_files_.push_back(std::move(shader));
+            loaded_files_.push_back(file.value().read_string_data());
             result.header_content = loaded_files_.back();
             result.header_path = rel_path;
             return true;
         }
 
         if (auto file = vfs->get_file(header_name); file) {
-            auto shader = file.value().read_string_data();
-            loaded_files_.push_back(std::move(shader));
+            loaded_files_.push_back(file.value().read_string_data());
             result.header_content = loaded_files_.back();
             result.header_path = header_name;
             return true;
@@ -226,10 +224,10 @@ struct ShaderCompiler::Impl final {
             ++index;
         }
 
+        ShaderIncluder shader_includer{};
         auto result = shader_preprocessor.do_preprocess(
             source_path, shader_content, shader_includer, options.data(), options.size()
         );
-        shader_includer.clear();
         if (!result.error.empty()) {
             return "";
         }
@@ -337,7 +335,6 @@ struct ShaderCompiler::Impl final {
     CComPtr<IDxcIncludeHandler> dxc_include_handler;
 
     pep::cprep::Preprocessor shader_preprocessor;
-    ShaderIncluder shader_includer;
 
     std::vector<ShaderBinaryInfo> shader_binary_infos;
     std::unordered_map<std::string_view, size_t> shader_binary_info_path_map;

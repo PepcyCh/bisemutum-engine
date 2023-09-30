@@ -148,6 +148,7 @@ struct Preprocessor::Impl final {
     void clear_states() {
         defines.clear();
         parsed_files.clear();
+        pragma_once_files.clear();
         while (!files.empty()) { files.pop(); }
         while (!inputs.empty()) { inputs.pop(); }
         while (!if_stack.empty()) { if_stack.pop(); }
