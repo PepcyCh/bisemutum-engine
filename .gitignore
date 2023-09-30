@@ -8,3 +8,5 @@ out/
 .vs
 .vscode
 .cache
+
+binaries

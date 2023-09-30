@@ -341,7 +341,12 @@ auto PhysicalSubFileSystem::create_file(std::string_view path) -> Option<Dyn<IFi
     if (!writable_) { return {}; }
 
     auto full_path = root_path_ / path;
-    if (std::filesystem::is_regular_file(full_path)) {
+    std::filesystem::create_directories(full_path.parent_path());
+    if (!std::filesystem::is_regular_file(full_path)) {
+        std::ofstream fout(full_path);
+    }
+    // Check if creation is ok
+    if (!std::filesystem::is_regular_file(full_path)) {
         return {};
     } else {
         return Dyn<IFile>::Box{PhysicalFile(std::move(full_path), writable_)};
