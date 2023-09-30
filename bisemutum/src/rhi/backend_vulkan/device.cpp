@@ -37,6 +37,15 @@ VKAPI_ATTR auto VKAPI_CALL vk_debug_callback(
     return VK_FALSE;
 }
 
+auto is_device_extension_supported(std::vector<VkExtensionProperties> const& ext_props, char const* ext_name)  -> bool {
+    return std::find_if(
+        ext_props.begin(), ext_props.end(),
+        [ext_name](VkExtensionProperties const& prop) {
+            return strcmp(prop.extensionName, ext_name) == 0;
+        }
+    ) != ext_props.end();
+}
+
 auto to_vk_image_view_type(TextureViewType view_type) -> VkImageViewType {
     switch (view_type) {
         case TextureViewType::d1: return VK_IMAGE_VIEW_TYPE_1D;
@@ -50,6 +59,34 @@ auto to_vk_image_view_type(TextureViewType view_type) -> VkImageViewType {
     }
 }
 
+} // namespace
+
+auto DescriptorSetLayoutHashHelper::operator()(BindGroupLayout const& v) const noexcept -> size_t {
+    size_t hash = 0;
+    for (auto& entry : v) {
+        hash = hash_combine(hash, bi::hash(entry.binding_or_register, entry.count, entry.type, entry.visibility));
+    }
+    return hash;
+}
+
+auto DescriptorSetLayoutHashHelper::operator()(
+    BindGroupLayout const& a, BindGroupLayout const& b
+) const noexcept -> bool {
+    if (a.size() == b.size()) {
+        for (size_t i = 0; i < a.size(); i++) {
+            if (
+                a[i].binding_or_register != b[i].binding_or_register
+                || a[i].count != b[i].count
+                || a[i].type != b[i].type
+                || a[i].visibility != b[i].visibility
+            ) {
+                return false;
+            }
+        }
+        return true;
+    } else {
+        return false;
+    }
 }
 
 auto DeviceVulkan::create(DeviceDesc const& desc) -> Box<DeviceVulkan> {
@@ -119,6 +156,8 @@ DeviceVulkan::DeviceVulkan(DeviceDesc const& desc) {
     init_allocator();
 
     init_descriptor_sizes();
+
+    initialize_device_properties();
 }
 
 DeviceVulkan::~DeviceVulkan() {
@@ -128,6 +167,12 @@ DeviceVulkan::~DeviceVulkan() {
     save_pipeline_cache(true);
 
     vmaDestroyAllocator(allocator_);
+
+    immutable_samplers_heap_.reset();
+    for (auto [_, set_layout] : cached_desc_set_layouts_) {
+        vkDestroyDescriptorSetLayout(device_, set_layout, nullptr);
+    }
+    cached_desc_set_layouts_.clear();
 
     vkDestroyDevice(device_, nullptr);
 
@@ -141,6 +186,7 @@ DeviceVulkan::~DeviceVulkan() {
 auto DeviceVulkan::initialize_device_properties() -> void {
     device_properties_.gpu_name = physical_device_props_.deviceName;
     device_properties_.max_num_bind_groups = physical_device_props_.limits.maxBoundDescriptorSets;
+    device_properties_.separate_sampler_heap = support_descriptor_buffer_;
 }
 
 auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
@@ -213,11 +259,23 @@ auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
         };
     }
 
+    uint32_t num_supported_device_extensions;
+    vkEnumerateDeviceExtensionProperties(physical_device_, nullptr, &num_supported_device_extensions, nullptr);
+    std::vector<VkExtensionProperties> supported_device_extensions(num_supported_device_extensions);
+    vkEnumerateDeviceExtensionProperties(
+        physical_device_, nullptr, &num_supported_device_extensions, supported_device_extensions.data()
+    );
+
     std::vector<char const*> enabled_device_extensions{
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
-        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
     };
+    support_descriptor_buffer_ = is_device_extension_supported(
+        supported_device_extensions, VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
+    );
+    if (support_descriptor_buffer_) {
+        enabled_device_extensions.push_back(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
+    }
 
     VkPhysicalDeviceFeatures2 device_features{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
@@ -238,7 +296,9 @@ auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
     VkPhysicalDeviceDescriptorBufferFeaturesEXT desciptor_buffer_features{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
     };
-    connect_vk_p_next_chain(&device_features, &desciptor_buffer_features);
+    if (support_descriptor_buffer_) {
+        connect_vk_p_next_chain(&device_features, &desciptor_buffer_features);
+    }
 
     vkGetPhysicalDeviceFeatures2(physical_device_, &device_features);
 
@@ -270,29 +330,6 @@ auto DeviceVulkan::init_allocator() -> void {
     VmaVulkanFunctions vk_functions{
         .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
         .vkGetDeviceProcAddr = vkGetDeviceProcAddr,
-        // .vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties,
-        // .vkAllocateMemory = vkAllocateMemory,
-        // .vkFreeMemory = vkFreeMemory,
-        // .vkMapMemory = vkMapMemory,
-        // .vkUnmapMemory = vkUnmapMemory,
-        // .vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges,
-        // .vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges,
-        // .vkBindBufferMemory = vkBindBufferMemory,
-        // .vkBindImageMemory = vkBindImageMemory,
-        // .vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements,
-        // .vkGetImageMemoryRequirements = vkGetImageMemoryRequirements,
-        // .vkCreateBuffer = vkCreateBuffer,
-        // .vkDestroyBuffer = vkDestroyBuffer,
-        // .vkCreateImage = vkCreateImage,
-        // .vkDestroyImage = vkDestroyImage,
-        // .vkCmdCopyBuffer = vkCmdCopyBuffer,
-        // .vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR,
-        // .vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR,
-        // .vkBindBufferMemory2KHR = vkBindBufferMemory2KHR,
-        // .vkBindImageMemory2KHR = vkBindImageMemory2KHR,
-        // .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR,
-        // .vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements,
-        // .vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements,
     };
 
     VmaAllocatorCreateInfo allocator_ci{};
@@ -306,6 +343,8 @@ auto DeviceVulkan::init_allocator() -> void {
 }
 
 auto DeviceVulkan::init_descriptor_sizes() -> void {
+    if (!support_descriptor_buffer_) { return; }
+
     VkPhysicalDeviceDescriptorBufferPropertiesEXT desc_buffer_props{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT,
         .pNext = nullptr,
@@ -358,6 +397,48 @@ auto DeviceVulkan::save_pipeline_cache(bool destroy) -> void {
     }
 }
 
+auto DeviceVulkan::require_descriptor_set_layout(BindGroupLayout const& layout) -> VkDescriptorSetLayout {
+    if (auto it = cached_desc_set_layouts_.find(layout); it != cached_desc_set_layouts_.end()) {
+        return it->second;
+    }
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings_info(layout.size());
+    for (size_t i = 0; auto const &entry : layout) {
+        bindings_info[i].binding = entry.binding_or_register;
+        bindings_info[i].descriptorCount = entry.count;
+        bindings_info[i].descriptorType = to_vk_descriptor_type(entry.type);
+        bindings_info[i].pImmutableSamplers = nullptr;
+        bindings_info[i].stageFlags = to_vk_shader_stages(entry.visibility);
+        ++i;
+    }
+    VkDescriptorSetLayoutCreateFlags flags = support_descriptor_buffer_
+        ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
+        : 0u;
+    VkDescriptorSetLayoutCreateInfo set_layout_ci{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = flags,
+        .bindingCount = static_cast<uint32_t>(bindings_info.size()),
+        .pBindings = bindings_info.data(),
+    };
+    VkDescriptorSetLayout set_layout;
+    vkCreateDescriptorSetLayout(device_, &set_layout_ci, nullptr, &set_layout);
+    cached_desc_set_layouts_.insert({layout, set_layout});
+    return set_layout;
+}
+
+auto DeviceVulkan::immutable_samplers_heap() -> Ptr<DescriptorHeapVulkanLegacy> {
+    if (!support_descriptor_buffer_ && !immutable_samplers_heap_) {
+        DescriptorHeapDesc heap_desc{
+            .max_count = 2048,
+            .type = DescriptorHeapType::sampler,
+            .shader_visible = true,
+        };
+        immutable_samplers_heap_ = Box<DescriptorHeapVulkanLegacy>::make(unsafe_make_ref(this), heap_desc);
+    }
+    return immutable_samplers_heap_.get();
+}
+
 auto DeviceVulkan::get_queue(QueueType type) -> Ref<Queue> {
     return queues_[static_cast<size_t>(type)].ref();
 }
@@ -391,7 +472,11 @@ auto DeviceVulkan::create_sampler(SamplerDesc const& desc) -> Box<Sampler> {
 }
 
 auto DeviceVulkan::create_descriptor_heap(DescriptorHeapDesc const& desc) -> Box<DescriptorHeap> {
-    return Box<DescriptorHeapVulkan>::make(unsafe_make_ref(this), desc);
+    if (support_descriptor_buffer_) {
+        return Box<DescriptorHeapVulkan>::make(unsafe_make_ref(this), desc);
+    } else {
+        return Box<DescriptorHeapVulkanLegacy>::make(unsafe_make_ref(this), desc);
+    }
 }
 
 auto DeviceVulkan::create_shader_module(ShaderModuleDesc const& desc) -> Box<ShaderModule> {
@@ -413,31 +498,53 @@ auto DeviceVulkan::create_descriptor(BufferDescriptorDesc const& buffer_desc, De
         specified_size *= buffer_desc.structure_stride;
     }
     auto available_size = std::min(buffer_vk->desc().size - buffer_desc.offset, specified_size);
-    VkDescriptorGetInfoEXT get_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-        .pNext = nullptr,
-    };
-    VkDescriptorAddressInfoEXT addr_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT,
-        .pNext = nullptr,
-        .address = buffer_vk->address() + buffer_desc.offset,
-        .range = available_size,
-    };
-    switch (buffer_desc.type) {
-        case DescriptorType::uniform_buffer:
-            get_info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            get_info.data.pUniformBuffer = &addr_info;
-            break;
-        case DescriptorType::read_only_storage_buffer:
-        case DescriptorType::read_write_storage_buffer:
-            get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            get_info.data.pStorageBuffer = &addr_info;
-            break;
-        default: unreachable();
+    if (support_descriptor_buffer_) {
+        VkDescriptorGetInfoEXT get_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+            .pNext = nullptr,
+        };
+        VkDescriptorAddressInfoEXT addr_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT,
+            .pNext = nullptr,
+            .address = buffer_vk->address() + buffer_desc.offset,
+            .range = available_size,
+        };
+        switch (buffer_desc.type) {
+            case DescriptorType::uniform_buffer:
+                get_info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                get_info.data.pUniformBuffer = &addr_info;
+                break;
+            case DescriptorType::read_only_storage_buffer:
+            case DescriptorType::read_write_storage_buffer:
+                get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                get_info.data.pStorageBuffer = &addr_info;
+                break;
+            default: unreachable();
+        }
+        vkGetDescriptorEXT(
+            device_, &get_info, size_of_descriptor(buffer_desc.type), reinterpret_cast<void*>(handle.cpu)
+        );
+    } else {
+        auto desc_set = *reinterpret_cast<VkDescriptorSet*>(handle.cpu);
+        VkDescriptorBufferInfo buffer_info{
+            .buffer = buffer_vk->raw(),
+            .offset = buffer_desc.offset,
+            .range = available_size,
+        };
+        VkWriteDescriptorSet desc_write{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = desc_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = to_vk_descriptor_type(buffer_desc.type),
+            .pImageInfo = nullptr,
+            .pBufferInfo = &buffer_info,
+            .pTexelBufferView = nullptr,
+        };
+        vkUpdateDescriptorSets(device_, 1, &desc_write, 0, nullptr);
     }
-    vkGetDescriptorEXT(
-        device_, &get_info, size_of_descriptor(buffer_desc.type), reinterpret_cast<void*>(handle.cpu)
-    );
 }
 
 auto DeviceVulkan::create_descriptor(TextureDescriptorDesc const& texture_desc, DescriptorHandle handle) -> void {
@@ -446,11 +553,8 @@ auto DeviceVulkan::create_descriptor(TextureDescriptorDesc const& texture_desc, 
     auto view_type = texture_desc.view_type == TextureViewType::automatic
         ? texture_vk->get_automatic_view_type()
         : texture_desc.view_type;
-    VkDescriptorGetInfoEXT get_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-        .pNext = nullptr,
-    };
     VkDescriptorImageInfo image_info{
+        .sampler = VK_NULL_HANDLE,
         .imageView = texture_vk->get_view(
             texture_desc.base_level, texture_desc.num_levels,
             texture_desc.base_layer, texture_desc.num_layers,
@@ -459,49 +563,126 @@ auto DeviceVulkan::create_descriptor(TextureDescriptorDesc const& texture_desc, 
     };
     switch (texture_desc.type) {
         case DescriptorType::sampled_texture:
-            get_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            get_info.data.pSampledImage = &image_info;
             image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             break;
         case DescriptorType::read_only_storage_texture:
         case DescriptorType::read_write_storage_texture:
-            get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            get_info.data.pStorageImage = &image_info;
             image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
             break;
         default: unreachable();
     }
-    vkGetDescriptorEXT(
-        device_, &get_info, size_of_descriptor(texture_desc.type), reinterpret_cast<void*>(handle.cpu)
-    );
+    if (support_descriptor_buffer_) {
+        VkDescriptorGetInfoEXT get_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+            .pNext = nullptr,
+        };
+        switch (texture_desc.type) {
+            case DescriptorType::sampled_texture:
+                get_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                get_info.data.pSampledImage = &image_info;
+                break;
+            case DescriptorType::read_only_storage_texture:
+            case DescriptorType::read_write_storage_texture:
+                get_info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                get_info.data.pStorageImage = &image_info;
+                break;
+            default: unreachable();
+        }
+        vkGetDescriptorEXT(
+            device_, &get_info, size_of_descriptor(texture_desc.type), reinterpret_cast<void*>(handle.cpu)
+        );
+    } else {
+        auto desc_set = *reinterpret_cast<VkDescriptorSet*>(handle.cpu);
+        VkWriteDescriptorSet desc_write{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = desc_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = to_vk_descriptor_type(texture_desc.type),
+            .pImageInfo = &image_info,
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr,
+        };
+        vkUpdateDescriptorSets(device_, 1, &desc_write, 0, nullptr);
+    }
 }
 
 auto DeviceVulkan::create_descriptor(Ref<Sampler> sampler, DescriptorHandle handle) -> void {
     auto sampler_vk = sampler.cast_to<SamplerVulkan>();
     auto raw_sampler = sampler_vk->raw();
-    VkDescriptorGetInfoEXT get_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
-        .pNext = nullptr,
-        .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-    };
-    get_info.data.pSampler = &raw_sampler;
-    vkGetDescriptorEXT(
-        device_, &get_info, size_of_descriptor(DescriptorType::sampler), reinterpret_cast<void*>(handle.cpu)
-    );
+    if (support_descriptor_buffer_) {
+        VkDescriptorGetInfoEXT get_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+            .pNext = nullptr,
+            .type = VK_DESCRIPTOR_TYPE_SAMPLER,
+        };
+        get_info.data.pSampler = &raw_sampler;
+        vkGetDescriptorEXT(
+            device_, &get_info, size_of_descriptor(DescriptorType::sampler), reinterpret_cast<void*>(handle.cpu)
+        );
+    } else {
+        auto desc_set = *reinterpret_cast<VkDescriptorSet*>(handle.cpu);
+        VkDescriptorImageInfo sampler_info{
+            .sampler = raw_sampler,
+            .imageView = VK_NULL_HANDLE,
+        };
+        VkWriteDescriptorSet desc_write{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = desc_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+            .pImageInfo = &sampler_info,
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr,
+        };
+        vkUpdateDescriptorSets(device_, 1, &desc_write, 0, nullptr);
+    }
 }
 
 auto DeviceVulkan::copy_descriptors(
     DescriptorHandle dst_desciptor,
     CSpan<DescriptorHandle> src_descriptors,
-    CSpan<DescriptorType> src_descriptors_type
+    BindGroupLayout const& bind_group_layout
 ) -> void {
-    auto p_dst = reinterpret_cast<std::byte*>(dst_desciptor.cpu);
-    size_t offset = 0;
-    for (size_t i = 0; i < src_descriptors.size(); i++) {
-        auto size = size_of_descriptor(src_descriptors_type[i]);
-        offset = aligned_size<size_t>(offset, size);
-        std::memcpy(p_dst + offset, reinterpret_cast<void const*>(src_descriptors[i].cpu), size);
-        offset += size;
+    if (support_descriptor_buffer_) {
+        auto p_dst = reinterpret_cast<std::byte*>(dst_desciptor.cpu);
+        size_t offset = 0, index = 0;
+        for (auto& entry : bind_group_layout) {
+            auto size = size_of_descriptor(entry.type);
+            offset = aligned_size<size_t>(offset, size);
+            for (uint32_t i = 0; i < entry.count; i++) {
+                std::memcpy(p_dst + offset, reinterpret_cast<void const*>(src_descriptors[index].cpu), size);
+                offset += size;
+                ++index;
+            }
+        }
+    } else {
+        auto dst_desc_set = *reinterpret_cast<VkDescriptorSet*>(dst_desciptor.cpu);
+        std::vector<VkCopyDescriptorSet> desc_copies(src_descriptors.size());
+        size_t index = 0;
+        for (auto& entry : bind_group_layout) {
+            for (uint32_t i = 0; i < entry.count; i++) {
+                auto src_desc_set = *reinterpret_cast<VkDescriptorSet*>(src_descriptors[index].cpu);
+                desc_copies[index] = VkCopyDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+                    .pNext = nullptr,
+                    .srcSet = src_desc_set,
+                    .srcBinding = 0,
+                    .srcArrayElement = 0,
+                    .dstSet = dst_desc_set,
+                    .dstBinding = entry.binding_or_register,
+                    .dstArrayElement = i,
+                    .descriptorCount = 1,
+                };
+                ++index;
+            }
+        }
+        vkUpdateDescriptorSets(device_, 0, nullptr, desc_copies.size(), desc_copies.data());
     }
 }
 

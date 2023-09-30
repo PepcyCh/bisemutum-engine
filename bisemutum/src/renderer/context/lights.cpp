@@ -22,7 +22,7 @@ auto LightsContext::collect_all_lights() -> void {
         data.emission = light.color * light.strength;
         switch (light.type) {
             case LightType::directional:
-                data.direction = transform.transform_direction({0.0f, -1.0f, 0.0f});
+                data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
                 dir_lights.push_back(data);
                 break;
             case LightType::point:
@@ -32,7 +32,7 @@ auto LightsContext::collect_all_lights() -> void {
                 break;
             case LightType::spot:
                 data.position = transform.transform_position({0.0f, 0.0f, 0.0f});
-                data.direction = transform.transform_direction({0.0f, -1.0f, 0.0f});
+                data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
                 data.cos_outer = std::cos(light.spot_outer_angle);
                 data.cos_inner = std::cos(light.spot_inner_angle);
                 data.range_sqr = light.range * light.range;

@@ -7,6 +7,7 @@
 #include "resource.hpp"
 #include "resource_builder.hpp"
 #include "render_graph_pass.hpp"
+#include "rendered_object_list.hpp"
 #include "../prelude/idiom.hpp"
 #include "../rhi/device.hpp"
 
@@ -26,7 +27,7 @@ struct RenderGraph final : PImpl<RenderGraph> {
     auto add_buffer(std::function<auto(BufferBuilder&) -> void> setup_func) -> BufferHandle;
     auto import_buffer(Ref<Buffer> buffer) -> BufferHandle;
     auto add_texture(std::function<auto(TextureBuilder&) -> void> setup_func) -> TextureHandle;
-    auto import_texture(Ref<Texture> texture) -> TextureHandle;
+    auto import_texture(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> TextureHandle;
     auto import_back_buffer() const -> TextureHandle;
 
     template <typename PassData>
@@ -54,10 +55,14 @@ struct RenderGraph final : PImpl<RenderGraph> {
         add_blit_pass(name, src, 0, 0, dst, 0, 0);
     }
 
+    auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle;
+
     auto execute() -> void;
 
     auto buffer(BufferHandle handle) const -> Ref<Buffer>;
     auto texture(TextureHandle handle) const -> Ref<Texture>;
+
+    auto rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList>;
 
 private:
     auto add_graphics_pass_impl(
@@ -70,7 +75,7 @@ private:
 
     friend GraphicsManager;
     auto set_graphics_device(Ref<rhi::Device> device, uint32_t num_frames) -> void;
-    auto set_back_buffer(Ref<Texture> texture) -> void;
+    auto set_back_buffer(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> void;
     auto set_command_encoder(Ref<rhi::CommandEncoder> cmd_encoder) -> void;
 
     friend GraphicsPassBuilder;

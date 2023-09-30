@@ -119,6 +119,7 @@ auto CommandPoolD3D12::get_command_encoder() -> Box<CommandEncoder> {
     ID3D12GraphicsCommandList4* cmd_list = nullptr;
     if (available_cmd_list_index_ < allocated_cmd_lists_.size()) {
         cmd_list = allocated_cmd_lists_[available_cmd_list_index_++].Get();
+        cmd_list->Reset(cmd_allocator_.Get(), nullptr);
     } else {
         allocated_cmd_lists_.emplace_back();
         device_->raw()->CreateCommandList(
@@ -205,6 +206,7 @@ auto CommandEncoderD3D12::copy_buffer_to_texture(
 ) -> void {
     auto src_buffer_dx = src_buffer.cast_to<const BufferD3D12>();
     auto dst_texture_dx = dst_texture.cast_to<TextureD3D12>();
+    auto& extent = dst_texture_dx->desc().extent;
     D3D12_TEXTURE_COPY_LOCATION src_loc{
         .pResource = src_buffer_dx->raw(),
         .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
@@ -212,9 +214,9 @@ auto CommandEncoderD3D12::copy_buffer_to_texture(
             .Offset = region.buffer_offset,
             .Footprint = {
                 .Format = to_dx_format(dst_texture_dx->desc().format),
-                .Width = region.texture_extent.width,
-                .Height = region.texture_extent.height,
-                .Depth = region.texture_extent.depth_or_layers,
+                .Width = std::min(region.texture_extent.width, extent.width),
+                .Height = std::min(region.texture_extent.height, extent.height),
+                .Depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
                 .RowPitch = region.buffer_pixels_per_row * format_texel_size(dst_texture_dx->desc().format),
             }
         },
@@ -236,9 +238,9 @@ auto CommandEncoderD3D12::copy_buffer_to_texture(
         .left = 0,
         .top = 0,
         .front = 0,
-        .right = region.texture_extent.width,
-        .bottom = region.texture_extent.height,
-        .back = region.texture_extent.depth_or_layers,
+        .right = std::min(region.texture_extent.width, extent.width),
+        .bottom = std::min(region.texture_extent.height, extent.height),
+        .back = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
     };
     cmd_list_->CopyTextureRegion(
         &dst_loc, region.texture_offset.x, region.texture_offset.y, region.texture_offset.z, &src_loc, &copy_box
@@ -250,6 +252,7 @@ auto CommandEncoderD3D12::copy_texture_to_buffer(
 ) -> void {
     auto src_texture_dx = src_texture.cast_to<const TextureD3D12>();
     auto dst_buffer_dx = dst_buffer.cast_to<BufferD3D12>();
+    auto& extent = src_texture_dx->desc().extent;
     D3D12_TEXTURE_COPY_LOCATION src_loc{
         .pResource = src_texture_dx->raw(),
         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -262,9 +265,9 @@ auto CommandEncoderD3D12::copy_texture_to_buffer(
             .Offset = region.buffer_offset,
             .Footprint = {
                 .Format = to_dx_format(src_texture_dx->desc().format),
-                .Width = region.texture_extent.width,
-                .Height = region.texture_extent.height,
-                .Depth = region.texture_extent.depth_or_layers,
+                .Width = std::min(region.texture_extent.width, extent.width),
+                .Height = std::min(region.texture_extent.height, extent.height),
+                .Depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
                 .RowPitch = region.buffer_pixels_per_row * format_texel_size(src_texture_dx->desc().format),
             }
         },
@@ -281,9 +284,9 @@ auto CommandEncoderD3D12::copy_texture_to_buffer(
         .left = region.texture_offset.x,
         .top = region.texture_offset.y,
         .front = region.texture_offset.z,
-        .right = region.texture_offset.x + region.texture_extent.width,
-        .bottom = region.texture_offset.y + region.texture_extent.height,
-        .back = region.texture_offset.z + region.texture_extent.depth_or_layers,
+        .right = std::min(region.texture_offset.x + region.texture_extent.width, extent.width),
+        .bottom = std::min(region.texture_offset.y + region.texture_extent.height, extent.height),
+        .back = std::min(region.texture_offset.z + region.texture_extent.depth_or_layers, extent.depth_or_layers),
     };
     cmd_list_->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &copy_box);
 }
@@ -325,13 +328,17 @@ auto CommandEncoderD3D12::resource_barriers(
         auto texture_dx = barrier.texture.cast_to<TextureD3D12>();
         auto src_states = to_dx_texture_state(barrier.src_access_type);
         auto dst_states = to_dx_texture_state(barrier.dst_access_type);
+        uint32_t subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        if (barrier.num_levels == 1 || barrier.base_layer == 1) {
+            subresource = texture_dx->subresource_index(barrier.base_level, barrier.base_layer);
+        }
         if (src_states != dst_states) {
             barriers_dx.push_back(D3D12_RESOURCE_BARRIER{
                 .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
                 .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                 .Transition = D3D12_RESOURCE_TRANSITION_BARRIER{
                     .pResource = texture_dx->raw(),
-                    .Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    .Subresource = subresource,
                     .StateBefore = src_states,
                     .StateAfter = dst_states,
                 },
@@ -564,9 +571,10 @@ auto GraphicsCommandEncoderD3D12::set_vertex_buffer(
     std::vector<D3D12_VERTEX_BUFFER_VIEW> views(buffers.size());
     for (size_t i = 0; i < buffers.size(); i++) {
         auto buffer_dx = buffers[i].cast_to<BufferD3D12>();
+        auto offset = i < offsets.size() ? offsets[i] : 0;
         views[i] = D3D12_VERTEX_BUFFER_VIEW{
-            .BufferLocation = buffer_dx->raw()->GetGPUVirtualAddress() + offsets[i],
-            .SizeInBytes = static_cast<uint32_t>(buffer_dx->size() - offsets[i]),
+            .BufferLocation = buffer_dx->raw()->GetGPUVirtualAddress() + offset,
+            .SizeInBytes = static_cast<uint32_t>(buffer_dx->size() - offset),
             .StrideInBytes = curr_pipeline_->desc().vertex_input_buffers[first_binding + i].stride
         };
     }
@@ -627,7 +635,7 @@ auto ComputeCommandEncoderD3D12::set_descriptors(
     uint32_t from_group_index, CSpan<DescriptorHandle> descriptors
 ) -> void {
     for (size_t i = 0; i < descriptors.size(); i++) {
-        cmd_list_->SetGraphicsRootDescriptorTable(from_group_index + i, {descriptors[i].gpu});
+        cmd_list_->SetComputeRootDescriptorTable(from_group_index + i, {descriptors[i].gpu});
     }
 }
 

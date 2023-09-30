@@ -116,6 +116,8 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     mesh.bbox_.p_min = {aabb.mMin.x, aabb.mMin.y, aabb.mMin.z};
     mesh.bbox_.p_max = {aabb.mMax.x, aabb.mMax.y, aabb.mMax.z};
 
+    mesh.update_gpu_buffer();
+
     return mesh;
 }
 
@@ -174,10 +176,6 @@ auto StaticMesh::fill_shader_params(Ref<gfx::Drawable> drawable) const -> void {
 }
 
 auto StaticMesh::bind_buffers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder) -> void {
-    if (!positions_buffer_.has_value()) {
-        update_gpu_buffer();
-    }
-
     std::array<Ref<rhi::Buffer>, 4> vertex_buffers{
         positions_buffer_.rhi_buffer(),
         normals_buffer_.rhi_buffer(),

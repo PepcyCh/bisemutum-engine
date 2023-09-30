@@ -157,19 +157,26 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         return {};
     }
 
+    auto mipmap_use_compute = !rhi::is_compressed_format(format) && !rhi::is_srgb_format(format);
     rhi::TextureDesc texture_desc = gfx::TextureBuilder()
         .dim_2d(format, width, height)
         .mipmap()
-        .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::color_attachment});
+        .usage({
+            rhi::TextureUsage::sampled,
+            mipmap_use_compute ? rhi::TextureUsage::storage_read_write : rhi::TextureUsage::color_attachment,
+        });
     TextureAsset texture{
         .texture = texture_desc,
         .sampler = g_engine->graphics_manager()->get_sampler(desc.sampler),
     };
 
     auto image_pitch = width * (num_bits / 8) * num_channels;
-    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(image_pitch * height).mem_upload()};
+    auto image_size_bytes = image_pitch * height;
+    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(image_size_bytes).mem_upload()};
+    temp_buffer.set_data_raw(image_data, image_size_bytes);
+
     g_engine->graphics_manager()->execute_immediately(
-        [&temp_buffer, &texture, image_pitch, width, height](Ref<rhi::CommandEncoder> cmd) {
+        [&temp_buffer, &texture, width, height](Ref<rhi::CommandEncoder> cmd) {
             auto access = BitFlags{rhi::ResourceAccessType::transfer_write};
             cmd->resource_barriers({}, {
                 rhi::TextureBarrier{
@@ -186,6 +193,7 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
                 }
             );
             g_engine->graphics_manager()->generate_mipmaps_2d(cmd, texture.texture, access);
+            BI_ASSERT(access == rhi::ResourceAccessType::sampled_texture_read);
         }
     );
 

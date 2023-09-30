@@ -5,8 +5,8 @@ material_function = '''
 int grid = int(floor(vertex.position_world.x))
     ^ int(floor(vertex.position_world.y))
     ^ int(floor(vertex.position_world.z));
-surface.base_color = grid == 1 ? base_color_0 : base_color_1;
-surface.roughness = grid == 1 ? roughness_0 : roughness_1;
+surface.base_color = (grid & 1) == 1 ? base_color_0 : base_color_1;
+surface.roughness = (grid & 1) == 1 ? roughness_0 : roughness_1;
 '''
 
 [[params]]

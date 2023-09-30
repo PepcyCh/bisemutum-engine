@@ -139,6 +139,7 @@ struct Engine::Impl final {
     }
 
     auto finalize() -> bool {
+        graphics_manager.wait_idle();
         return module_manager.finalize();
     }
 

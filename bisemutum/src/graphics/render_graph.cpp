@@ -89,7 +89,7 @@ struct RenderGraph::Impl final {
         virtual auto is_resource() const -> bool { return false; }
 
         virtual auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void {}
-        virtual auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg) const -> void {}
+        virtual auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void {}
 
         virtual auto create(RenderGraph::Impl& rg) -> void {}
         virtual auto destroy(RenderGraph::Impl& rg) -> void {}
@@ -119,14 +119,14 @@ struct RenderGraph::Impl final {
         std::any pass_data;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
     };
     struct ComputePassNode final : Node {
         ComputePassBuilder builder;
         std::any pass_data;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
     };
     struct BlitPassNode final : Node {
         TextureHandle src;
@@ -137,7 +137,7 @@ struct RenderGraph::Impl final {
         uint32_t dst_array_layer;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
     };
     struct PresentPassNode final : Node {
         TextureHandle texture;
@@ -180,13 +180,13 @@ struct RenderGraph::Impl final {
 
         return static_cast<TextureHandle>(graph_nodes_.size() - 1);
     }
-    auto import_texture(Ref<Texture> texture) -> TextureHandle {
+    auto import_texture(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> TextureHandle {
         auto node = Box<TextureNode>::make();
         node->index = graph_nodes_.size();
         node->texture = PoolTexture{
             .texture = texture,
             .index = static_cast<size_t>(-1),
-            .access = rhi::ResourceAccessType::none,
+            .access = access,
         };
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
@@ -254,6 +254,54 @@ struct RenderGraph::Impl final {
         add_edge(graph_nodes_[static_cast<size_t>(texture)].ref(), node.ref());
         present_pass_index_ = graph_nodes_.size();
         graph_nodes_.emplace_back(std::move(node));
+    }
+
+    auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {
+        std::vector<Ref<Drawable>> drawables;
+        g_engine->graphics_manager()->for_each_drawable([this, &drawables, &desc](Drawable& drawable) {
+            auto mat_is_opaque = drawable.material->blend_mode == BlendMode::opaque
+                || drawable.material->blend_mode == BlendMode::alpha_test;
+            if (
+                (desc.type.contains(RenderedObjectType::opaque) && mat_is_opaque)
+                || (desc.type.contains(RenderedObjectType::transparent) && !mat_is_opaque)
+            ) {
+                drawables.push_back(drawable);
+            }
+        });
+        std::sort(drawables.begin(), drawables.end(), [](Ref<Drawable> a, Ref<Drawable> b) {
+            if (is_poly_ptr_address_same<IMesh>(a->mesh, b->mesh)) {
+                return a->material->base_material() < b->material->base_material();
+            } else {
+                return a->mesh.raw() < b->mesh.raw();
+            }
+        });
+
+        auto& list = rendered_object_lists_.emplace_back(desc.camera, desc.fragmeng_shader);
+        void* curr_mesh;
+        Ptr<Material> curr_mat;
+        for (size_t i = 0, j = 0; j < drawables.size(); j++) {
+            curr_mesh = drawables[j]->mesh.raw();
+            curr_mat = drawables[j]->material->base_material();
+
+            if (
+                j + 1 == drawables.size()
+                || curr_mesh != drawables[j + 1]->mesh.raw()
+                || curr_mat != drawables[j + 1]->material->base_material()
+            ) {
+                RenderedObjectListItem item{};
+                item.drawables.reserve(j - i + 1);
+                for (auto k = i; k <= j; k++) {
+                    item.drawables.push_back(drawables[k]);
+                }
+                list.items.push_back(std::move(item));
+                i = j + 1;
+            }
+        }
+
+        return static_cast<RenderedObjectListHandle>(rendered_object_lists_.size() - 1);
+    }
+    auto rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList> {
+        return rendered_object_lists_[static_cast<size_t>(handle)];
     }
 
     auto compile() -> void {
@@ -358,7 +406,7 @@ struct RenderGraph::Impl final {
 
             auto const& node = graph_nodes_[graph_order_[order]];
             node->set_barriers(cmd_encoder_.value(), *this);
-            node->execute(cmd_encoder_.value(), *this);
+            node->execute(cmd_encoder_.value(), rg);
 
             for (const auto resource_index : resources_to_destroy_[order]) {
                 auto const& resource_node = graph_nodes_[resource_index];
@@ -367,8 +415,6 @@ struct RenderGraph::Impl final {
         }
 
         clear();
-
-        curr_frame_ = curr_frame_ + 1 == num_frames_ ? 0 : curr_frame_ + 1;
     }
 
     auto buffer(BufferHandle handle) const -> Ref<Buffer> {
@@ -388,8 +434,8 @@ struct RenderGraph::Impl final {
         device_ = device;
         num_frames_ = num_frames;
     }
-    auto set_back_buffer(Ref<Texture> texture) -> void {
-        back_buffer_handle_ = import_texture(texture);
+    auto set_back_buffer(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> void {
+        back_buffer_handle_ = import_texture(texture, access);
         add_present_pass(back_buffer_handle_);
     }
     auto set_command_encoder(Ref<rhi::CommandEncoder> cmd_encoder) -> void {
@@ -416,6 +462,8 @@ struct RenderGraph::Impl final {
         resources_to_destroy_.clear();
         present_pass_index_ = static_cast<size_t>(-1);
         graph_is_invalid = false;
+
+        rendered_object_lists_.clear();
     }
     auto add_edge(Ref<Node> from, Ref<Node> to) -> void {
         from->out_nodes.push_back(to);
@@ -490,7 +538,6 @@ struct RenderGraph::Impl final {
 
     Ptr<rhi::Device> device_;
     uint32_t num_frames_;
-    uint32_t curr_frame_ = 0;
 
     std::unordered_map<BufferKey, BufferPool> buffer_pools;
     std::unordered_map<rhi::TextureDesc, TexturePool> texture_pools;
@@ -505,6 +552,8 @@ struct RenderGraph::Impl final {
     std::vector<std::vector<size_t>> resources_to_destroy_;
     size_t present_pass_index_ = static_cast<size_t>(-1);
     bool graph_is_invalid = false;
+
+    std::vector<RenderedObjectList> rendered_object_lists_;
 };
 
 auto RenderGraph::Impl::BufferNode::create(RenderGraph::Impl& rg) -> void {
@@ -541,7 +590,7 @@ auto get_shader_barriers(
     std::vector<rhi::TextureBarrier>& texture_barriers
 ) -> void {
     for (auto handle : read_buffers) {
-        auto pool_buffer = rg.pool_buffer(handle);
+        auto& pool_buffer = rg.pool_buffer(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
         if (pool_buffer.buffer->desc().usages.contains(rhi::BufferUsage::uniform)) {
             target_access.set(rhi::ResourceAccessType::uniform_buffer_read);
@@ -561,7 +610,7 @@ auto get_shader_barriers(
         }
     }
     for (auto handle : read_textures) {
-        auto pool_texture = rg.pool_texture(handle);
+        auto& pool_texture = rg.pool_texture(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
         if (pool_texture.texture->desc().usages.contains(rhi::TextureUsage::sampled)) {
             target_access.set(rhi::ResourceAccessType::sampled_texture_read);
@@ -579,7 +628,7 @@ auto get_shader_barriers(
         }
     }
     for (auto handle : write_buffers) {
-        auto pool_buffer = rg.pool_buffer(handle);
+        auto& pool_buffer = rg.pool_buffer(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
         if (pool_buffer.buffer->desc().usages.contains(rhi::BufferUsage::storage_read_write)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_write);
@@ -594,7 +643,7 @@ auto get_shader_barriers(
         }
     }
     for (auto handle : write_textures) {
-        auto pool_texture = rg.pool_texture(handle);
+        auto& pool_texture = rg.pool_texture(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
         if (pool_texture.texture->desc().usages.contains(rhi::TextureUsage::storage_read_write)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_write);
@@ -659,7 +708,7 @@ auto RenderGraph::Impl::GraphicsPassNode::set_barriers(
     cmd_encoder->resource_barriers(buffer_barriers, texture_barriers);
 }
 auto RenderGraph::Impl::GraphicsPassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
 ) const -> void {
     rhi::CommandLabel label{
         .label = name,
@@ -742,6 +791,7 @@ auto RenderGraph::Impl::GraphicsPassNode::execute(
     graphics_encoder->set_scissors({scissor});
 
     GraphicsPassContext context{
+        make_cref(rg),
         graphics_encoder.ref(),
         std::move(color_targets_format),
         depth_stencil_format,
@@ -771,7 +821,7 @@ auto RenderGraph::Impl::ComputePassNode::set_barriers(
     cmd_encoder->resource_barriers(buffer_barriers, texture_barriers);
 }
 auto RenderGraph::Impl::ComputePassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
 ) const -> void {
     rhi::CommandLabel label{
         .label = name,
@@ -780,6 +830,7 @@ auto RenderGraph::Impl::ComputePassNode::execute(
 
     auto compute_encoder = cmd_encoder->begin_compute_pass(label);
     ComputePassContext context{
+        .rg = make_cref(rg),
         .cmd_encoder = compute_encoder.ref(),
     };
     builder.execution_func_(&pass_data, context);
@@ -794,7 +845,7 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
     std::vector<rhi::TextureBarrier> texture_barriers{};
 
     {
-        auto pool_texture = rg.pool_texture(src);
+        auto& pool_texture = rg.pool_texture(src);
         auto target_access = rhi::ResourceAccessType::sampled_texture_read;
         if (need_barrier(pool_texture.access, target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
@@ -806,7 +857,7 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
         }
     }
     {
-        auto pool_texture = rg.pool_texture(dst);
+        auto& pool_texture = rg.pool_texture(dst);
         auto target_access = rhi::is_depth_stencil_format(pool_texture.texture->desc().format)
             ? rhi::ResourceAccessType::depth_stencil_attachment_write
             : rhi::ResourceAccessType::color_attachment_write;
@@ -823,7 +874,7 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
     cmd_encoder->resource_barriers({}, texture_barriers);
 }
 auto RenderGraph::Impl::BlitPassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
 ) const -> void {
     g_engine->graphics_manager()->blit_texture_2d(
         cmd_encoder,
@@ -862,8 +913,8 @@ auto RenderGraph::import_buffer(Ref<Buffer> buffer) -> BufferHandle {
 auto RenderGraph::add_texture(std::function<auto(TextureBuilder&) -> void> setup_func) -> TextureHandle {
     return impl()->add_texture(std::move(setup_func));
 }
-auto RenderGraph::import_texture(Ref<Texture> texture) -> TextureHandle {
-    return impl()->import_texture(texture);
+auto RenderGraph::import_texture(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> TextureHandle {
+    return impl()->import_texture(texture, access);
 }
 auto RenderGraph::import_back_buffer() const -> TextureHandle {
     return impl()->import_back_buffer();
@@ -879,6 +930,9 @@ auto RenderGraph::buffer(BufferHandle handle) const -> Ref<Buffer> {
 }
 auto RenderGraph::texture(TextureHandle handle) const -> Ref<Texture> {
     return impl()->texture(handle);
+}
+auto RenderGraph::rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList> {
+    return impl()->rendered_object_list(handle);
 }
 
 auto RenderGraph::add_graphics_pass_impl(
@@ -899,11 +953,15 @@ auto RenderGraph::add_blit_pass(
     impl()->add_blit_pass(this, name, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer);
 }
 
+auto RenderGraph::add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {
+    return impl()->add_rendered_object_list(desc);
+}
+
 auto RenderGraph::set_graphics_device(Ref<rhi::Device> device, uint32_t num_frames) -> void {
     impl()->set_graphics_device(device, num_frames);
 }
-auto RenderGraph::set_back_buffer(Ref<Texture> texture) -> void {
-    impl()->set_back_buffer(texture);
+auto RenderGraph::set_back_buffer(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> void {
+    impl()->set_back_buffer(texture, access);
 }
 auto RenderGraph::set_command_encoder(Ref<rhi::CommandEncoder> cmd_encoder) -> void {
     impl()->set_command_encoder(cmd_encoder);

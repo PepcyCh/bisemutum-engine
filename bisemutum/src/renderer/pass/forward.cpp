@@ -43,7 +43,7 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ref
     //             rhi::ResourceFormat::rgba8_unorm,
     //             camera_target.desc().extent.width, camera_target.desc().extent.height
     //         )
-    //         .usage(rhi::TextureUsage::color_attachment);
+    //         .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
     // });
     pass_data->output = rg.import_back_buffer();
     pass_data->depth = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
@@ -61,14 +61,17 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ref
     );
     builder.use_depth_stencil(gfx::GraphicsPassDepthStencilTargetBuilder{pass_data->depth}.clear_depth_stencil());
 
+    pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
+        .camera = camera,
+        .fragmeng_shader = fragmeng_shader,
+        .type = gfx::RenderedObjectType::all,
+    });
+
+    fragmeng_shader_params.update_uniform_buffer();
+
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-            auto list = ctx.get_rendered_object_list(gfx::RenderedObjectListDesc{
-                .camera = camera,
-                .fragmeng_shader = fragmeng_shader,
-                .type = gfx::RenderedObjectType::all,
-            });
-            ctx.render_list(list, fragmeng_shader_params);
+            ctx.render_list(pass_data->list, fragmeng_shader_params);
         }
     );
 

@@ -169,7 +169,7 @@ TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, TextureDesc const& desc) 
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices = nullptr,
-        .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
     VmaAllocationCreateInfo allocation_ci{

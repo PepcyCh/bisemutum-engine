@@ -39,6 +39,7 @@ private:
     auto update_shader_params() -> void;
 
     Texture target_texture_;
+    bool target_texture_state_preinitialized_ = true;
 
     ShaderParameter shader_parameter_;
     float4x4 matrix_proj_view_ = float4x4(1.0f);

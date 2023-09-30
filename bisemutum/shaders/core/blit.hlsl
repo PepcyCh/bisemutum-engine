@@ -11,7 +11,7 @@ struct Vertex2Fragment {
 Vertex2Fragment blit_vs(uint vertex_id : SV_VertexID) {
     Vertex2Fragment vout;
     vout.uv = float2((vertex_id & 1) << 1, vertex_id & 2);
-    vout.pos = float4(vout.uv * 2.0 - 1.0, 0.0, 1.0);
+    vout.pos = float4(vout.uv.x * 2.0 - 1.0, 1.0 - vout.uv.y * 2.0, 0.0, 1.0);
     return vout;
 }
 

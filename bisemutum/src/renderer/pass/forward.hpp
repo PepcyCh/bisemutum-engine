@@ -10,6 +10,8 @@ struct ForwardPass final {
     struct PassData final {
         gfx::TextureHandle output;
         gfx::TextureHandle depth;
+
+        gfx::RenderedObjectListHandle list;
     };
 
     ForwardPass();

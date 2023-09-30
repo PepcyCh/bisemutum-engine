@@ -73,7 +73,7 @@ BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : devi
         .DepthOrArraySize = 1,
         .MipLevels = 1,
         .Format = DXGI_FORMAT_UNKNOWN,
-        .SampleDesc = { .Count = 1, .Quality = 0 },
+        .SampleDesc = {.Count = 1, .Quality = 0},
         .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
         .Flags = to_dx_resource_flags(desc.usages),
     };
@@ -129,7 +129,7 @@ TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, TextureDesc const& desc) : d
         .DepthOrArraySize = static_cast<UINT16>(desc.extent.depth_or_layers),
         .MipLevels = static_cast<UINT16>(desc.levels),
         .Format = to_dx_format(desc.format),
-        .SampleDesc = { .Count = 1, .Quality = 0 },
+        .SampleDesc = {.Count = 1, .Quality = 0},
         .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
         .Flags = to_dx_resource_flags(desc.usages),
     };

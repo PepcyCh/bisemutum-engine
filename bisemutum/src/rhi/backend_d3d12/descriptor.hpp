@@ -31,8 +31,8 @@ protected:
     uint32_t descriptor_size_;
 
     DescriptorHandle start_handle_{};
-    uint32_t max_count_ = 0;
-    uint32_t num_used_ = 0;
+    uint32_t max_size_ = 0;
+    uint32_t bytes_used_ = 0;
 };
 
 }

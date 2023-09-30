@@ -6,50 +6,12 @@
 #include "device.hpp"
 #include "shader.hpp"
 #include "sampler.hpp"
+#include "descriptor.hpp"
 #include "utils.hpp"
 
 namespace bi::rhi {
 
 namespace {
-
-auto to_vk_descriptor_type(DescriptorType type) -> VkDescriptorType {
-    switch (type) {
-        case DescriptorType::sampler:
-            return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case DescriptorType::uniform_buffer:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case DescriptorType::read_only_storage_buffer:
-        case DescriptorType::read_write_storage_buffer:
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case DescriptorType::sampled_texture:
-            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case DescriptorType::read_only_storage_texture:
-        case DescriptorType::read_write_storage_texture:
-            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        case DescriptorType::acceleration_structure:
-            return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        default: unreachable();
-    }
-}
-
-auto to_vk_shader_stages(BitFlags<ShaderStage> stage) -> VkShaderStageFlags {
-    VkShaderStageFlags ret = 0;
-    if (stage.contains(ShaderStage::vertex)) { ret |= VK_SHADER_STAGE_VERTEX_BIT; }
-    if (stage.contains(ShaderStage::tessellation_control)) { ret |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT; }
-    if (stage.contains(ShaderStage::tessellation_evaluation)) { ret |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; }
-    if (stage.contains(ShaderStage::geometry)) { ret |= VK_SHADER_STAGE_GEOMETRY_BIT; }
-    if (stage.contains(ShaderStage::fragment)) { ret |= VK_SHADER_STAGE_FRAGMENT_BIT; }
-    if (stage.contains(ShaderStage::compute)) { ret |= VK_SHADER_STAGE_COMPUTE_BIT; }
-    if (stage.contains(ShaderStage::ray_generation)) { ret |= VK_SHADER_STAGE_RAYGEN_BIT_KHR; }
-    if (stage.contains(ShaderStage::ray_miss)) { ret |= VK_SHADER_STAGE_MISS_BIT_KHR; }
-    if (stage.contains(ShaderStage::ray_closest_hit)) { ret |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR; }
-    if (stage.contains(ShaderStage::ray_any_hit)) { ret |= VK_SHADER_STAGE_ANY_HIT_BIT_KHR; }
-    if (stage.contains(ShaderStage::ray_intersection)) { ret |= VK_SHADER_STAGE_INTERSECTION_BIT_KHR; }
-    if (stage.contains(ShaderStage::ray_callable)) { ret |= VK_SHADER_STAGE_CALLABLE_BIT_KHR; }
-    if (stage.contains(ShaderStage::task)) { ret |= VK_SHADER_STAGE_TASK_BIT_EXT; }
-    if (stage.contains(ShaderStage::mesh)) { ret |= VK_SHADER_STAGE_MESH_BIT_EXT; }
-    return ret;
-}
 
 auto to_vk_pipeline_shader_stage(
     PipelineShader const& shader, VkShaderStageFlagBits stage, char const* entry
@@ -75,23 +37,7 @@ auto create_pipeline_layout(
 ) -> void {
     set_layouts.resize(bind_groups_layout.size() + !static_samplers.empty());
     for (size_t set = 0; auto const& group : bind_groups_layout) {
-        std::vector<VkDescriptorSetLayoutBinding> bindings_info(group.size());
-        for (size_t i = 0; auto const &entry : group) {
-            bindings_info[i].binding = entry.binding_or_register;
-            bindings_info[i].descriptorCount = entry.count;
-            bindings_info[i].descriptorType = to_vk_descriptor_type(entry.type);
-            bindings_info[i].pImmutableSamplers = nullptr;
-            bindings_info[i].stageFlags = to_vk_shader_stages(entry.visibility);
-            ++i;
-        }
-        VkDescriptorSetLayoutCreateInfo set_layout_ci{
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-            .bindingCount = static_cast<uint32_t>(bindings_info.size()),
-            .pBindings = bindings_info.data(),
-        };
-        vkCreateDescriptorSetLayout(device->raw(), &set_layout_ci, nullptr, &set_layouts[set]);
+        set_layouts[set] = device->require_descriptor_set_layout(group);
         ++set;
     }
     std::vector<VkSampler> embedded_samplers(static_samplers.size());
@@ -107,11 +53,14 @@ auto create_pipeline_layout(
             bindings_info[i].stageFlags = to_vk_shader_stages(entry.visibility);
             ++i;
         }
+        VkDescriptorSetLayoutCreateFlags flags = device->use_descriptor_buffer()
+            ? (VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
+                | VK_DESCRIPTOR_SET_LAYOUT_CREATE_EMBEDDED_IMMUTABLE_SAMPLERS_BIT_EXT)
+            : 0u;
         VkDescriptorSetLayoutCreateInfo set_layout_ci{
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = nullptr,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
-                | VK_DESCRIPTOR_SET_LAYOUT_CREATE_EMBEDDED_IMMUTABLE_SAMPLERS_BIT_EXT,
+            .flags = flags,
             .bindingCount = static_cast<uint32_t>(bindings_info.size()),
             .pBindings = bindings_info.data(),
         };
@@ -230,6 +179,9 @@ GraphicsPipelineVulkan::GraphicsPipelineVulkan(Ref<DeviceVulkan> device, Graphic
         device_, set_layouts_, pipeline_layout_,
         desc_.bind_groups_layout, desc_.static_samplers, desc_.push_constants
     );
+    if (!device_->use_descriptor_buffer() && !desc_.static_samplers.empty()) {
+        immutable_samplers_set_ = device_->immutable_samplers_heap()->allocate_descriptor_raw(set_layouts_.back());
+    }
 
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages{};
     std::vector<std::string> owned_shader_entries(5);
@@ -432,10 +384,13 @@ GraphicsPipelineVulkan::GraphicsPipelineVulkan(Ref<DeviceVulkan> device, Graphic
         .pDynamicStates = dynamic_states.data(),
     };
 
+    VkPipelineCreateFlags flags = device_->use_descriptor_buffer()
+        ? VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
+        : 0u;
     VkGraphicsPipelineCreateInfo pipeline_ci{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = nullptr,
-        .flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+        .flags = flags,
         .stageCount = static_cast<uint32_t>(shader_stages.size()),
         .pStages = shader_stages.data(),
         .pVertexInputState = &vertex_input_state,
@@ -475,8 +430,8 @@ GraphicsPipelineVulkan::~GraphicsPipelineVulkan() {
         vkDestroyPipeline(device_->raw(), pipeline_, nullptr);
         pipeline_ = VK_NULL_HANDLE;
     }
-    for (auto &set_layout : set_layouts_) {
-        vkDestroyDescriptorSetLayout(device_->raw(), set_layout, nullptr);
+    if (!desc_.static_samplers.empty()) {
+        vkDestroyDescriptorSetLayout(device_->raw(), set_layouts_.back(), nullptr);
     }
     set_layouts_.clear();
     if (pipeline_layout_) {
@@ -505,12 +460,18 @@ ComputePipelineVulkan::ComputePipelineVulkan(Ref<DeviceVulkan> device, ComputePi
         device_, set_layouts_, pipeline_layout_,
         desc_.bind_groups_layout, desc_.static_samplers, desc_.push_constants
     );
+    if (!device_->use_descriptor_buffer() && !desc_.static_samplers.empty()) {
+        immutable_samplers_set_ = device_->immutable_samplers_heap()->allocate_descriptor_raw(set_layouts_.back());
+    }
 
     auto owned_entry = std::string{desc_.compute.entry};
+    VkPipelineCreateFlags flags = device_->use_descriptor_buffer()
+        ? VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
+        : 0u;
     VkComputePipelineCreateInfo pipeline_ci{
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .pNext = nullptr,
-        .flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+        .flags = flags,
         .stage = to_vk_pipeline_shader_stage(desc_.compute, VK_SHADER_STAGE_COMPUTE_BIT, owned_entry.c_str()),
         .layout = pipeline_layout_,
         .basePipelineHandle = VK_NULL_HANDLE,
@@ -524,8 +485,8 @@ ComputePipelineVulkan::~ComputePipelineVulkan() {
         vkDestroyPipeline(device_->raw(), pipeline_, nullptr);
         pipeline_ = VK_NULL_HANDLE;
     }
-    for (auto &set_layout : set_layouts_) {
-        vkDestroyDescriptorSetLayout(device_->raw(), set_layout, nullptr);
+    if (!desc_.static_samplers.empty()) {
+        vkDestroyDescriptorSetLayout(device_->raw(), set_layouts_.back(), nullptr);
     }
     set_layouts_.clear();
     if (pipeline_layout_) {

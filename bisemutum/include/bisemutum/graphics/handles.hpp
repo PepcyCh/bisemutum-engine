@@ -18,4 +18,8 @@ enum class TextureHandle : size_t {
     invalid = static_cast<size_t>(-1),
 };
 
+enum class RenderedObjectListHandle : size_t {
+    invalid = static_cast<size_t>(-1),
+};
+
 }

@@ -14,7 +14,7 @@ float3 surface_eval_lit(
     float3 local_h = float3(dot(H, T), dot(H, B), dot(H, N));
     float3 local_v = float3(dot(V, T), dot(V, B), dot(V, N));
     float3 local_l = float3(dot(L, T), dot(L, B), dot(L, N));
-    if (local_v.z <= 0.0 || local_l.z <= 0.0) return 0.0;
+    if (local_v.z <= 0.0 || local_l.z <= 0.0) { return 0.0; }
 
     float3 fr = schlick_fresnel(surface.f0_color, surface.f90_color, local_v.z, surface.ior);
 

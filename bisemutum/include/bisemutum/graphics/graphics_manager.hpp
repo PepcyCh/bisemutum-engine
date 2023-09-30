@@ -56,6 +56,8 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
 
     auto initialize(GraphicsSettings const& settings) -> void;
 
+    auto wait_idle() -> void;
+
     template <typename Renderer>
     auto register_renderer() -> void {
         register_renderer(std::string{Renderer::renderer_type_name}, []() -> Dyn<IRenderer>::Box { return Renderer{}; });
@@ -127,7 +129,6 @@ private:
     friend CommandHelpers;
     auto get_descriptors_for(
         std::vector<rhi::DescriptorHandle> cpu_descriptors,
-        std::vector<rhi::DescriptorType> const& desc_types,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle;
 };

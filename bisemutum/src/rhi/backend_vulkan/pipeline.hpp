@@ -20,6 +20,7 @@ struct GraphicsPipelineVulkan final : GraphicsPipeline {
     auto push_constants_stages() const -> VkShaderStageFlags;
 
     auto static_samplers_set() const -> uint32_t;
+    auto immutable_samplers_desc_set() const -> VkDescriptorSet { return immutable_samplers_set_; }
 
 private:
     Ref<DeviceVulkan> device_;
@@ -27,6 +28,7 @@ private:
     std::vector<VkDescriptorSetLayout> set_layouts_;
     VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
     VkPipeline pipeline_ = VK_NULL_HANDLE;
+    VkDescriptorSet immutable_samplers_set_ = VK_NULL_HANDLE;
 };
 
 struct ComputePipelineVulkan final : ComputePipeline {
@@ -42,6 +44,7 @@ struct ComputePipelineVulkan final : ComputePipeline {
     auto push_constants_stages() const -> VkShaderStageFlags;
 
     auto static_samplers_set() const -> uint32_t;
+    auto immutable_samplers_desc_set() const -> VkDescriptorSet { return immutable_samplers_set_; }
 
 private:
     Ref<DeviceVulkan> device_;
@@ -49,6 +52,7 @@ private:
     std::vector<VkDescriptorSetLayout> set_layouts_;
     VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
     VkPipeline pipeline_ = VK_NULL_HANDLE;
+    VkDescriptorSet immutable_samplers_set_ = VK_NULL_HANDLE;
 };
 
 }

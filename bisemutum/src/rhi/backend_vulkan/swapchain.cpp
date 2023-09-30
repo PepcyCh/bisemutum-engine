@@ -68,11 +68,16 @@ auto SwapchainVulkan::create_surface(SwapchainDesc const& desc) -> void {
         VK_FORMAT_R8G8B8A8_UNORM,
     };
     for (auto format : surface_formats) {
+        bool found = false;
         for (auto const& available_format : available_formats) {
             if (available_format.format == format) {
                 surface_format_ = format;
+                found = true;
                 break;
             }
+        }
+        if (found) {
+            break;
         }
     }
 

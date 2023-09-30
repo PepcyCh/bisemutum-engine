@@ -36,8 +36,7 @@ constexpr uint32_t gpu_sampler_desc_heap_size = 1024;
 
 struct GraphicsManager::Impl final {
     ~Impl() {
-        graphics_queue->wait_idle();
-        compute_queue->wait_idle();
+        wait_idle();
     }
 
     auto initialize(GraphicsSettings const& settings) -> void {
@@ -102,6 +101,11 @@ struct GraphicsManager::Impl final {
         immediate_execution_fence = device->create_fence();
 
         render_graph.set_graphics_device(device.ref(), frame_data.size());
+    }
+
+    auto wait_idle() -> void {
+        graphics_queue->wait_idle();
+        compute_queue->wait_idle();
     }
 
     auto register_renderer(std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box>&& creator) -> void {
@@ -181,6 +185,15 @@ struct GraphicsManager::Impl final {
 
         renderer.prepare_renderer_per_frame_data();
 
+        for (auto& drawable : drawables) {
+            drawable.mesh->fill_shader_params(drawable);
+            drawable.shader_params.update_uniform_buffer();
+            drawable.material->shader_parameters.update_uniform_buffer();
+        }
+        for (auto& camera : cameras) {
+            camera.update_shader_params();
+        }
+
         // Render each camera
         for (size_t camera_index = 0; auto& camera : cameras) {
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
@@ -190,9 +203,12 @@ struct GraphicsManager::Impl final {
             });
             curr_cmd_encoder = cmd_encoder.ref();
             render_graph.set_command_encoder(cmd_encoder.ref());
-            render_graph.set_back_buffer(camera.target_texture());
 
-            camera.update_shader_params();
+            auto camera_access = camera.target_texture_state_preinitialized_
+                ? rhi::ResourceAccessType::none
+                : rhi::ResourceAccessType::sampled_texture_read;
+            camera.target_texture_state_preinitialized_ = false;
+            render_graph.set_back_buffer(camera.target_texture(), camera_access);
 
             renderer.prepare_renderer_per_camera_data(camera);
             renderer.render_camera(camera, render_graph);
@@ -258,14 +274,7 @@ struct GraphicsManager::Impl final {
             BI_ASSERT_MSG(curr_cmd_encoder->valid(), "`execute_in_this_frame()` cannot be called in pass");
             func(curr_cmd_encoder.value());
         } else {
-            auto& fd = curr_frame_data();
-            auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
-            cmd_encoder->set_descriptor_heaps({
-                fd.resource_heap.ref(),
-                fd.sampler_heap.ref(),
-            });
-            func(cmd_encoder.ref());
-            graphics_queue->submit_command_buffer({cmd_encoder->finish()});
+            execute_immediately(std::move(func));
         }
     }
     auto execute_immediately(std::function<auto(Ref<rhi::CommandEncoder>) -> void>&& func) -> void {
@@ -473,20 +482,16 @@ struct GraphicsManager::Impl final {
         }
 
         pipeline_desc.bind_groups_layout.push_back(
-            mesh_shader_params.bind_group_layout(
-                graphics_set_mesh, BitFlags{rhi::ShaderStage::all_graphics}.clear(rhi::ShaderStage::fragment)
-            )
+            mesh_shader_params.bind_group_layout(graphics_set_mesh, graphics_set_visibility_mesh)
         );
         pipeline_desc.bind_groups_layout.push_back(
-            mat_shader_params.bind_group_layout(graphics_set_material, rhi::ShaderStage::fragment)
+            mat_shader_params.bind_group_layout(graphics_set_material, graphics_set_visibility_material)
         );
         pipeline_desc.bind_groups_layout.push_back(
-            fs->shader_params_metadata.bind_group_layout(graphics_set_fragment, rhi::ShaderStage::fragment)
+            fs->shader_params_metadata.bind_group_layout(graphics_set_fragment, graphics_set_visibility_fragment)
         );
         pipeline_desc.bind_groups_layout.push_back(
-            camera_shader_params.bind_group_layout(
-                graphics_set_camera, BitFlags{rhi::ShaderStage::all_graphics}
-            )
+            camera_shader_params.bind_group_layout(graphics_set_camera, graphics_set_visibility_camera)
         );
         if (device->properties().separate_sampler_heap) {
             rhi::BindGroupLayout samplers_layout{};
@@ -496,6 +501,7 @@ struct GraphicsManager::Impl final {
                         samplers_layout.push_back(entry);
                         samplers_layout.back().binding_or_register += samplers_binding_shift * set;
                         samplers_layout.back().space = graphics_set_samplers;
+                        samplers_layout.back().visibility = graphics_set_visibility_samplers;
                     }
                 }
                 layout.erase(
@@ -522,7 +528,6 @@ struct GraphicsManager::Impl final {
 
     auto get_descriptors_for(
         std::vector<rhi::DescriptorHandle>&& cpu_descriptors,
-        std::vector<rhi::DescriptorType> const& desc_types,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle {
         auto& fd = curr_frame_data();
@@ -530,8 +535,13 @@ struct GraphicsManager::Impl final {
             return it->second;
         }
 
-        auto handle = fd.resource_heap->allocate_descriptor(layout);
-        device->copy_descriptors(handle, cpu_descriptors, desc_types);
+        rhi::DescriptorHandle handle;
+        if (device->properties().separate_sampler_heap && layout[0].type == rhi::DescriptorType::sampler) {
+            handle = fd.sampler_heap->allocate_descriptor(layout);
+        } else {
+            handle = fd.resource_heap->allocate_descriptor(layout);
+        }
+        device->copy_descriptors(handle, cpu_descriptors, layout);
         fd.cached_descriptors.insert({std::move(cpu_descriptors), handle});
         return handle;
     }
@@ -586,6 +596,10 @@ GraphicsManager::~GraphicsManager() = default;
 
 auto GraphicsManager::initialize(GraphicsSettings const& settings) -> void {
     impl()->initialize(settings);
+}
+
+auto GraphicsManager::wait_idle() -> void {
+    impl()->wait_idle();
 }
 
 auto GraphicsManager::register_renderer(
@@ -695,10 +709,9 @@ auto GraphicsManager::compile_pipeline_for_drawable(
 
 auto GraphicsManager::get_descriptors_for(
     std::vector<rhi::DescriptorHandle> cpu_descriptors,
-    std::vector<rhi::DescriptorType> const& desc_types,
     rhi::BindGroupLayout const& layout
 ) -> rhi::DescriptorHandle {
-    return impl()->get_descriptors_for(std::move(cpu_descriptors), desc_types, layout);
+    return impl()->get_descriptors_for(std::move(cpu_descriptors), layout);
 }
 
 }

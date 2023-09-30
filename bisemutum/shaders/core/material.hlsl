@@ -28,6 +28,6 @@ float3 surface_eval(
 #elif MATERIAL_SURFACE_MODEL == MATERIAL_SURFACE_MODEL_LIT
     return surface_eval_lit(N, T, B, V, L, surface);
 #else
-    return float3(0.0);
+    return float3(0.0, 0.0, 0.0);
 #endif
 }

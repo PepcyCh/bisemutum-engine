@@ -1,12 +1,21 @@
 #pragma once
 
 #include <array>
+#include <unordered_map>
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 #include <bisemutum/rhi/device.hpp>
 
 namespace bi::rhi {
+
+struct DescriptorHeapVulkanLegacy;
+
+struct DescriptorSetLayoutHashHelper final {
+    auto operator()(BindGroupLayout const& v) const noexcept -> size_t;
+
+    auto operator()(BindGroupLayout const& a, BindGroupLayout const& b) const noexcept -> bool;
+};
 
 struct DeviceVulkan final : Device {
     DeviceVulkan(DeviceDesc const& desc);
@@ -47,7 +56,7 @@ struct DeviceVulkan final : Device {
     auto copy_descriptors(
         DescriptorHandle dst_desciptor,
         CSpan<DescriptorHandle> src_descriptors,
-        CSpan<DescriptorType> src_descriptors_type
+        BindGroupLayout const& bind_group_layout
     ) -> void override;
 
     auto initialize_pipeline_cache_from(std::string_view cache_file_path) -> void override;
@@ -64,6 +73,12 @@ struct DeviceVulkan final : Device {
     auto descriptor_offset_alignment() const -> uint64_t { return descriptor_offset_alignment_; }
 
     auto pipeline_cache() const -> VkPipelineCache { return pipeline_cache_; }
+
+    auto use_descriptor_buffer() const -> bool { return support_descriptor_buffer_; }
+
+    auto require_descriptor_set_layout(BindGroupLayout const& layout) -> VkDescriptorSetLayout;
+
+    auto immutable_samplers_heap() -> Ptr<DescriptorHeapVulkanLegacy>;
 
 private:
     auto initialize_device_properties() -> void;
@@ -85,11 +100,18 @@ private:
     std::array<uint32_t, 3> queue_family_indices_;
     std::array<Box<struct QueueVulkan>, 3> queues_;
 
+    bool support_descriptor_buffer_ = false;
     std::array<uint32_t, static_cast<size_t>(DescriptorType::count)> descriptor_sizes_;
     uint64_t descriptor_offset_alignment_;
 
     VkPipelineCache pipeline_cache_ = VK_NULL_HANDLE;
     std::string pipeline_cache_file_path_;
+
+    std::unordered_map<
+        BindGroupLayout, VkDescriptorSetLayout,
+        DescriptorSetLayoutHashHelper, DescriptorSetLayoutHashHelper
+    > cached_desc_set_layouts_;
+    Box<DescriptorHeapVulkanLegacy> immutable_samplers_heap_;
 };
 
 }

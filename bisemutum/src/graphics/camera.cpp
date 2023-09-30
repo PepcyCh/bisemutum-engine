@@ -56,6 +56,7 @@ auto Camera::recreate_target_texture(uint32_t width, uint32_t height, rhi::Resou
 auto Camera::recreate_target_texture(rhi::TextureDesc const& desc) -> void {
     if (!target_texture_.has_value() || desc != target_texture_.desc()) {
         target_texture_ = Texture(desc);
+        target_texture_state_preinitialized_ = true;
     }
 }
 
@@ -97,6 +98,8 @@ auto Camera::update_shader_params() -> void {
     uniform_data->camera.matrix_proj_view = uniform_data->camera.matrix_proj * uniform_data->camera.matrix_view;
     uniform_data->camera.matrix_prev_proj_view = matrix_proj_view_;
     matrix_proj_view_ = uniform_data->camera.matrix_proj_view;
+
+    shader_parameter_.update_uniform_buffer();
 }
 
 }

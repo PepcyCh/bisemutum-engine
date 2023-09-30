@@ -21,7 +21,7 @@ material = { asset_path = "/project/materials/checkerboard.toml" }
 [[objects.components]]
 type = "Transform"
 [objects.components.value]
-translation = [ 1.0, 0.0, 1.0 ]
+translation = [ 1.0, 0.0, -1.0 ]
 rotation = [ 0.0, 30.0, 0.0 ]
 
 [[objects.components]]
@@ -39,7 +39,7 @@ material = { asset_path = "/project/materials/white.toml" }
 [[objects.components]]
 type = "Transform"
 [objects.components.value]
-translation = [ -1.0, 0.0, -1.0 ]
+translation = [ -1.0, 0.0, 1.0 ]
 
 [[objects.components]]
 type = "StaticMeshComponent"
@@ -56,12 +56,12 @@ material = { asset_path = "/project/materials/textured.toml" }
 [[objects.components]]
 type = "Transform"
 [objects.components.value]
-rotation = [ 30.0, 0.0, 10.0 ]
+rotation = [ 10.0, 0.0, -30.0 ]
 
 [[objects.components]]
 type = "LightComponent"
 [objects.components.value]
-color = [ 1.0, 0.8, 0.7 ]
+color = [ 1.0, 0.9, 0.8 ]
 strength = 4.0
 type = "directional"
 
@@ -70,8 +70,8 @@ type = "directional"
 [[objects.components]]
 type = "Transform"
 [objects.components.value]
-translation = [ 7.0, 3.0, 4.0 ]
-rotation = [ -36.869898, 54.462322, 0.0 ]
+translation = [ 10.5, 4.5, 6.0 ]
+rotation = [ -9.332409, 63.346549, 17.904466 ]
 
 [[objects.components]]
 type = "CameraComponent"

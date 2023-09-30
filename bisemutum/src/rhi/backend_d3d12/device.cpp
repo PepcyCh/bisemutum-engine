@@ -381,10 +381,10 @@ auto DeviceD3D12::create_descriptor(Ref<Sampler> sampler, DescriptorHandle handl
 auto DeviceD3D12::copy_descriptors(
     DescriptorHandle dst_desciptor,
     CSpan<DescriptorHandle> src_descriptors,
-    CSpan<DescriptorType> src_descriptors_type
+    BindGroupLayout const& bind_group_layout
 ) -> void {
-    if (src_descriptors_type.empty()) { return; }
-    auto heap_type = src_descriptors_type[0] == DescriptorType::sampler
+    if (bind_group_layout.empty()) { return; }
+    auto heap_type = bind_group_layout[0].type == DescriptorType::sampler
         ? D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
         : D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     auto stride = device_->GetDescriptorHandleIncrementSize(heap_type);

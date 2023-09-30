@@ -12,7 +12,7 @@ SurfaceData material_function(VertexAttributesOutput vertex) {
     surface.f90_color = 1.0;
     surface.normal_map_value = float3(0.5, 0.5, 1.0);
     surface.roughness = 0.5;
-    surface.anisotropy = 1.0;
+    surface.anisotropy = 0.0;
     surface.ior = 1.5;
 
     $MATERIAL_FUNCTION

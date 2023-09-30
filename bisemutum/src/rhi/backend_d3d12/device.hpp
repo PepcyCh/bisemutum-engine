@@ -51,7 +51,7 @@ struct DeviceD3D12 final : Device {
     auto copy_descriptors(
         DescriptorHandle dst_desciptor,
         CSpan<DescriptorHandle> src_descriptors,
-        CSpan<DescriptorType> src_descriptors_type
+        BindGroupLayout const& bind_group_layout
     ) -> void override;
 
     auto initialize_pipeline_cache_from(std::string_view cache_file_path) -> void override;

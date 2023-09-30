@@ -57,7 +57,6 @@ auto CommandHelpers::blit_2d(
 
     auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
         {src->get_srv(src_mip_level, 1, src_array_layer, 1)},
-        {rhi::DescriptorType::sampled_texture},
         pipeline->desc().bind_groups_layout[0]
     );
     graphics_encoder->set_descriptors(0, {descriptor});
@@ -89,7 +88,7 @@ auto CommandHelpers::generate_mipmaps_2d(
                 rhi::RenderTargetDesc{
                     .depth_stencil = rhi::DepthStencilAttachmentDesc{
                         .texture = {texture->rhi_texture(), mip_level + 1},
-                        .store = true
+                        .store = true,
                     }
                 }
             );
@@ -107,7 +106,6 @@ auto CommandHelpers::generate_mipmaps_2d(
 
             auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
                 {texture->get_srv(mip_level, 1)},
-                {rhi::DescriptorType::sampled_texture},
                 pipeline->desc().bind_groups_layout[0]
             );
             graphics_encoder->set_descriptors(0, {descriptor});
@@ -128,7 +126,7 @@ auto CommandHelpers::generate_mipmaps_2d(
                     .colors = {
                         rhi::ColorAttachmentDesc{
                             .texture = {texture->rhi_texture(), mip_level + 1},
-                            .store = true
+                            .store = true,
                         },
                     }
                 }
@@ -147,7 +145,6 @@ auto CommandHelpers::generate_mipmaps_2d(
 
             auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
                 {texture->get_srv(mip_level, 1)},
-                {rhi::DescriptorType::sampled_texture},
                 pipeline->desc().bind_groups_layout[0]
             );
             graphics_encoder->set_descriptors(0, {descriptor});
@@ -169,7 +166,6 @@ auto CommandHelpers::generate_mipmaps_2d(
 
             auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
                 {texture->get_srv(mip_level, 1), texture->get_uav(mip_level + 1)},
-                {rhi::DescriptorType::sampled_texture, rhi::DescriptorType::read_write_storage_texture},
                 pipeline->desc().bind_groups_layout[0]
             );
             compute_encoder->set_descriptors(0, {descriptor});
@@ -198,9 +194,9 @@ auto CommandHelpers::generate_mipmaps_2d(
                 .dst_access_type = write_access,
             },
         });
-        execute_func(level);
         width /= 2;
         height /= 2;
+        execute_func(level);
     }
     if (num_levels > 1) {
         cmd_encoder->resource_barriers({}, {

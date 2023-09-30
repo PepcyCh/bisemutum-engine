@@ -432,6 +432,8 @@ auto CommandEncoderVulkan::resource_barriers(
 }
 
 auto CommandEncoderVulkan::set_descriptor_heaps(CSpan<Ref<DescriptorHeap>> heaps) -> void {
+    if (!device_->use_descriptor_buffer()) { return; }
+
     std::vector<VkDescriptorBufferBindingInfoEXT> binding_infos(heaps.size());
     binded_descriptor_heaps_start_.resize(heaps.size());
     for (size_t i = 0; i < heaps.size(); i++) {
@@ -475,25 +477,36 @@ auto CommandEncoderVulkan::set_descriptors(
     VkCommandBuffer cmd_buffer, VkPipelineBindPoint bind_point, VkPipelineLayout pipline_layout,
     uint32_t from_group_index, CSpan<DescriptorHandle> descriptors
 ) const -> void {
-    std::vector<uint32_t> heap_indices(descriptors.size());
-    std::vector<VkDeviceSize> heap_offsets(descriptors.size());
-    for (size_t i = 0; i < descriptors.size(); i++) {
-        auto const& descriptor = descriptors[i];
-        auto& index = heap_indices[i];
-        auto& offset = heap_offsets[i];
-        for (uint32_t heap_index = 0; auto base_addr : binded_descriptor_heaps_start_) {
-            auto temp_offset = descriptor.gpu - base_addr;
-            if (heap_index == 0 || temp_offset < offset) {
-                index = heap_index;
-                offset = temp_offset;
+    if (device_->use_descriptor_buffer()) {
+        std::vector<uint32_t> heap_indices(descriptors.size());
+        std::vector<VkDeviceSize> heap_offsets(descriptors.size());
+        for (size_t i = 0; i < descriptors.size(); i++) {
+            auto const& descriptor = descriptors[i];
+            auto& index = heap_indices[i];
+            auto& offset = heap_offsets[i];
+            for (uint32_t heap_index = 0; auto base_addr : binded_descriptor_heaps_start_) {
+                auto temp_offset = descriptor.gpu - base_addr;
+                if (heap_index == 0 || temp_offset < offset) {
+                    index = heap_index;
+                    offset = temp_offset;
+                }
+                ++heap_index;
             }
-            ++heap_index;
         }
+        vkCmdSetDescriptorBufferOffsetsEXT(
+            cmd_buffer, bind_point, pipline_layout, from_group_index,
+            descriptors.size(), heap_indices.data(), heap_offsets.data()
+        );
+    } else {
+        std::vector<VkDescriptorSet> desc_sets(descriptors.size());
+        for (size_t i = 0; i < descriptors.size(); i++) {
+            desc_sets[i] = *reinterpret_cast<VkDescriptorSet*>(descriptors[i].gpu);
+        }
+        vkCmdBindDescriptorSets(
+            cmd_buffer, bind_point, pipline_layout, from_group_index,
+            desc_sets.size(), desc_sets.data(), 0, nullptr
+        );
     }
-    vkCmdSetDescriptorBufferOffsetsEXT(
-        cmd_buffer, bind_point, pipline_layout, from_group_index,
-        descriptors.size(), heap_indices.data(), heap_offsets.data()
-    );
 }
 
 
@@ -613,9 +626,17 @@ auto GraphicsCommandEncoderVulkan::set_pipeline(CRef<GraphicsPipeline> pipeline)
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->raw());
 
     if (auto embedded_samplers_set = curr_pipeline_->static_samplers_set(); embedded_samplers_set != ~0u) {
-        vkCmdBindDescriptorBufferEmbeddedSamplersEXT(
-            cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->raw_layout(), embedded_samplers_set
-        );
+        if (device_->use_descriptor_buffer()) {
+            vkCmdBindDescriptorBufferEmbeddedSamplersEXT(
+                cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->raw_layout(), embedded_samplers_set
+            );
+        } else {
+            auto desc_set = curr_pipeline_->immutable_samplers_desc_set();
+            vkCmdBindDescriptorSets(
+                cmd_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS, curr_pipeline_->raw_layout(), embedded_samplers_set,
+                1, &desc_set, 0, nullptr
+            );
+        }
     }
 }
 
@@ -721,9 +742,17 @@ auto ComputeCommandEncoderVulkan::set_pipeline(CRef<ComputePipeline> pipeline) -
     vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->raw());
 
     if (auto embedded_samplers_set = curr_pipeline_->static_samplers_set(); embedded_samplers_set != ~0u) {
-        vkCmdBindDescriptorBufferEmbeddedSamplersEXT(
-            cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->raw_layout(), embedded_samplers_set
-        );
+        if (device_->use_descriptor_buffer()) {
+            vkCmdBindDescriptorBufferEmbeddedSamplersEXT(
+                cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->raw_layout(), embedded_samplers_set
+            );
+        } else {
+            auto desc_set = curr_pipeline_->immutable_samplers_desc_set();
+            vkCmdBindDescriptorSets(
+                cmd_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE, curr_pipeline_->raw_layout(), embedded_samplers_set,
+                1, &desc_set, 0, nullptr
+            );
+        }
     }
 }
 

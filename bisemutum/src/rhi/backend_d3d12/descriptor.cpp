@@ -17,11 +17,11 @@ DescriptorHeapD3D12::DescriptorHeapD3D12(Ref<DeviceD3D12> device, DescriptorHeap
     device_->raw()->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&heap_));
 
     descriptor_size_ = device->raw()->GetDescriptorHandleIncrementSize(type_);
-    max_count_ = desc.max_count;
+    max_size_ = desc.max_count * descriptor_size_;
 
     start_handle_.cpu = heap_->GetCPUDescriptorHandleForHeapStart().ptr;
     if (desc.shader_visible) {
-        start_handle_.gpu = heap_->GetCPUDescriptorHandleForHeapStart().ptr;
+        start_handle_.gpu = heap_->GetGPUDescriptorHandleForHeapStart().ptr;
     }
 }
 
@@ -37,7 +37,7 @@ DescriptorHeapD3D12::DescriptorHeapD3D12(Ref<DeviceD3D12> device, D3D12_DESCRIPT
     device_->raw()->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&heap_));
 
     descriptor_size_ = device->raw()->GetDescriptorHandleIncrementSize(type_);
-    max_count_ = max_count;
+    max_size_ = max_count * descriptor_size_;
     start_handle_.cpu = heap_->GetCPUDescriptorHandleForHeapStart().ptr;
 }
 
@@ -52,25 +52,25 @@ auto DescriptorHeapD3D12::allocate_descriptor(DescriptorType type) -> Descriptor
 auto DescriptorHeapD3D12::allocate_descriptor(BindGroupLayout const& layout) -> DescriptorHandle {
     uint32_t size = 0;
     for (auto const& entry : layout) {
-        size += size_of_descriptor(entry.type) * entry.count;
+        size += descriptor_size_ * entry.count;
     }
     if (size == 0) { return {}; }
-    if (num_used_ + size > max_count_) { return {}; }
+    if (bytes_used_ + size > max_size_) { return {}; }
     DescriptorHandle handle{
-        .cpu = start_handle_.cpu + descriptor_size_ * num_used_,
-        .gpu = start_handle_.gpu ? start_handle_.gpu + descriptor_size_ * num_used_ : 0,
+        .cpu = start_handle_.cpu + bytes_used_,
+        .gpu = start_handle_.gpu ? start_handle_.gpu + bytes_used_ : 0,
     };
-    num_used_ += size;
+    bytes_used_ += size;
     return handle;
 }
 
 auto DescriptorHeapD3D12::allocate_descriptor_single() -> DescriptorHandle {
-    if (num_used_ >= max_count_) { return {}; }
+    if (bytes_used_ + descriptor_size_ > max_size_) { return {}; }
     DescriptorHandle handle{
-        .cpu = start_handle_.cpu + descriptor_size_ * num_used_,
-        .gpu = start_handle_.gpu ? start_handle_.gpu + descriptor_size_ * num_used_ : 0,
+        .cpu = start_handle_.cpu + bytes_used_,
+        .gpu = start_handle_.gpu ? start_handle_.gpu + bytes_used_ : 0,
     };
-    ++num_used_;
+    bytes_used_ += descriptor_size_;
     return handle;
 }
 
