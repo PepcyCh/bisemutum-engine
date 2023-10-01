@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include <bisemutum/window/window.hpp>
+#include <bisemutum/window/imgui_renderer.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/rhi/device.hpp>
 #include <bisemutum/runtime/world.hpp>
@@ -85,6 +86,8 @@ struct Engine::Impl final {
         );
         graphics_manager.set_renderer(project_info.renderer);
 
+        imgui_renderer.initialize(window, graphics_manager);
+
         ui = create_empty_ui();
         graphics_manager.set_displayer(ui.displayer());
 
@@ -140,6 +143,7 @@ struct Engine::Impl final {
 
     auto finalize() -> bool {
         graphics_manager.wait_idle();
+        imgui_renderer.finalize();
         return module_manager.finalize();
     }
 
@@ -164,6 +168,7 @@ struct Engine::Impl final {
     rt::FileSystem file_system;
 
     gfx::GraphicsManager graphics_manager;
+    ImGuiRenderer imgui_renderer;
 
     rt::EcsManager ecs_manager;
     rt::ComponentManager component_manager;
@@ -184,6 +189,9 @@ auto Engine::execute() -> void {
 
 auto Engine::window() -> Ref<Window> {
     return impl()->window;
+}
+auto Engine::imgui_renderer() -> Ref<ImGuiRenderer> {
+    return impl()->imgui_renderer;
 }
 
 auto Engine::graphics_manager() -> Ref<gfx::GraphicsManager> {

@@ -36,7 +36,7 @@ struct CameraSystem::Impl final {
         g_engine->ecs_manager()->ecs_registry().on_update<CameraComponent>().connect<&Impl::on_update>(this);
 
         window_resize = g_engine->window()->register_resize_callback(
-            [this](WindowSize frame_size, WindowSize logic_size) {
+            [this](Window const& window, WindowSize frame_size, WindowSize logic_size) {
                 for (auto entity : window_cameras) {
                     g_engine->ecs_manager()->ecs_registry().patch<CameraComponent>(
                         entity,

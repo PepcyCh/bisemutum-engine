@@ -284,7 +284,7 @@ auto CommandHelpers::get_blit_pipeline(Ref<Texture> dst_texture) -> Ref<rhi::Gra
                 .attachments = {
                     rhi::ColorTargetAttachmentState{
                         .format = target_format,
-                    }
+                    },
                 },
             },
             .shaders = {
@@ -401,7 +401,7 @@ auto CommandHelpers::get_mipmap_pipeline(Ref<Texture> dst_texture, MipmapMode mo
                 .attachments = {
                     rhi::ColorTargetAttachmentState{
                         .format = key.first,
-                    }
+                    },
                 },
             },
             .shaders = {

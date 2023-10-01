@@ -36,6 +36,7 @@ Buffer::Buffer(rhi::BufferDesc const& desc, bool with_staging_buffer)
             }
         }
     } else {
+        // TODO - allow single staging buffer for temporay buffer
         with_staging_buffer_ = false;
         staging_buffers_.resize(g_engine->graphics_manager()->num_frames_in_flight());
         for (size_t i = 0; i < staging_buffers_.size(); i++) {

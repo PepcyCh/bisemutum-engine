@@ -63,6 +63,7 @@ directly via xmake
 * Vulkan Memory Allocator (MIT)
 * D3D12 Memory Allocator (MIT)
 * DirectXShaderCompiler ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
+* Dear ImGui (MiT)
 * crypto algorithms
 * stb
 * assimp ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))

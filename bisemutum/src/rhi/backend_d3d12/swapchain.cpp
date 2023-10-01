@@ -129,4 +129,8 @@ auto SwapchainD3D12::present(CSpan<Ref<Semaphore>> wait_semaphores) -> void {
     swapchain_->Present(0, 0);
 }
 
+auto SwapchainD3D12::format() const -> ResourceFormat {
+    return from_dx_format(surface_format_);
+}
+
 }

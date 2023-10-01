@@ -217,4 +217,8 @@ auto SwapchainVulkan::present(CSpan<Ref<Semaphore>> wait_semaphores) -> void {
     // TODO - check present result
 }
 
+auto SwapchainVulkan::format() const -> ResourceFormat {
+    return from_vk_format(surface_format_);
+}
+
 }

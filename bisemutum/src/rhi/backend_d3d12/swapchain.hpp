@@ -21,6 +21,8 @@ struct SwapchainD3D12 final : Swapchain {
 
     auto present(CSpan<Ref<Semaphore>> wait_semaphores = {}) -> void override;
 
+    auto format() const -> ResourceFormat override;
+
 private:
     void create_swapchain_textures();
 

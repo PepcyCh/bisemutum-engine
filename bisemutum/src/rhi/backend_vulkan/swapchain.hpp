@@ -20,6 +20,8 @@ struct SwapchainVulkan final : Swapchain {
 
     auto current_texture() -> Ref<Texture> override { return textures_[curr_texture_].ref(); }
 
+    auto format() const -> ResourceFormat override;
+
     auto raw() const -> VkSwapchainKHR { return swapchain_; }
 
 private:

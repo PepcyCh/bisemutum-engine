@@ -34,7 +34,8 @@ struct Window::Impl final {
         glfwTerminate();
     }
 
-    auto init(uint32_t width, uint32_t height, std::string_view title) -> void {
+    auto init(Window* api_window, uint32_t width, uint32_t height, std::string_view title) -> void {
+        this->api_window = api_window;
         logic_size = {width, height};
 
         glfwSetErrorCallback(glfw_error_callback);
@@ -135,6 +136,8 @@ struct Window::Impl final {
         resize_callbacks.remove(index);
     }
 
+    Window* api_window = nullptr;
+
     WindowSize frame_size;
     WindowSize logic_size;
 
@@ -166,7 +169,7 @@ void glfw_mouse_callback(GLFWwindow* glfw_window, int button, int action, int mo
     double xpos, ypos;
     glfwGetCursorPos(glfw_window, &xpos, &ypos);
     for (auto const& func : window->mouse_callbacks) {
-        func(mouse, state, xpos, ypos);
+        func(*window->api_window, mouse, state, xpos, ypos);
     }
 }
 
@@ -176,7 +179,7 @@ void glfw_key_callback(GLFWwindow *glfw_window, int key, int scancode, int actio
         : action == GLFW_RELEASE ? input::KeyState::release
         : input::KeyState::repeat;
     for (auto const& func : window->key_callbacks) {
-        func(static_cast<input::Keyboard>(key), state);
+        func(*window->api_window, static_cast<input::Keyboard>(key), state);
     }
 }
 
@@ -209,19 +212,26 @@ void glfw_resize_callback(GLFWwindow *glfw_window, int width, int height) {
         window->frame_size = frame_size;
         window->logic_size = logic_size;
         for (auto const& func : window->resize_callbacks) {
-            func(frame_size, logic_size);
+            func(*window->api_window, frame_size, logic_size);
         }
     }
 }
 
 Window::Window(uint32_t width, uint32_t height, std::string_view title) {
-    impl()->init(width, height, title);
+    impl()->init(this, width, height, title);
 }
 
 Window::~Window() = default;
 
 auto Window::frame_size() const -> WindowSize { return impl()->frame_size; }
 auto Window::logic_size() const -> WindowSize { return impl()->logic_size; }
+
+auto Window::dpi_scale() const -> float {
+    return std::max(
+        static_cast<float>(impl()->frame_size.width) / impl()->logic_size.width,
+        static_cast<float>(impl()->frame_size.height) / impl()->logic_size.height
+    );
+}
 
 auto Window::platform_handle() const -> PlatformWindowHandle {
     return impl()->platform_handle();
@@ -233,6 +243,10 @@ auto Window::frame_count() const -> uint64_t {
 
 auto Window::main_loop(const std::function<void()> &func) -> void {
     impl()->main_loop(func);
+}
+
+auto Window::raw_glfw_window() const -> GLFWwindow* {
+    return impl()->window;
 }
 
 auto Window::register_mouse_callback(MouseCallback&& callback) -> MouseCallbackHandle {

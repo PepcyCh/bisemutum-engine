@@ -24,6 +24,8 @@ struct Swapchain {
     virtual auto current_texture() -> Ref<struct Texture> = 0;
 
     virtual auto present(CSpan<Ref<Semaphore>> wait_semaphores = {}) -> void = 0;
+
+    virtual auto format() const -> ResourceFormat = 0;
 };
 
 }

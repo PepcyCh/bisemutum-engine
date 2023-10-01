@@ -58,7 +58,7 @@ struct GraphicsManager::Impl final {
             .window_handle = window->platform_handle(),
         });
         swapchain_resize_callback = window->register_resize_callback(
-            [this](WindowSize frame_size, WindowSize logic_size) {
+            [this](Window const& window, WindowSize frame_size, WindowSize logic_size) {
                 immediate_execution_fence->signal_on(graphics_queue.value());
                 immediate_execution_fence->wait();
                 swapchain->resize(frame_size.width, frame_size.height);
@@ -683,8 +683,16 @@ auto GraphicsManager::device() -> Ref<rhi::Device> {
     return impl()->device.ref();
 }
 
+auto GraphicsManager::shader_compiler() -> Ref<ShaderCompiler> {
+    return impl()->shader_compiler;
+}
+
 auto GraphicsManager::render_graph() -> RenderGraph& {
     return impl()->render_graph;
+}
+
+auto GraphicsManager::swapchain_format() const -> rhi::ResourceFormat {
+    return impl()->swapchain->format();
 }
 
 auto GraphicsManager::num_frames_in_flight() const -> uint32_t {

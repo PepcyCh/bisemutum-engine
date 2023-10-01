@@ -17,8 +17,8 @@ struct Sampler final {
     auto has_value() const -> bool;
     auto reset() -> void;
 
-    auto rhi_sampler() -> Ref<rhi::Sampler>;
-    auto rhi_sampler() const -> CRef<rhi::Sampler>;
+    auto rhi_sampler() -> Ref<rhi::Sampler> { return sampler_.ref(); }
+    auto rhi_sampler() const -> CRef<rhi::Sampler> { return sampler_.ref(); }
 
     auto get_descriptor() const -> rhi::DescriptorHandle { return cpu_descriptor_; }
 

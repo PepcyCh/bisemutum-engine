@@ -36,6 +36,7 @@ struct Buffer;
 struct Texture;
 struct Sampler;
 
+struct ShaderCompiler;
 struct RenderGraph;
 struct ResourceBindingContext;
 struct GraphicsPassContext;
@@ -106,9 +107,16 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     ) -> void;
 
     auto device() -> Ref<rhi::Device>;
+    auto shader_compiler() -> Ref<ShaderCompiler>;
     auto render_graph() -> RenderGraph&;
 
+    auto swapchain_format() const -> rhi::ResourceFormat;
     auto num_frames_in_flight() const -> uint32_t;
+
+    auto get_descriptors_for(
+        std::vector<rhi::DescriptorHandle> cpu_descriptors,
+        rhi::BindGroupLayout const& layout
+    ) -> rhi::DescriptorHandle;
 
 private:
     auto register_renderer(std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box> creator) -> void;
@@ -124,13 +132,6 @@ private:
     auto compile_pipeline_for_drawable(
         GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
     ) -> Ref<rhi::GraphicsPipeline>;
-
-    friend ResourceBindingContext;
-    friend CommandHelpers;
-    auto get_descriptors_for(
-        std::vector<rhi::DescriptorHandle> cpu_descriptors,
-        rhi::BindGroupLayout const& layout
-    ) -> rhi::DescriptorHandle;
 };
 
 }

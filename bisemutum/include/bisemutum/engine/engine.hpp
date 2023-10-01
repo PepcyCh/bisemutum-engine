@@ -7,6 +7,7 @@
 namespace bi {
 
 struct Window;
+struct ImGuiRenderer;
 
 namespace gfx {
 
@@ -26,6 +27,7 @@ struct Engine final : PImpl<Engine> {
     auto execute() -> void;
 
     auto window() -> Ref<Window>;
+    auto imgui_renderer() -> Ref<ImGuiRenderer>;
 
     auto graphics_manager() -> Ref<gfx::GraphicsManager>;
 

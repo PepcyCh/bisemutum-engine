@@ -27,6 +27,8 @@ struct Window final : PImpl<Window> {
 
     auto frame_size() const -> WindowSize;
     auto logic_size() const -> WindowSize;
+    auto dpi_scale() const -> float;
+
     auto platform_handle() const -> PlatformWindowHandle;
 
     auto frame_count() const -> uint64_t;
@@ -65,6 +67,8 @@ struct Window final : PImpl<Window> {
         size_t index_;
     };
 
+    auto raw_glfw_window() const -> GLFWwindow*;
+
 private:
     template <typename Callback, auto unregister_func>
     friend struct CallbackHandle;
@@ -73,16 +77,16 @@ private:
     auto unregister_resize_callback(size_t index) -> void;
 
 public:
-    using MouseCallback = std::function<auto(input::Mouse, input::KeyState, float, float) -> void>;
+    using MouseCallback = std::function<auto(Window const&, input::Mouse, input::KeyState, float, float) -> void>;
     using MouseCallbackHandle = CallbackHandle<MouseCallback, &Window::unregister_mouse_callback>;
     auto register_mouse_callback(MouseCallback&& callback) -> MouseCallbackHandle;
 
-    using KeyCallback = std::function<auto(input::Keyboard, input::KeyState) -> void>;
+    using KeyCallback = std::function<auto(Window const&, input::Keyboard, input::KeyState) -> void>;
     using KeyCallbackHandle = CallbackHandle<KeyCallback, &Window::unregister_key_callback>;
     auto register_key_callback(KeyCallback&& callback) -> KeyCallbackHandle;
 
     // auto (WindowSize frame_size, WindowSize logic_size) -> void
-    using ResizeCallback = std::function<auto(WindowSize, WindowSize) -> void>;
+    using ResizeCallback = std::function<auto(Window const&, WindowSize, WindowSize) -> void>;
     using ResizeCallbackHandle = CallbackHandle<ResizeCallback, &Window::unregister_resize_callback>;
     auto register_resize_callback(ResizeCallback&& callback) -> ResizeCallbackHandle;
 };
