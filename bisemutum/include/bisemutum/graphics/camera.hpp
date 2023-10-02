@@ -34,6 +34,8 @@ struct Camera final {
     float far_z = 100000.0f;
     ProjectionType projection_type = ProjectionType::perspective;
 
+    bool enabled = true;
+
 private:
     friend GraphicsManager;
     auto update_shader_params() -> void;

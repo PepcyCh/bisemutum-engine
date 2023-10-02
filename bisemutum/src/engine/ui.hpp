@@ -12,4 +12,6 @@ BI_TRAIT_END(IEngineUI)
 
 auto create_empty_ui() -> Dyn<IEngineUI>::Box;
 
+auto create_editor_ui() -> Dyn<IEngineUI>::Box;
+
 }

@@ -48,7 +48,29 @@ struct ProjectInfo final {
 };
 BI_SREFL(type(ProjectInfo), field(name), field(scene_file), field(renderer), field(settings));
 
+struct ExecutableOptions final {
+    char const* project_file = nullptr;
+    bool editor = false;
+};
+
+auto parse_options(int argc, char** argv) -> ExecutableOptions {
+    ExecutableOptions opt{};
+
+    if (argc < 2) { return opt; }
+    opt.project_file = argv[1];
+
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-editor") == 0) {
+            opt.editor = true;
+        } else {
+            log::warn("general", "Unknown comman line option '{}'", argv[i]);
+        }
+    }
+
+    return opt;
 }
+
+} // namespace
 
 Engine* g_engine = nullptr;
 
@@ -66,17 +88,17 @@ struct Engine::Impl final {
 
         if (!mount_engine_path()) { return false; }
 
-        if (argc < 2) {
+        auto opt = parse_options(argc, argv);
+        if (!opt.project_file) {
             log::critical("general", "Project file is not specified.");
             return false;
         }
-        auto project_path = argv[1];
-        auto project_info_opt = read_project_file(project_path);
+        auto project_info_opt = read_project_file(opt.project_file);
         if (!project_info_opt) { return false; }
         auto& project_info = project_info_opt.value();
         file_system.mount(
             "/project/",
-            rt::PhysicalSubFileSystem{std::filesystem::path{project_path}.parent_path()}
+            rt::PhysicalSubFileSystem{std::filesystem::path{opt.project_file}.parent_path()}
         );
 
         auto graphics_backend_str = magic_enum::enum_name(project_info.settings.graphics.backend);
@@ -88,7 +110,11 @@ struct Engine::Impl final {
 
         imgui_renderer.initialize(window, graphics_manager);
 
-        ui = create_empty_ui();
+        if (opt.editor) {
+            ui = create_editor_ui();
+        } else {
+            ui = create_empty_ui();
+        }
         graphics_manager.set_displayer(ui.displayer());
 
         if (!module_manager.initialize()) { return false; }

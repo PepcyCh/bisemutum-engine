@@ -28,7 +28,8 @@ Vertex2Fragment imgui_vs(VertexAttributes vin) {
     Vertex2Fragment vout;
     vout.uv = vin.uv;
     vout.color = vin.color;
-    vout.pos = float4(vin.pos * push_c.scale + push_c.translate, 0.0, 1.0);
+    float2 pos = vin.pos * push_c.scale + push_c.translate;
+    vout.pos = float4(pos.x, -pos.y, 0.0, 1.0);
     return vout;
 }
 

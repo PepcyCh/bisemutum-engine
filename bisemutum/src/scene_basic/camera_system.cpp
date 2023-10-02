@@ -86,15 +86,28 @@ struct CameraSystem::Impl final {
             copy_camera_data(camera, object, component);
         }
         dirty_cameras.clear();
+
+        if (main_camera == gfx::CameraHandle::invalid && !camera_handles.empty()) {
+            std::tie(main_camera_entity, main_camera) = *camera_handles.begin();
+        }
     }
 
     auto on_construct(entt::registry& ecs_registry, entt::entity entity) -> void {
         auto handle = g_engine->graphics_manager()->add_camera();
         camera_handles.insert({entity, handle});
         dirty_cameras.insert(entity);
+
+        if (main_camera == gfx::CameraHandle::invalid) {
+            main_camera = handle;
+            main_camera_entity = entity;
+        }
     }
     auto on_destroy(entt::registry& ecs_registry, entt::entity entity) -> void {
         destroyed_cameras.insert(entity);
+
+        if (main_camera_entity == entity) {
+            main_camera = gfx::CameraHandle::invalid;
+        }
     }
     auto on_update(entt::registry& ecs_registry, entt::entity entity) -> void {
         dirty_cameras.insert(entity);
@@ -109,6 +122,8 @@ struct CameraSystem::Impl final {
     }
 
     std::unordered_map<entt::entity, gfx::CameraHandle> camera_handles;
+    gfx::CameraHandle main_camera = gfx::CameraHandle::invalid;
+    entt::entity main_camera_entity;
 
     std::unordered_set<entt::entity> dirty_cameras;
     std::unordered_set<entt::entity> destroyed_cameras;
@@ -125,6 +140,10 @@ auto CameraSystem::operator=(CameraSystem&& rhs) noexcept -> CameraSystem& = def
 
 auto CameraSystem::update() -> void {
     impl()->update();
+}
+
+auto CameraSystem::main_camera_handle() const -> gfx::CameraHandle {
+    return impl()->main_camera;
 }
 
 auto CameraSystem::camera_handle_of(entt::entity entity) const -> gfx::CameraHandle {

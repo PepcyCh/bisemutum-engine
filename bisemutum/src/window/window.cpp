@@ -98,18 +98,7 @@ struct Window::Impl final {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
 
-            // ImGui_ImplOpenGL3_NewFrame();
-            // ImGui_ImplGlfw_NewFrame();
-            // ImGui::NewFrame();
-
-            // ImGui::PushFont(imgui_curr_font_);
-
             func();
-
-            // ImGui::PopFont();
-
-            // ImGui::Render();
-            // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
             ++frame_count;
         }
@@ -152,10 +141,6 @@ struct Window::Impl final {
     SlotMap<KeyCallback> key_callbacks;
 
     SlotMap<ResizeCallback> resize_callbacks;
-
-    // std::unordered_map<float, ImFont *> imgui_fonts_;
-    // ImFont *imgui_curr_font_ = nullptr;
-    // float imgui_last_scale_ = 1.0f;
 };
 
 void glfw_mouse_callback(GLFWwindow* glfw_window, int button, int action, int mods) {
@@ -188,23 +173,6 @@ void glfw_resize_callback(GLFWwindow *glfw_window, int width, int height) {
 
     float width_scale, height_scale;
     glfwGetWindowContentScale(glfw_window, &width_scale, &height_scale);
-
-    // auto dpi_scale = std::max(width_scale, height_scale);
-    // auto rel_scale = dpi_scale / window->imgui_last_scale_;
-    // ImGui::GetStyle().ScaleAllSizes(rel_scale);
-    // window->imgui_last_scale_ = dpi_scale;
-    // if (auto it = window->imgui_fonts_.find(dpi_scale); it != window->imgui_fonts_.end()) {
-    //     window->imgui_curr_font_ = it->second;
-    // } else {
-    //     ImGuiIO &io = ImGui::GetIO();
-    //     ImFontConfig font_cfg {};
-    //     font_cfg.SizePixels = kImguiFontSize * dpi_scale;
-    //     auto font = io.Fonts->AddFontDefault(&font_cfg);
-    //     window->imgui_fonts_[dpi_scale] = font;
-    //     window->imgui_curr_font_ = font;
-    //     io.Fonts->Build();
-    //     ImGui_ImplOpenGL3_DestroyDeviceObjects();
-    // }
 
     WindowSize frame_size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
     WindowSize logic_size{static_cast<uint32_t>(width / width_scale), static_cast<uint32_t>(height / height_scale)};

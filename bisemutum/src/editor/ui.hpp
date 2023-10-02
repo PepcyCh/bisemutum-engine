@@ -2,15 +2,17 @@
 
 #include <bisemutum/graphics/displayer.hpp>
 
+#include "displayer.hpp"
+
 namespace bi {
 
-struct EmptyEngineUI final {
+struct EditorEngineUI final {
     auto displayer() -> Dyn<gfx::IDisplayer>::Ref { return displayer_; }
 
-    auto execute() -> void;
+    auto execute() -> void {}
 
 private:
-    gfx::BlitDisplayer displayer_;
+    EditorDisplayer displayer_;
 };
 
 }

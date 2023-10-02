@@ -25,6 +25,7 @@ struct ImGuiRenderer::Impl final {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         auto& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         auto dpi_scale = window.dpi_scale();
         ImFontConfig font_cfg{};
@@ -56,6 +57,7 @@ struct ImGuiRenderer::Impl final {
                     imgui_fonts[dpi_scale] = font;
                     imgui_curr_font = font;
                     io.Fonts->Build();
+                    create_font_texture(*g_engine->graphics_manager());
                 }
             }
         );
@@ -82,6 +84,8 @@ struct ImGuiRenderer::Impl final {
 
     auto new_frame() -> void {
         ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::PushFont(imgui_curr_font);
     }
 
     auto create_device_objects(gfx::GraphicsManager& gfx_mgr) -> void {
@@ -165,6 +169,13 @@ struct ImGuiRenderer::Impl final {
                 .attachments = {
                     rhi::ColorTargetAttachmentState{
                         .format = swapchain_format,
+                        .blend_enable = true,
+                        .blend_op = rhi::BlendOp::add,
+                        .src_blend_factor = rhi::BlendFactor::src_alpha,
+                        .dst_blend_factor = rhi::BlendFactor::one_minus_src_alpha,
+                        .alpha_blend_op = rhi::BlendOp::add,
+                        .src_alpha_blend_factor = rhi::BlendFactor::src_alpha,
+                        .dst_alpha_blend_factor = rhi::BlendFactor::one_minus_src_alpha,
                     },
                 },
             },
@@ -176,6 +187,10 @@ struct ImGuiRenderer::Impl final {
         imgui_pipeline = gfx_mgr.device()->create_graphics_pipeline(pipeline_desc);
     }
     auto create_font_texture(gfx::GraphicsManager& gfx_mgr) -> void {
+        if (font_texture.has_value()) {
+            font_texture.reset();
+        }
+
         auto& io = ImGui::GetIO();
         unsigned char* pixels;
         int width, height;
@@ -232,6 +247,8 @@ struct ImGuiRenderer::Impl final {
     }
 
     auto render_draw_data(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Texture> target_texture) -> void {
+        ImGui::PopFont();
+        ImGui::Render();
         auto draw_data = ImGui::GetDrawData();
         auto fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
         auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
@@ -269,6 +286,8 @@ struct ImGuiRenderer::Impl final {
                 vertex_offset += cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
                 index_offset += cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
             }
+        } else {
+            return;
         }
 
         auto graphics_encoder = cmd_encoder->begin_render_pass(
@@ -296,7 +315,7 @@ struct ImGuiRenderer::Impl final {
 
         graphics_encoder->set_pipeline(imgui_pipeline.ref());
         graphics_encoder->set_vertex_buffer({vertex_buffer.rhi_buffer()});
-        graphics_encoder->set_index_buffer(index_buffer.rhi_buffer());
+        graphics_encoder->set_index_buffer(index_buffer.rhi_buffer(), 0, rhi::IndexType::uint16);
 
         float scale_translate[4];
         scale_translate[0] = 2.0f / draw_data->DisplaySize.x;
@@ -338,15 +357,17 @@ struct ImGuiRenderer::Impl final {
                     graphics_encoder->set_scissors({scissor});
 
                     auto texture = static_cast<gfx::Texture*>(pcmd->TextureId);
-                    auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
-                        {texture->get_srv(0, 1, 0, 1)},
-                        imgui_pipeline->desc().bind_groups_layout[0]
-                    );
-                    graphics_encoder->set_descriptors(0, {descriptor});
+                    if (texture) {
+                        auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
+                            {texture->get_srv(0, 1, 0, 1)},
+                            imgui_pipeline->desc().bind_groups_layout[0]
+                        );
+                        graphics_encoder->set_descriptors(0, {descriptor});
 
-                    graphics_encoder->draw_indexed(
-                        pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset
-                    );
+                        graphics_encoder->draw_indexed(
+                            pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset
+                        );
+                    }
                 }
             }
             global_idx_offset += cmd_list->IdxBuffer.Size;

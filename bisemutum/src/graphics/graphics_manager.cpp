@@ -171,17 +171,10 @@ struct GraphicsManager::Impl final {
     }
 
     auto render_frame() -> void {
-        if (!renderer.has_value() || !displayer.has_value() || !displayer->is_valid()) { return; }
+        // if (!renderer.has_value() || !displayer.has_value() || !displayer->is_valid()) { return; }
+        if (!renderer.has_value() || !displayer.has_value()) { return; }
 
         auto& fd = curr_frame_data();
-        swapchain->acquire_next_texture(fd.acquire_semaphore.ref());
-        fd.fence->wait();
-        if (fd.camera_semaphores.size() < cameras.size()) {
-            for (size_t i = fd.camera_semaphores.size(); i < cameras.size(); i++) {
-                fd.camera_semaphores.push_back(device->create_semaphore());
-            }
-        }
-        fd.graphics_cmd_pool->reset();
 
         renderer.prepare_renderer_per_frame_data();
 
@@ -190,12 +183,27 @@ struct GraphicsManager::Impl final {
             drawable.shader_params.update_uniform_buffer();
             drawable.material->shader_parameters.update_uniform_buffer();
         }
+        size_t num_enabled_camera = 0;
         for (auto& camera : cameras) {
-            camera.update_shader_params();
+            if (camera.enabled) {
+                camera.update_shader_params();
+                ++num_enabled_camera;
+            }
         }
+
+        swapchain->acquire_next_texture(fd.acquire_semaphore.ref());
+        fd.fence->wait();
+        if (fd.camera_semaphores.size() < num_enabled_camera) {
+            for (size_t i = fd.camera_semaphores.size(); i < num_enabled_camera; i++) {
+                fd.camera_semaphores.push_back(device->create_semaphore());
+            }
+        }
+        fd.graphics_cmd_pool->reset();
 
         // Render each camera
         for (size_t camera_index = 0; auto& camera : cameras) {
+            if (!camera.enabled) { continue; }
+
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
             cmd_encoder->set_descriptor_heaps({
                 fd.resource_heap.ref(),
@@ -251,9 +259,9 @@ struct GraphicsManager::Impl final {
             });
 
             std::vector<CRef<rhi::Semaphore>> wait_semaphores{};
-            wait_semaphores.reserve(cameras.size() + 1);
-            for (auto const& semaphore : fd.camera_semaphores) {
-                wait_semaphores.push_back(semaphore.ref());
+            wait_semaphores.reserve(num_enabled_camera + 1);
+            for (size_t i = 0; i < num_enabled_camera; i++) {
+                wait_semaphores.push_back(fd.camera_semaphores[i].ref());
             }
             wait_semaphores.push_back(fd.acquire_semaphore.ref());
 
