@@ -23,6 +23,8 @@ namespace bi::gfx {
 Buffer::Buffer(rhi::BufferDesc const& desc, bool with_staging_buffer)
     : with_staging_buffer_(with_staging_buffer)
 {
+    desired_size_ = desc.size;
+    staging_buffer_start_index_ = g_engine->graphics_manager()->curr_frame_index();
     if (desc.memory_property == rhi::BufferMemoryProperty::gpu_only) {
         buffer_ = g_engine->graphics_manager()->device()->create_buffer(desc);
         if (with_staging_buffer_) {
@@ -31,17 +33,13 @@ Buffer::Buffer(rhi::BufferDesc const& desc, bool with_staging_buffer)
             staging_desc.memory_property = rhi::BufferMemoryProperty::cpu_to_gpu;
             staging_desc.persistently_mapped = true;
             staging_buffers_.resize(g_engine->graphics_manager()->num_frames_in_flight());
-            for (size_t i = 0; i < staging_buffers_.size(); i++) {
-                staging_buffers_[i] = g_engine->graphics_manager()->device()->create_buffer(staging_desc);
-            }
+            staging_buffers_[staging_buffer_start_index_] =
+                g_engine->graphics_manager()->device()->create_buffer(staging_desc);
         }
     } else {
-        // TODO - allow single staging buffer for temporay buffer
         with_staging_buffer_ = false;
         staging_buffers_.resize(g_engine->graphics_manager()->num_frames_in_flight());
-        for (size_t i = 0; i < staging_buffers_.size(); i++) {
-            staging_buffers_[i] = g_engine->graphics_manager()->device()->create_buffer(desc);
-        }
+        staging_buffers_[staging_buffer_start_index_] = g_engine->graphics_manager()->device()->create_buffer(desc);
     }
 }
 
@@ -57,10 +55,10 @@ auto Buffer::reset() -> void {
 }
 
 auto Buffer::rhi_buffer() -> Ref<rhi::Buffer> {
-    return buffer_ ? buffer_.ref() : rhi_staging_buffer();
+    return buffer_ ? buffer_.ref() : staging_buffers_[staging_buffer_start_index_].ref();
 }
 auto Buffer::rhi_buffer() const -> CRef<rhi::Buffer> {
-    return buffer_ ? buffer_.ref() : rhi_staging_buffer();
+    return buffer_ ? buffer_.ref() : staging_buffers_[staging_buffer_start_index_].ref();
 }
 
 auto Buffer::rhi_staging_buffer() -> Ref<rhi::Buffer> {
@@ -70,8 +68,45 @@ auto Buffer::rhi_staging_buffer() const -> CRef<rhi::Buffer> {
     return staging_buffers_[g_engine->graphics_manager()->curr_frame_index()].ref();
 }
 
+auto Buffer::resize(uint64_t size) -> void {
+    if (size == desc().size || size == 0) { return; }
+
+    desired_size_ = size;
+
+    auto desc = this->desc();
+    desc.size = size;
+    if (buffer_) {
+        buffer_ = g_engine->graphics_manager()->device()->create_buffer(desc);
+        if (!with_staging_buffer_) {
+            return;
+        }
+    }
+
+    staging_buffer_start_index_ = g_engine->graphics_manager()->curr_frame_index();
+    auto& staging_buffer = staging_buffers_[staging_buffer_start_index_];
+    if (buffer_) {
+        desc.usages = {};
+        desc.memory_property = rhi::BufferMemoryProperty::cpu_to_gpu;
+        desc.persistently_mapped = true;
+    }
+    staging_buffer = g_engine->graphics_manager()->device()->create_buffer(desc);
+}
+
+auto Buffer::update_staging_buffer_size() -> void {
+    if (buffer_ && !with_staging_buffer_) { return; }
+
+    auto index = g_engine->graphics_manager()->curr_frame_index();
+    auto& staging_buffer = staging_buffers_[index];
+    if (!staging_buffer || staging_buffer->desc().size != desired_size_) {
+        staging_buffer = g_engine->graphics_manager()->device()->create_buffer(
+            staging_buffers_[staging_buffer_start_index_]->desc()
+        );
+    }
+}
+
 auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> void {
     if (staging_buffers_.empty() || size == 0) { return; }
+    update_staging_buffer_size();
 
     size = std::min(size, desc().size - offset);
     std::memcpy(rhi_staging_buffer()->typed_map<std::byte>() + offset, data, size);
@@ -117,6 +152,7 @@ auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> v
 }
 auto Buffer::set_multiple_data_raw(CSpan<DataSetDesc> descs) -> void {
     if (staging_buffers_.empty()) { return; }
+    update_staging_buffer_size();
 
     auto mapped_ptr = rhi_staging_buffer()->typed_map<std::byte>();
     for (auto& data : descs) {

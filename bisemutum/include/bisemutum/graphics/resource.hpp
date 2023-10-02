@@ -61,6 +61,9 @@ struct Buffer final {
     auto rhi_buffer() -> Ref<rhi::Buffer>;
     auto rhi_buffer() const -> CRef<rhi::Buffer>;
 
+    auto resize(uint64_t size) -> void;
+    auto update_staging_buffer_size() -> void;
+
     template <typename T>
     auto set_data(T const* data, uint64_t count = 1, uint64_t offset = 0) -> void {
         set_data_raw(data, count * sizeof(T), offset);
@@ -88,6 +91,8 @@ private:
 
     Box<rhi::Buffer> buffer_;
     std::vector<Box<rhi::Buffer>> staging_buffers_;
+    uint64_t desired_size_;
+    uint32_t staging_buffer_start_index_;
     bool with_staging_buffer_;
 
     std::unordered_map<details::BufferDescriptorKey, rhi::DescriptorHandle> cpu_descriptors_;
