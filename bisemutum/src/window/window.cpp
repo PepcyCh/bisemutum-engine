@@ -19,7 +19,13 @@ void glfw_error_callback(int error_code, const char *desc) {
     log::error("general", "glfw error (ec {}): {}", error_code, desc);
 }
 
+auto convert_glfw_key_state(int state) -> input::KeyState {
+    return state == GLFW_PRESS ? input::KeyState::press
+        : state == GLFW_RELEASE ? input::KeyState::release
+        : input::KeyState::repeat;
 }
+
+} // namespace
 
 void glfw_mouse_callback(GLFWwindow* glfw_window, int button, int action, int mods);
 void glfw_key_callback(GLFWwindow* glfw_window, int key, int scancode, int action, int mods);
@@ -111,6 +117,21 @@ struct Window::Impl final {
         };
     }
 
+    auto key_state(input::Keyboard key) const -> input::KeyState {
+        return convert_glfw_key_state(glfwGetKey(window, static_cast<int>(key)));
+    }
+    auto mouse_state(input::Mouse mouse) const -> input::KeyState {
+        auto button = mouse == input::Mouse::left ? GLFW_MOUSE_BUTTON_LEFT
+            : mouse == input::Mouse::right ? GLFW_MOUSE_BUTTON_RIGHT
+            : GLFW_MOUSE_BUTTON_MIDDLE;
+        return convert_glfw_key_state(glfwGetMouseButton(window, button));
+    }
+    auto cursor_pos() const -> float2 {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        return {xpos, ypos};
+    }
+
     Window* api_window = nullptr;
 
     WindowSize frame_size;
@@ -134,23 +155,17 @@ void glfw_mouse_callback(GLFWwindow* glfw_window, int button, int action, int mo
     auto mouse = button == GLFW_MOUSE_BUTTON_LEFT ? input::Mouse::left
         : button == GLFW_MOUSE_BUTTON_RIGHT ? input::Mouse::right
         : input::Mouse::middle;
-    auto state = action == GLFW_PRESS ? input::KeyState::press
-        : action == GLFW_RELEASE ? input::KeyState::release
-        : input::KeyState::repeat;
     double xpos, ypos;
     glfwGetCursorPos(glfw_window, &xpos, &ypos);
     for (auto const& func : window->mouse_callbacks) {
-        func(*window->api_window, mouse, state, xpos, ypos);
+        func(*window->api_window, mouse, convert_glfw_key_state(action), xpos, ypos);
     }
 }
 
 void glfw_key_callback(GLFWwindow *glfw_window, int key, int scancode, int action, int mods) {
     auto window = reinterpret_cast<Window::Impl *>(glfwGetWindowUserPointer(glfw_window));
-    auto state = action == GLFW_PRESS ? input::KeyState::press
-        : action == GLFW_RELEASE ? input::KeyState::release
-        : input::KeyState::repeat;
     for (auto const& func : window->key_callbacks) {
-        func(*window->api_window, static_cast<input::Keyboard>(key), state);
+        func(*window->api_window, static_cast<input::Keyboard>(key), convert_glfw_key_state(action));
     }
 }
 
@@ -213,6 +228,16 @@ auto Window::register_key_callback(KeyCallback&& callback) -> KeyCallbackHandle 
 
 auto Window::register_resize_callback(ResizeCallback&& callback) -> ResizeCallbackHandle {
     return impl()->register_resize_callback(*this, std::move(callback));
+}
+
+auto Window::key_state(input::Keyboard key) const -> input::KeyState {
+    return impl()->key_state(key);
+}
+auto Window::mouse_state(input::Mouse mouse) const -> input::KeyState {
+    return impl()->mouse_state(mouse);
+}
+auto Window::cursor_pos() const -> float2 {
+    return impl()->cursor_pos();
 }
 
 }

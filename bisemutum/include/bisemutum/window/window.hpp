@@ -5,6 +5,7 @@
 
 #include "input.hpp"
 #include "window_size.hpp"
+#include "../math/math.hpp"
 #include "../utils/raii_handle.hpp"
 #include "../prelude/bitflags.hpp"
 #include "../prelude/idiom.hpp"
@@ -44,6 +45,10 @@ struct Window final : PImpl<Window> {
     using ResizeCallback = std::function<auto(Window const&, WindowSize, WindowSize) -> void>;
     using ResizeCallbackHandle = RaiiHandle<Window, size_t>;
     auto register_resize_callback(ResizeCallback&& callback) -> ResizeCallbackHandle;
+
+    auto key_state(input::Keyboard key) const -> input::KeyState;
+    auto mouse_state(input::Mouse mouse) const -> input::KeyState;
+    auto cursor_pos() const -> float2;
 };
 
 }
