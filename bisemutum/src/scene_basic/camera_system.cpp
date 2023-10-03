@@ -7,7 +7,7 @@
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/runtime/ecs.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
-#include <bisemutum/window/window.hpp>
+#include <bisemutum/window/window_manager.hpp>
 
 namespace bi {
 
@@ -35,8 +35,12 @@ struct CameraSystem::Impl final {
         g_engine->ecs_manager()->ecs_registry().on_destroy<CameraComponent>().connect<&Impl::on_destroy>(this);
         g_engine->ecs_manager()->ecs_registry().on_update<CameraComponent>().connect<&Impl::on_update>(this);
 
-        window_resize = g_engine->window()->register_resize_callback(
-            [this](Window const& window, WindowSize frame_size, WindowSize logic_size) {
+        window_resize = g_engine->window_manager()->register_resize_callback(
+            g_engine->window_manager()->main_viewport_name(),
+            [this](WindowManager const& window, WindowSize frame_size, WindowSize logic_size) {
+                if (!window_cameras.empty()) {
+                    g_engine->graphics_manager()->wait_idle();
+                }
                 for (auto entity : window_cameras) {
                     g_engine->ecs_manager()->ecs_registry().patch<CameraComponent>(
                         entity,
@@ -60,6 +64,7 @@ struct CameraSystem::Impl final {
         }
         destroyed_cameras.clear();
 
+        auto wm = g_engine->window_manager();
         for (auto entity : dirty_cameras) {
             auto object = g_engine->ecs_manager()->scene_object_of(entity);
             auto handle = camera_handles.at(entity);
@@ -73,8 +78,8 @@ struct CameraSystem::Impl final {
             ) {
                 window_cameras.insert(entity);
                 component.render_target_size = {
-                    g_engine->window()->logic_size().width,
-                    g_engine->window()->logic_size().height,
+                    std::max(wm->logic_size(wm->main_viewport_name()).width, 1u),
+                    std::max(wm->logic_size(wm->main_viewport_name()).height, 1u),
                 };
             } else if (
                 component.render_target_size_mode != CameraRenderTargetSizeMode::window
@@ -128,7 +133,7 @@ struct CameraSystem::Impl final {
     std::unordered_set<entt::entity> dirty_cameras;
     std::unordered_set<entt::entity> destroyed_cameras;
 
-    Window::ResizeCallbackHandle window_resize;
+    WindowManager::ResizeCallbackHandle window_resize;
     std::unordered_set<entt::entity> window_cameras;
 };
 

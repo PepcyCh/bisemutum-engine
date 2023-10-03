@@ -14,25 +14,27 @@ namespace bi {
 
 namespace {
 
-auto imgui_window(
-    char const* name, std::function<auto(ImVec2, ImVec2) -> void> func,
-    ImGuiWindowFlags flags = 0, bool* p_open = nullptr
-) -> void {
-    auto enabled = ImGui::Begin(name, p_open, flags);
-    auto window_pos = ImGui::GetWindowPos();
-    auto window_size = ImGui::GetWindowSize();
-    if (enabled) {
-        func(window_pos, window_size);
-    }
-    ImGui::End();
-}
+constexpr rhi::ResourceFormat editor_camera_format = rhi::ResourceFormat::rgba8_unorm;
 
-} // namespace
+}
 
 EditorDisplayer::EditorDisplayer() {
     editor_camera_ = g_engine->graphics_manager()->add_camera();
     auto editor_camera = g_engine->graphics_manager()->get_camera(editor_camera_);
     editor_camera->enabled = false;
+
+    editor_camera_resize_ = g_engine->window_manager()->register_resize_callback(
+        g_engine->window_manager()->main_viewport_name(),
+        [this](WindowManager const& window, WindowSize frame_size, WindowSize logic_size) {
+            auto editor_camera = g_engine->graphics_manager()->get_camera(editor_camera_);
+            if (editor_camera->enabled) {
+                g_engine->graphics_manager()->wait_idle();
+                editor_camera->recreate_target_texture(
+                    logic_size.width, logic_size.height, editor_camera_format, false
+                );
+            }
+        }
+    );
 }
 
 auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Texture> target_texture) -> void {
@@ -43,6 +45,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         static_cast<float>(target_texture->desc().extent.height),
     });
     ImGui::SetNextWindowPos({0.0f, 0.0f});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
     ImGui::Begin(
         "##Global", nullptr,
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
@@ -59,7 +62,9 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
 
     if (!is_valid()) { return; }
 
-    imgui_window("Viewport Top Bar", [this](ImVec2 window_pos, ImVec2 window_size) {
+    auto wm = g_engine->window_manager();
+
+    wm->imgui_window("Viewport Top Bar", [this](ImGuiWindowArgs const& args) {
         int use_scene_camera = display_scene_camera_;
         ImGui::RadioButton("Editor", &use_scene_camera, 0);
         ImGui::SameLine();
@@ -73,23 +78,33 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     editor_camera->enabled = !display_scene_camera_;
     auto displayed_camera = display_scene_camera_ ? scene_camera : editor_camera;
 
-    imgui_window("Viewport", [displayed_camera](ImVec2 window_pos, ImVec2 window_size) {
-        ImGui::Image(&displayed_camera->target_texture(), window_size);
-    });
+    wm->imgui_window(
+        g_engine->window_manager()->main_viewport_name(),
+        [displayed_camera](ImGuiWindowArgs const& args) {
+            ImGui::Image(
+                &displayed_camera->target_texture(),
+                {static_cast<float>(args.window_size.x), static_cast<float>(args.window_size.y)}
+            );
+        },
+        ImGuiWindowConfig{
+            .padding = 0.0f,
+        }
+    );
 
-    imgui_window("Hierarchy", [](ImVec2 window_pos, ImVec2 window_size) {
+    wm->imgui_window("Hierarchy", [](ImGuiWindowArgs const& args) {
         // TODO
     });
 
-    imgui_window("Properties", [](ImVec2 window_pos, ImVec2 window_size) {
+    wm->imgui_window("Properties", [](ImGuiWindowArgs const& args) {
         // TODO
     });
 
-    imgui_window("Contents", [](ImVec2 window_pos, ImVec2 window_size) {
+    wm->imgui_window("Contents", [](ImGuiWindowArgs const& args) {
         // TODO
     });
 
     ImGui::End();
+    ImGui::PopStyleVar();
     g_engine->imgui_renderer()->render_draw_data(cmd_encoder, target_texture);
 }
 
@@ -111,7 +126,7 @@ auto EditorDisplayer::init_editor_camera() -> void {
     editor_camera->recreate_target_texture(
         scene_camera->target_texture().desc().extent.width,
         scene_camera->target_texture().desc().extent.height,
-        rhi::ResourceFormat::rgba8_unorm, false
+        editor_camera_format, false
     );
 }
 

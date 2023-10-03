@@ -9,13 +9,14 @@
 #endif
 #include <glfw/glfw3native.h>
 #include <bisemutum/containers/slotmap.hpp>
+#include <bisemutum/runtime/logger.hpp>
 
 namespace bi {
 
 namespace {
 
 void glfw_error_callback(int error_code, const char *desc) {
-    std::cerr << std::format("[glfw error] (error code {}) {}\n", error_code, desc);
+    log::error("general", "glfw error (ec {}): {}", error_code, desc);
 }
 
 }
@@ -26,10 +27,6 @@ void glfw_resize_callback(GLFWwindow* glfw_window, int width, int height);
 
 struct Window::Impl final {
     ~Impl() {
-        // ImGui_ImplOpenGL3_Shutdown();
-        // ImGui_ImplGlfw_Shutdown();
-        // ImGui::DestroyContext();
-
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -66,29 +63,12 @@ struct Window::Impl final {
 
         float width_scale, height_scale;
         glfwGetWindowContentScale(window, &width_scale, &height_scale);
-
-        // IMGUI_CHECKVERSION();
-        // ImGui::CreateContext();
-        // ImGuiIO &io = ImGui::GetIO();
-
-        // auto dpi_scale = std::max(width_scale, height_scale);
-        // ImFontConfig font_cfg {};
-        // font_cfg.SizePixels = kImguiFontSize * dpi_scale;
-        // imgui_curr_font_ = io.Fonts->AddFontDefault(&font_cfg);
-        // imgui_fonts_[dpi_scale] = imgui_curr_font_;
-
-        // ImGui::StyleColorsClassic();
-        // imgui_last_scale_ = dpi_scale;
-        // ImGui::GetStyle().ScaleAllSizes(dpi_scale);
-
-        // ImGui_ImplGlfw_InitForOpenGL(window_, true);
-        // ImGui_ImplOpenGL3_Init("#version 330");
     }
 
     auto platform_handle() const -> PlatformWindowHandle {
 #ifdef _WIN32
         return PlatformWindowHandle{
-            .win32_window = glfwGetWin32Window(window)
+            .win32_window = glfwGetWin32Window(window),
         };
 #endif
     }
@@ -105,24 +85,30 @@ struct Window::Impl final {
     }
 
     auto register_mouse_callback(Window& self, MouseCallback&& callback) -> MouseCallbackHandle {
-        return MouseCallbackHandle{&self, mouse_callbacks.insert(std::move(callback))};
-    }
-    auto unregister_mouse_callback(size_t index) -> void {
-        mouse_callbacks.remove(index);
+        return MouseCallbackHandle{
+            mouse_callbacks.insert(std::move(callback)),
+            [this](size_t index) {
+                mouse_callbacks.remove(index);
+            },
+        };
     }
 
     auto register_key_callback(Window& self, KeyCallback&& callback) -> KeyCallbackHandle {
-        return KeyCallbackHandle{&self, key_callbacks.insert(std::move(callback))};
-    }
-    auto unregister_key_callback(size_t index) -> void {
-        key_callbacks.remove(index);
+        return KeyCallbackHandle{
+            key_callbacks.insert(std::move(callback)),
+            [this](size_t index) {
+                key_callbacks.remove(index);
+            },
+        };
     }
 
     auto register_resize_callback(Window& self, ResizeCallback&& callback) -> ResizeCallbackHandle {
-        return ResizeCallbackHandle{&self, resize_callbacks.insert(std::move(callback))};
-    }
-    auto unregister_resize_callback(size_t index) -> void {
-        resize_callbacks.remove(index);
+        return ResizeCallbackHandle{
+            resize_callbacks.insert(std::move(callback)),
+            [this](size_t index) {
+                resize_callbacks.remove(index);
+            },
+        };
     }
 
     Window* api_window = nullptr;
@@ -220,22 +206,13 @@ auto Window::raw_glfw_window() const -> GLFWwindow* {
 auto Window::register_mouse_callback(MouseCallback&& callback) -> MouseCallbackHandle {
     return impl()->register_mouse_callback(*this, std::move(callback));
 }
-auto Window::unregister_mouse_callback(size_t index) -> void {
-    impl()->unregister_mouse_callback(index);
-}
 
 auto Window::register_key_callback(KeyCallback&& callback) -> KeyCallbackHandle {
     return impl()->register_key_callback(*this, std::move(callback));
 }
-auto Window::unregister_key_callback(size_t index) -> void {
-    impl()->unregister_key_callback(index);
-}
 
 auto Window::register_resize_callback(ResizeCallback&& callback) -> ResizeCallbackHandle {
     return impl()->register_resize_callback(*this, std::move(callback));
-}
-auto Window::unregister_resize_callback(size_t index) -> void {
-    impl()->unregister_resize_callback(index);
 }
 
 }

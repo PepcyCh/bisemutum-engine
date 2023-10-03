@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include <bisemutum/window/window.hpp>
+#include <bisemutum/window/window_manager.hpp>
 #include <bisemutum/window/imgui_renderer.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/rhi/device.hpp>
@@ -77,15 +78,9 @@ Engine* g_engine = nullptr;
 struct Engine::Impl final {
     Impl() : window(1600, 900, "Bisemutum Engine") {
         register_loggers(logger_manager);
-        register_components(component_manager);
-        register_assets(asset_manager);
-        register_renderers(graphics_manager);
     }
 
     auto initialize(int argc, char** argv) -> bool {
-        // `register_systems` needs engine to be fully constructed
-        register_systems(ecs_manager);
-
         if (!mount_engine_path()) { return false; }
 
         auto opt = parse_options(argc, argv);
@@ -93,6 +88,10 @@ struct Engine::Impl final {
             log::critical("general", "Project file is not specified.");
             return false;
         }
+        is_editor_mode = opt.editor;
+
+        do_register();
+
         auto project_info_opt = read_project_file(opt.project_file);
         if (!project_info_opt) { return false; }
         auto& project_info = project_info_opt.value();
@@ -147,6 +146,12 @@ struct Engine::Impl final {
         file_system.mount("/bisemutum/", rt::PhysicalSubFileSystem{engine_path, false});
         return true;
     }
+    auto do_register() -> void {
+        register_components(component_manager);
+        register_assets(asset_manager);
+        register_systems(ecs_manager);
+        register_renderers(graphics_manager);
+    }
     auto read_project_file(char const* project_file_path) -> Option<ProjectInfo> {
         std::string project_file_str{};
         {
@@ -176,6 +181,7 @@ struct Engine::Impl final {
     auto execute() -> void {
         frame_timer.reset();
         window.main_loop([this]() {
+            window_manager.new_frame();
             frame_timer.tick();
             ecs_manager.tick();
             graphics_manager.render_frame();
@@ -187,6 +193,7 @@ struct Engine::Impl final {
     rt::LoggerManager logger_manager;
 
     Window window;
+    WindowManager window_manager;
     Dyn<IEngineUI>::Box ui;
 
     rt::FrameTimer frame_timer;
@@ -200,6 +207,8 @@ struct Engine::Impl final {
     rt::ComponentManager component_manager;
     rt::AssetManager asset_manager;
     rt::World world;
+
+    bool is_editor_mode = false;
 };
 
 Engine::Engine() = default;
@@ -213,8 +222,15 @@ auto Engine::execute() -> void {
     impl()->execute();
 }
 
+auto Engine::is_editor_mode() const -> bool {
+    return impl()->is_editor_mode;
+}
+
 auto Engine::window() -> Ref<Window> {
     return impl()->window;
+}
+auto Engine::window_manager() -> Ref<WindowManager> {
+    return impl()->window_manager;
 }
 auto Engine::imgui_renderer() -> Ref<ImGuiRenderer> {
     return impl()->imgui_renderer;
