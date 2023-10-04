@@ -64,8 +64,8 @@ struct DeviceD3D12 final : Device {
 
     auto allocator() const -> D3D12MA::Allocator* { return allocator_; }
 
-    auto rtv_heap() const -> Ref<DescriptorHeapD3D12> { return rtv_heap_.ref(); }
-    auto dsv_heap() const -> Ref<DescriptorHeapD3D12> { return dsv_heap_.ref(); }
+    auto rtv_heap() const -> Ref<RenderTargetDescriptorHeapD3D12> { return rtv_heap_.ref(); }
+    auto dsv_heap() const -> Ref<RenderTargetDescriptorHeapD3D12> { return dsv_heap_.ref(); }
 
 private:
     auto initialize_device_properties() -> void;
@@ -89,8 +89,8 @@ private:
 
     D3D12MA::Allocator* allocator_ = nullptr;
 
-    Box<DescriptorHeapD3D12> rtv_heap_;
-    Box<DescriptorHeapD3D12> dsv_heap_;
+    Box<RenderTargetDescriptorHeapD3D12> rtv_heap_;
+    Box<RenderTargetDescriptorHeapD3D12> dsv_heap_;
 };
 
 }

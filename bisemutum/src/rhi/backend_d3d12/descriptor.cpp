@@ -1,5 +1,7 @@
 #include "descriptor.hpp"
 
+#include <bisemutum/runtime/logger.hpp>
+
 #include "device.hpp"
 
 namespace bi::rhi {
@@ -25,53 +27,69 @@ DescriptorHeapD3D12::DescriptorHeapD3D12(Ref<DeviceD3D12> device, DescriptorHeap
     }
 }
 
-DescriptorHeapD3D12::DescriptorHeapD3D12(Ref<DeviceD3D12> device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t max_count)
-    : device_(device), type_(type)
-{
-    D3D12_DESCRIPTOR_HEAP_DESC heap_desc{
-        .Type = type_,
-        .NumDescriptors = max_count,
-        .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-        .NodeMask = 0,
-    };
-    device_->raw()->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&heap_));
-
-    descriptor_size_ = device->raw()->GetDescriptorHandleIncrementSize(type_);
-    max_size_ = max_count * descriptor_size_;
-    start_handle_.cpu = heap_->GetCPUDescriptorHandleForHeapStart().ptr;
-}
-
 auto DescriptorHeapD3D12::size_of_descriptor(DescriptorType type) const -> uint32_t {
     return descriptor_size_;
 }
 
-auto DescriptorHeapD3D12::allocate_descriptor(DescriptorType type) -> DescriptorHandle {
-    return allocate_descriptor_single();
-}
-
-auto DescriptorHeapD3D12::allocate_descriptor(BindGroupLayout const& layout) -> DescriptorHandle {
+auto DescriptorHeapD3D12::size_of_descriptor(BindGroupLayout const& layout) const -> uint32_t {
     uint32_t size = 0;
     for (auto const& entry : layout) {
         size += descriptor_size_ * entry.count;
     }
-    if (size == 0) { return {}; }
-    if (bytes_used_ + size > max_size_) { return {}; }
-    DescriptorHandle handle{
-        .cpu = start_handle_.cpu + bytes_used_,
-        .gpu = start_handle_.gpu ? start_handle_.gpu + bytes_used_ : 0,
-    };
-    bytes_used_ += size;
-    return handle;
+    return size;
 }
 
-auto DescriptorHeapD3D12::allocate_descriptor_single() -> DescriptorHandle {
-    if (bytes_used_ + descriptor_size_ > max_size_) { return {}; }
-    DescriptorHandle handle{
-        .cpu = start_handle_.cpu + bytes_used_,
-        .gpu = start_handle_.gpu ? start_handle_.gpu + bytes_used_ : 0,
-    };
-    bytes_used_ += descriptor_size_;
-    return handle;
+RenderTargetDescriptorHeapD3D12::RenderTargetDescriptorHeapD3D12(
+    Ref<DeviceD3D12> device, D3D12_DESCRIPTOR_HEAP_TYPE type
+)
+    : device_(device), type_(type)
+{
+    descriptor_size_ = device->raw()->GetDescriptorHandleIncrementSize(type_);
+}
+
+auto RenderTargetDescriptorHeapD3D12::allocate() -> uint64_t {
+    uint64_t addr = 0;
+    for (auto& heap : heaps_) {
+        if (!heap.recycled.empty()) {
+            addr = heap.recycled.back();
+            heap.recycled.pop_back();
+        } else if (heap.curr < heap.top) {
+            addr = heap.curr;
+            heap.curr += descriptor_size_;
+        }
+        if (addr != 0) {
+            break;
+        }
+    }
+    if (addr == 0) {
+        auto& heap = heaps_.emplace_back();
+        D3D12_DESCRIPTOR_HEAP_DESC heap_desc{
+            .Type = type_,
+            .NumDescriptors = 65536,
+            .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+            .NodeMask = 0,
+        };
+        device_->raw()->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&heap.heap));
+        heap.start = heap.heap->GetCPUDescriptorHandleForHeapStart().ptr;
+        heap.curr = heap.start + descriptor_size_;
+        heap.top = heap.start + heap_desc.NumDescriptors * descriptor_size_;
+        addr = heap.start;
+    }
+    return addr;
+}
+
+auto RenderTargetDescriptorHeapD3D12::free(uint64_t descriptor) -> void {
+    size_t index = 0;
+    uint64_t min_diff = std::numeric_limits<uint64_t>::max();
+    for (size_t i = 0; i < heaps_.size(); i++) {
+        auto diff = descriptor - heaps_[i].start;
+        if (diff < min_diff) {
+            min_diff = diff;
+            index = i;
+        }
+    }
+    BI_ASSERT(min_diff < 65536 * descriptor_size_);
+    heaps_[index].recycled.push_back(descriptor);
 }
 
 }

@@ -183,12 +183,6 @@ DeviceVulkan::~DeviceVulkan() {
     vkDestroyInstance(instance_, nullptr);
 }
 
-auto DeviceVulkan::initialize_device_properties() -> void {
-    device_properties_.gpu_name = physical_device_props_.deviceName;
-    device_properties_.max_num_bind_groups = physical_device_props_.limits.maxBoundDescriptorSets;
-    device_properties_.separate_sampler_heap = support_descriptor_buffer_;
-}
-
 auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
     uint32_t num_physical_device;
     vkEnumeratePhysicalDevices(instance_, &num_physical_device, nullptr);
@@ -340,6 +334,13 @@ auto DeviceVulkan::init_allocator() -> void {
     allocator_ci.pVulkanFunctions = &vk_functions;
     allocator_ci.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaCreateAllocator(&allocator_ci, &allocator_);
+}
+
+auto DeviceVulkan::initialize_device_properties() -> void {
+    device_properties_.gpu_name = physical_device_props_.deviceName;
+    device_properties_.max_num_bind_groups = physical_device_props_.limits.maxBoundDescriptorSets;
+    device_properties_.separate_sampler_heap = support_descriptor_buffer_;
+    device_properties_.descriptor_heap_suballocation = support_descriptor_buffer_;
 }
 
 auto DeviceVulkan::init_descriptor_sizes() -> void {

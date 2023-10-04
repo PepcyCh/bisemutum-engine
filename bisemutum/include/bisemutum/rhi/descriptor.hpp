@@ -82,10 +82,19 @@ struct DescriptorHeapDesc final {
 struct DescriptorHeap {
     virtual ~DescriptorHeap() = default;
 
-    virtual auto size_of_descriptor(DescriptorType type) const -> uint32_t = 0;
+    virtual auto total_heap_size() const -> uint64_t = 0;
 
-    virtual auto allocate_descriptor(DescriptorType type) -> DescriptorHandle = 0;
-    virtual auto allocate_descriptor(BindGroupLayout const& layout) -> DescriptorHandle = 0;
+    virtual auto size_of_descriptor(DescriptorType type) const -> uint32_t = 0;
+    virtual auto size_of_descriptor(BindGroupLayout const& layout) const -> uint32_t = 0;
+    virtual auto alignment_of_descriptor(DescriptorType type) const -> uint32_t = 0;
+    virtual auto alignment_of_descriptor(BindGroupLayout const& layout) const -> uint32_t = 0;
+
+    virtual auto start_address() const -> DescriptorHandle = 0;
+
+    virtual auto allocate_descriptor_at(DescriptorHandle handle, DescriptorType type) -> void {}
+    virtual auto allocate_descriptor_at(DescriptorHandle handle, BindGroupLayout const& layout) -> void {}
+    virtual auto free_descriptor_at(DescriptorHandle handle) -> void {}
+    virtual auto reset() -> void {}
 };
 
 struct RenderTargetTextureDesc final {

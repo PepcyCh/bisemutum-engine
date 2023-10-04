@@ -482,7 +482,7 @@ private:
         size_t size;
     };
     std::vector<UniformRange> uniform_ranges_;
-    uint64_t last_update_frame_ = 0;
+    uint32_t last_update_frame_ = 0xffffffffu;
     uint32_t dirty_count_ = 0;
     bool allocated_ = false;
 };

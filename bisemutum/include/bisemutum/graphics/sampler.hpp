@@ -11,6 +11,7 @@ struct GraphicsManager;
 
 struct Sampler final {
     Sampler() = default;
+    ~Sampler();
 
     auto initialize(rhi::SamplerDesc const& desc) -> void;
 

@@ -59,6 +59,8 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
 
     auto wait_idle() -> void;
 
+    auto new_frame() -> void;
+
     template <typename Renderer>
     auto register_renderer() -> void {
         register_renderer(std::string{Renderer::renderer_type_name}, []() -> Dyn<IRenderer>::Box { return Renderer{}; });
@@ -112,8 +114,9 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
 
     auto swapchain_format() const -> rhi::ResourceFormat;
     auto num_frames_in_flight() const -> uint32_t;
+    auto curr_frame_index() const -> uint32_t;
 
-    auto get_descriptors_for(
+    auto get_gpu_descriptor_for(
         std::vector<rhi::DescriptorHandle> cpu_descriptors,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle;
@@ -124,9 +127,9 @@ private:
     friend Buffer;
     friend Texture;
     friend Sampler;
-    auto curr_frame_index() const -> uint32_t;
-    auto cpu_resource_descriptor_heap() -> Ref<rhi::DescriptorHeap>;
-    auto cpu_sampler_descriptor_heap() -> Ref<rhi::DescriptorHeap>;
+    auto allocate_cpu_descriptor(rhi::DescriptorType type) -> rhi::DescriptorHandle;
+    auto free_cpu_resource_descriptor(rhi::DescriptorHandle descriptor) -> void;
+    auto free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void;
 
     friend GraphicsPassContext;
     auto compile_pipeline_for_drawable(

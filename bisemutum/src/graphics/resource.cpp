@@ -43,6 +43,10 @@ Buffer::Buffer(rhi::BufferDesc const& desc, bool with_staging_buffer)
     }
 }
 
+Buffer::~Buffer() {
+    reset();
+}
+
 auto Buffer::has_value() const -> bool {
     return buffer_ || !staging_buffers_.empty();
 }
@@ -50,8 +54,8 @@ auto Buffer::has_value() const -> bool {
 auto Buffer::reset() -> void {
     buffer_.reset();
     staging_buffers_.clear();
-    // TODO - free cpu descriptors
-    cpu_descriptors_.clear();
+
+    free_all_cpu_descriptors();
 }
 
 auto Buffer::rhi_buffer() -> Ref<rhi::Buffer> {
@@ -76,6 +80,7 @@ auto Buffer::resize(uint64_t size) -> void {
     auto desc = this->desc();
     desc.size = size;
     if (buffer_) {
+        free_all_cpu_descriptors();
         buffer_ = g_engine->graphics_manager()->device()->create_buffer(desc);
         if (!with_staging_buffer_) {
             return;
@@ -88,6 +93,8 @@ auto Buffer::resize(uint64_t size) -> void {
         desc.usages = {};
         desc.memory_property = rhi::BufferMemoryProperty::cpu_to_gpu;
         desc.persistently_mapped = true;
+    } else {
+        free_cpu_descriptors_at_frame(staging_buffer_start_index_);
     }
     staging_buffer = g_engine->graphics_manager()->device()->create_buffer(desc);
 }
@@ -98,6 +105,7 @@ auto Buffer::update_staging_buffer_size() -> void {
     auto index = g_engine->graphics_manager()->curr_frame_index();
     auto& staging_buffer = staging_buffers_[index];
     if (!staging_buffer || staging_buffer->desc().size != desired_size_) {
+        free_cpu_descriptors_at_frame(index);
         staging_buffer = g_engine->graphics_manager()->device()->create_buffer(
             staging_buffers_[staging_buffer_start_index_]->desc()
         );
@@ -216,7 +224,7 @@ auto Buffer::get_descriptor(details::BufferDescriptorKey&& key) -> rhi::Descript
         return it->second;
     }
 
-    auto handle = g_engine->graphics_manager()->cpu_resource_descriptor_heap()->allocate_descriptor(key.type);
+    auto handle = g_engine->graphics_manager()->allocate_cpu_descriptor(key.type);
     g_engine->graphics_manager()->device()->create_descriptor(
         rhi::BufferDescriptorDesc{
             .buffer = key.buffer_frame_index == ~0u ? buffer_.ref() : staging_buffers_[key.buffer_frame_index].ref(),
@@ -232,12 +240,35 @@ auto Buffer::get_descriptor(details::BufferDescriptorKey&& key) -> rhi::Descript
     return handle;
 }
 
+auto Buffer::free_all_cpu_descriptors() -> void {
+    for (auto& [_, desc] : cpu_descriptors_) {
+        g_engine->graphics_manager()->free_cpu_resource_descriptor(desc);
+    }
+    cpu_descriptors_.clear();
+}
+auto Buffer::free_cpu_descriptors_at_frame(uint32_t frame_index) -> void {
+    std::vector<decltype(cpu_descriptors_)::iterator> deleted_descriptors;
+    for (auto it = cpu_descriptors_.begin(); it != cpu_descriptors_.end(); ++it) {
+        if (it->first.buffer_frame_index == frame_index) {
+            deleted_descriptors.push_back(it);
+            g_engine->graphics_manager()->free_cpu_resource_descriptor(it->second);
+        }
+    }
+    for (auto it : deleted_descriptors) {
+        cpu_descriptors_.erase(it);
+    }
+}
+
 
 Texture::Texture(rhi::TextureDesc const& desc) {
     texture_ = g_engine->graphics_manager()->device()->create_texture(desc);
 }
 
 Texture::Texture(Ref<rhi::Texture> imported_texture) : imported_texture_(imported_texture) {}
+
+Texture::~Texture() {
+    reset();
+}
 
 auto Texture::has_value() const -> bool {
     return texture_ || imported_texture_;
@@ -246,6 +277,10 @@ auto Texture::has_value() const -> bool {
 auto Texture::reset() -> void {
     texture_.reset();
     imported_texture_ = nullptr;
+
+    for (auto& [_, desc] : cpu_descriptors_) {
+        g_engine->graphics_manager()->free_cpu_resource_descriptor(desc);
+    }
     cpu_descriptors_.clear();
 }
 
@@ -298,7 +333,7 @@ auto Texture::get_descriptor(details::TextureDescriptorKey&& key) -> rhi::Descri
         return it->second;
     }
 
-    auto handle = g_engine->graphics_manager()->cpu_resource_descriptor_heap()->allocate_descriptor(key.type);
+    auto handle = g_engine->graphics_manager()->allocate_cpu_descriptor(key.type);
     g_engine->graphics_manager()->device()->create_descriptor(
         rhi::TextureDescriptorDesc{
             .texture = rhi_texture(),

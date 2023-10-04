@@ -11,9 +11,12 @@ auto Sampler::initialize(rhi::SamplerDesc const& desc) -> void {
 
     sampler_ = g_engine->graphics_manager()->device()->create_sampler(desc);
 
-    cpu_descriptor_ =
-        g_engine->graphics_manager()->cpu_sampler_descriptor_heap()->allocate_descriptor(rhi::DescriptorType::sampler);
+    cpu_descriptor_ = g_engine->graphics_manager()->allocate_cpu_descriptor(rhi::DescriptorType::sampler);
     g_engine->graphics_manager()->device()->create_descriptor(sampler_.ref(), cpu_descriptor_);
+}
+
+Sampler::~Sampler() {
+    reset();
 }
 
 auto Sampler::has_value() const -> bool {
@@ -22,8 +25,11 @@ auto Sampler::has_value() const -> bool {
 
 auto Sampler::reset() -> void {
     sampler_.reset();
-    // TODO - free cpu descriptors
-    cpu_descriptor_ = {};
+
+    if (cpu_descriptor_.cpu != 0) {
+        g_engine->graphics_manager()->free_cpu_sampler_descriptor(cpu_descriptor_);
+        cpu_descriptor_ = {};
+    }
 }
 
 }

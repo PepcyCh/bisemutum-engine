@@ -182,6 +182,7 @@ struct Engine::Impl final {
         frame_timer.reset();
         window.main_loop([this]() {
             window_manager.new_frame();
+            graphics_manager.new_frame();
             frame_timer.tick();
             ecs_manager.tick();
             graphics_manager.render_frame();

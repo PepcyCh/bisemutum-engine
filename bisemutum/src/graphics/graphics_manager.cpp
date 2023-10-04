@@ -13,6 +13,7 @@
 #include <bisemutum/prelude/math.hpp>
 #include <fmt/format.h>
 
+#include "descriptor_allocator.hpp"
 #include "descriptor_sets.hpp"
 #include "command_helpers.hpp"
 
@@ -27,10 +28,13 @@ namespace bi::gfx {
 
 namespace {
 
-constexpr uint32_t cpu_resource_desc_heap_size = 8192;
-constexpr uint32_t gpu_resource_desc_heap_size = 2048;
-constexpr uint32_t cpu_sampler_desc_heap_size = 1024;
-constexpr uint32_t gpu_sampler_desc_heap_size = 1024;
+constexpr uint32_t cpu_resource_desc_heap_size = 65536;
+constexpr uint32_t cpu_sampler_desc_heap_size = 16384;
+
+constexpr uint32_t gpu_resource_desc_heap_size = 65536;
+constexpr uint32_t gpu_sampler_desc_heap_size = 2048;
+constexpr uint32_t gpu_resource_desc_heap_chunk_size = 16384;
+constexpr uint32_t gpu_sampler_desc_heap_chunk_size = 512;
 
 }
 
@@ -65,29 +69,26 @@ struct GraphicsManager::Impl final {
             }
         );
 
-        cpu_resource_heap = device->create_descriptor_heap(rhi::DescriptorHeapDesc{
-            .max_count = cpu_resource_desc_heap_size,
-            .type = rhi::DescriptorHeapType::resource,
-            .shader_visible = false,
-        });
-        cpu_sampler_heap = device->create_descriptor_heap(rhi::DescriptorHeapDesc{
-            .max_count = cpu_sampler_desc_heap_size,
-            .type = rhi::DescriptorHeapType::sampler,
-            .shader_visible = false,
-        });
+        cpu_resource_descriptor_allocator = Box<CpuDescriptorAllocator>::make(
+            device.ref(), rhi::DescriptorHeapType::resource, cpu_resource_desc_heap_size
+        );
+        cpu_sampler_descriptor_allocator = Box<CpuDescriptorAllocator>::make(
+            device.ref(), rhi::DescriptorHeapType::sampler, cpu_sampler_desc_heap_size
+        );
+
+        gpu_resource_descriptor_allocator = Box<GpuDescriptorAllocator>::make(
+            device.ref(), rhi::DescriptorHeapType::resource,
+            gpu_resource_desc_heap_size, gpu_resource_desc_heap_chunk_size,
+            settings.num_swapchain_textures, 1
+        );
+        gpu_sampler_descriptor_allocator = Box<GpuDescriptorAllocator>::make(
+            device.ref(), rhi::DescriptorHeapType::sampler,
+            gpu_sampler_desc_heap_size, gpu_sampler_desc_heap_chunk_size,
+            settings.num_swapchain_textures, 1
+        );
 
         rhi::CommandPoolDesc cmd_pool_desc{
             .queue = graphics_queue.value(),
-        };
-        rhi::DescriptorHeapDesc gpu_resource_heap_desc{
-            .max_count = gpu_resource_desc_heap_size,
-            .type = rhi::DescriptorHeapType::resource,
-            .shader_visible = true,
-        };
-        rhi::DescriptorHeapDesc gpu_sampler_heap_desc{
-            .max_count = gpu_sampler_desc_heap_size,
-            .type = rhi::DescriptorHeapType::sampler,
-            .shader_visible = true,
         };
         frame_data.resize(settings.num_swapchain_textures);
         for (auto& fd : frame_data) {
@@ -95,8 +96,6 @@ struct GraphicsManager::Impl final {
             fd.signal_semaphore = device->create_semaphore();
             fd.fence = device->create_fence();
             fd.graphics_cmd_pool = device->create_command_pool(cmd_pool_desc);
-            fd.resource_heap = device->create_descriptor_heap(gpu_resource_heap_desc);
-            fd.sampler_heap = device->create_descriptor_heap(gpu_sampler_heap_desc);
         }
         immediate_execution_fence = device->create_fence();
 
@@ -165,13 +164,24 @@ struct GraphicsManager::Impl final {
         if (auto it = samplers.find(desc); it != samplers.end()) {
             return it->second;
         }
-        auto& sampler = samplers.insert({desc, Sampler{}}).first->second;
+        auto& sampler = samplers.try_emplace(desc).first->second;
         sampler.initialize(desc);
         return sampler;
     }
 
+    auto new_frame() -> void {
+        frame_index = frame_index + 1 == frame_data.size() ? 0 : frame_index + 1;
+        auto& fd = curr_frame_data();
+
+        swapchain->acquire_next_texture(fd.acquire_semaphore.ref());
+        fd.fence->wait();
+        fd.graphics_cmd_pool->reset();
+        fd.cached_descriptors.clear();
+        gpu_resource_descriptor_allocator->reset(curr_frame_index());
+        gpu_sampler_descriptor_allocator->reset(curr_frame_index());
+    }
+
     auto render_frame() -> void {
-        // if (!renderer.has_value() || !displayer.has_value() || !displayer->is_valid()) { return; }
         if (!renderer.has_value() || !displayer.has_value()) { return; }
 
         auto& fd = curr_frame_data();
@@ -191,24 +201,18 @@ struct GraphicsManager::Impl final {
             }
         }
 
-        swapchain->acquire_next_texture(fd.acquire_semaphore.ref());
-        fd.fence->wait();
         if (fd.camera_semaphores.size() < num_enabled_camera) {
             for (size_t i = fd.camera_semaphores.size(); i < num_enabled_camera; i++) {
                 fd.camera_semaphores.push_back(device->create_semaphore());
             }
         }
-        fd.graphics_cmd_pool->reset();
 
         // Render each camera
         for (size_t camera_index = 0; auto& camera : cameras) {
             if (!camera.enabled) { continue; }
 
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
-            cmd_encoder->set_descriptor_heaps({
-                fd.resource_heap.ref(),
-                fd.sampler_heap.ref(),
-            });
+            set_descriptor_heaps(cmd_encoder);
             curr_cmd_encoder = cmd_encoder.ref();
             render_graph.set_command_encoder(cmd_encoder.ref());
 
@@ -237,10 +241,7 @@ struct GraphicsManager::Impl final {
             auto swapchain_rhi_texture = swapchain->current_texture();
             Texture swapchain_texture{swapchain_rhi_texture};
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
-            cmd_encoder->set_descriptor_heaps({
-                fd.resource_heap.ref(),
-                fd.sampler_heap.ref(),
-            });
+            set_descriptor_heaps(cmd_encoder);
             curr_cmd_encoder = cmd_encoder.ref();
 
             cmd_encoder->resource_barriers({}, {
@@ -288,13 +289,19 @@ struct GraphicsManager::Impl final {
     auto execute_immediately(std::function<auto(Ref<rhi::CommandEncoder>) -> void>&& func) -> void {
         auto& fd = curr_frame_data();
         auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
-        cmd_encoder->set_descriptor_heaps({
-            fd.resource_heap.ref(),
-            fd.sampler_heap.ref(),
-        });
+        set_descriptor_heaps(cmd_encoder);
         func(cmd_encoder.ref());
         graphics_queue->submit_command_buffer({cmd_encoder->finish()}, {}, {}, immediate_execution_fence.ref());
         immediate_execution_fence->wait();
+    }
+
+    auto set_descriptor_heaps(Box<rhi::CommandEncoder>& cmd_encoder) -> void {
+        cmd_encoder->set_descriptor_heaps({
+            // fd.resource_heap.ref(),
+            // fd.sampler_heap.ref(),
+            gpu_resource_descriptor_allocator->heap(),
+            gpu_sampler_descriptor_allocator->heap(),
+        });
     }
 
     auto blit_texture_2d(
@@ -312,6 +319,20 @@ struct GraphicsManager::Impl final {
         MipmapMode mode
     ) -> void {
         command_helpers.generate_mipmaps_2d(cmd_encoder, texture, texture_access, mode);
+    }
+
+    auto allocate_cpu_descriptor(rhi::DescriptorType type) -> rhi::DescriptorHandle {
+        if (type != rhi::DescriptorType::sampler) {
+            return cpu_resource_descriptor_allocator->allocate(type);
+        } else {
+            return cpu_sampler_descriptor_allocator->allocate(type);
+        }
+    }
+    auto free_cpu_resource_descriptor(rhi::DescriptorHandle descriptor) -> void {
+        cpu_resource_descriptor_allocator->free(descriptor);
+    }
+    auto free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void {
+        cpu_sampler_descriptor_allocator->free(descriptor);
     }
 
     auto compile_pipeline_for_drawable(
@@ -534,7 +555,7 @@ struct GraphicsManager::Impl final {
         return pipeline_it->second.ref();
     }
 
-    auto get_descriptors_for(
+    auto get_gpu_descriptor_for(
         std::vector<rhi::DescriptorHandle>&& cpu_descriptors,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle {
@@ -545,23 +566,32 @@ struct GraphicsManager::Impl final {
 
         rhi::DescriptorHandle handle;
         if (device->properties().separate_sampler_heap && layout[0].type == rhi::DescriptorType::sampler) {
-            handle = fd.sampler_heap->allocate_descriptor(layout);
+            handle = gpu_sampler_descriptor_allocator->allocate(layout, curr_frame_index());
         } else {
-            handle = fd.resource_heap->allocate_descriptor(layout);
+            handle = gpu_resource_descriptor_allocator->allocate(layout, curr_frame_index());
         }
         device->copy_descriptors(handle, cpu_descriptors, layout);
         fd.cached_descriptors.insert({std::move(cpu_descriptors), handle});
         return handle;
     }
 
+    auto curr_frame_index() const -> uint32_t {
+        return frame_index;
+    }
     struct FrameData;
     auto curr_frame_data() -> FrameData& {
-        return frame_data[g_engine->window()->frame_count() % frame_data.size()];
+        return frame_data[curr_frame_index()];
     }
 
     Box<rhi::Device> device;
     Ptr<rhi::Queue> graphics_queue;
     Ptr<rhi::Queue> compute_queue;
+
+    Box<CpuDescriptorAllocator> cpu_resource_descriptor_allocator;
+    Box<CpuDescriptorAllocator> cpu_sampler_descriptor_allocator;
+
+    Box<GpuDescriptorAllocator> gpu_resource_descriptor_allocator;
+    Box<GpuDescriptorAllocator> gpu_sampler_descriptor_allocator;
 
     ShaderCompiler shader_compiler;
     CommandHelpers command_helpers;
@@ -573,8 +603,6 @@ struct GraphicsManager::Impl final {
     Dyn<IRenderer>::Box renderer;
     Dyn<IDisplayer>::Ptr displayer = nullptr;
 
-    Box<rhi::DescriptorHeap> cpu_resource_heap;
-    Box<rhi::DescriptorHeap> cpu_sampler_heap;
     struct FrameData final {
         Box<rhi::Semaphore> acquire_semaphore;
         Box<rhi::Semaphore> signal_semaphore;
@@ -582,10 +610,9 @@ struct GraphicsManager::Impl final {
         std::vector<Box<rhi::Semaphore>> camera_semaphores;
 
         Box<rhi::CommandPool> graphics_cmd_pool;
-        Box<rhi::DescriptorHeap> resource_heap;
-        Box<rhi::DescriptorHeap> sampler_heap;
         std::unordered_map<std::vector<rhi::DescriptorHandle>, rhi::DescriptorHandle> cached_descriptors;
     };
+    uint32_t frame_index = 0;
     std::vector<FrameData> frame_data;
     Box<rhi::Fence> immediate_execution_fence;
     Ptr<rhi::CommandEncoder> curr_cmd_encoder;
@@ -608,6 +635,10 @@ auto GraphicsManager::initialize(GraphicsSettings const& settings) -> void {
 
 auto GraphicsManager::wait_idle() -> void {
     impl()->wait_idle();
+}
+
+auto GraphicsManager::new_frame() -> void {
+    impl()->new_frame();
 }
 
 auto GraphicsManager::register_renderer(
@@ -707,14 +738,17 @@ auto GraphicsManager::num_frames_in_flight() const -> uint32_t {
     return impl()->frame_data.size();
 }
 auto GraphicsManager::curr_frame_index() const -> uint32_t {
-    return g_engine->window()->frame_count() % impl()->frame_data.size();
+    return impl()->curr_frame_index();
 }
 
-auto GraphicsManager::cpu_resource_descriptor_heap() -> Ref<rhi::DescriptorHeap> {
-    return impl()->cpu_resource_heap.ref();
+auto GraphicsManager::allocate_cpu_descriptor(rhi::DescriptorType type) -> rhi::DescriptorHandle {
+    return impl()->allocate_cpu_descriptor(type);
 }
-auto GraphicsManager::cpu_sampler_descriptor_heap() -> Ref<rhi::DescriptorHeap> {
-    return impl()->cpu_sampler_heap.ref();
+auto GraphicsManager::free_cpu_resource_descriptor(rhi::DescriptorHandle descriptor) -> void {
+    impl()->free_cpu_resource_descriptor(descriptor);
+}
+auto GraphicsManager::free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void {
+    impl()->free_cpu_sampler_descriptor(descriptor);
 }
 
 auto GraphicsManager::compile_pipeline_for_drawable(
@@ -723,11 +757,11 @@ auto GraphicsManager::compile_pipeline_for_drawable(
     return impl()->compile_pipeline_for_drawable(graphics_context, camera, drawable, fs);
 }
 
-auto GraphicsManager::get_descriptors_for(
+auto GraphicsManager::get_gpu_descriptor_for(
     std::vector<rhi::DescriptorHandle> cpu_descriptors,
     rhi::BindGroupLayout const& layout
 ) -> rhi::DescriptorHandle {
-    return impl()->get_descriptors_for(std::move(cpu_descriptors), layout);
+    return impl()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
 }
 
 }

@@ -262,8 +262,8 @@ auto ShaderParameter::reset() -> void {
 }
 
 auto ShaderParameter::update_uniform_buffer() -> void {
-    auto need_to_update = g_engine->window()->frame_count() != last_update_frame_;
-    last_update_frame_ = g_engine->window()->frame_count();
+    auto need_to_update = g_engine->graphics_manager()->curr_frame_index() != last_update_frame_;
+    last_update_frame_ = g_engine->graphics_manager()->curr_frame_index();
     if (need_to_update && dirty_count_ > 0) {
         std::vector<Buffer::DataSetDesc> data_set_descs(uniform_ranges_.size());
         for (size_t i = 0; i < uniform_ranges_.size(); i++) {
@@ -281,7 +281,7 @@ auto ShaderParameter::data() const -> std::byte const* {
 }
 auto ShaderParameter::mutable_data() -> std::byte* {
     dirty_count_ = g_engine->graphics_manager()->num_frames_in_flight();
-    last_update_frame_ = 0;
+    last_update_frame_ = 0xffffffffu;
     return data_start_;
 }
 
@@ -290,7 +290,7 @@ auto ShaderParameter::data_offset(size_t offset) const -> std::byte const* {
 }
 auto ShaderParameter::mutable_data_offset(size_t offset) -> std::byte* {
     dirty_count_ = g_engine->graphics_manager()->num_frames_in_flight();
-    last_update_frame_ = 0;
+    last_update_frame_ = 0xffffffffu;
     return data_start_ + offset;
 }
 

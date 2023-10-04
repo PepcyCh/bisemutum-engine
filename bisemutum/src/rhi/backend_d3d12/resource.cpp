@@ -152,6 +152,12 @@ TextureD3D12::TextureD3D12(
 }
 
 TextureD3D12::~TextureD3D12() {
+    auto heap = is_color_format(desc_.format) ? device_->rtv_heap() : device_->dsv_heap();
+    for (auto& [_, descriptor] : rtv_dsv_) {
+        heap->free(descriptor);
+    }
+    rtv_dsv_.clear();
+
     if (allocation_) {
         allocation_->Release();
         allocation_ = nullptr;
@@ -190,7 +196,7 @@ auto TextureD3D12::get_render_target_view(
     if (create) {
         auto is_color = is_color_format(desc_.format);
         auto heap = is_color ? device_->rtv_heap() : device_->dsv_heap();
-        auto descriptor = heap->allocate_descriptor_single();
+        auto descriptor = heap->allocate();
         if (is_color) {
             D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{
                 .Format = format,
@@ -229,7 +235,7 @@ auto TextureD3D12::get_render_target_view(
                     break;
                 default: unreachable();
             }
-            device_->raw()->CreateRenderTargetView(resource_.Get(), &rtv_desc, {descriptor.cpu});
+            device_->raw()->CreateRenderTargetView(resource_.Get(), &rtv_desc, {descriptor});
         } else {
             D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{
                 .Format = format,
@@ -261,9 +267,9 @@ auto TextureD3D12::get_render_target_view(
                     break;
                 default: unreachable();
             }
-            device_->raw()->CreateDepthStencilView(resource_.Get(), &dsv_desc, {descriptor.cpu});
+            device_->raw()->CreateDepthStencilView(resource_.Get(), &dsv_desc, {descriptor});
         }
-        view_it->second = descriptor.cpu;
+        view_it->second = descriptor;
     }
     return view_it->second;
 }

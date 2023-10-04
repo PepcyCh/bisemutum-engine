@@ -149,8 +149,8 @@ auto DeviceD3D12::create_queues() -> void {
 
 auto DeviceD3D12::create_cpu_descriptor_heaps() -> void {
     auto ref_this = unsafe_make_ref(this);
-    rtv_heap_ = Box<DescriptorHeapD3D12>::make(ref_this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1024);
-    dsv_heap_ = Box<DescriptorHeapD3D12>::make(ref_this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1024);
+    rtv_heap_ = Box<RenderTargetDescriptorHeapD3D12>::make(ref_this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    dsv_heap_ = Box<RenderTargetDescriptorHeapD3D12>::make(ref_this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 }
 
 auto DeviceD3D12::save_pso_cache() -> void {

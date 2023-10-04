@@ -362,7 +362,7 @@ struct ImGuiRenderer::Impl final {
 
                     auto texture = static_cast<gfx::Texture*>(pcmd->TextureId);
                     if (texture) {
-                        auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
+                        auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(
                             {texture->get_srv(0, 1, 0, 1)},
                             imgui_pipeline->desc().bind_groups_layout[0]
                         );

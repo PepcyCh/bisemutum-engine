@@ -58,9 +58,14 @@ DescriptorHeapVulkan::DescriptorHeapVulkan(Ref<DeviceVulkan> device, DescriptorH
         };
         VmaAllocationInfo allocation_info{};
         vmaCreateBuffer(device_->allocator(), &buffer_ci, &allocation_ci, &gpu_buffer_, &allocation_, &allocation_info);
-        mapped_cpu_buffer_ = reinterpret_cast<uint8_t*>(allocation_info.pMappedData);
+        mapped_cpu_buffer_ = reinterpret_cast<std::byte*>(allocation_info.pMappedData);
+
+        start_handle_.cpu = reinterpret_cast<uint64_t>(mapped_cpu_buffer_);
+        start_handle_.gpu = base_gpu_address();
     } else {
-        cpu_buffer_ = Box<uint8_t[]>::make(buffer_size);
+        cpu_buffer_ = Box<std::byte[]>::make(buffer_size);
+
+        start_handle_.cpu = reinterpret_cast<uint64_t>(cpu_buffer_.get());
     }
 }
 
@@ -78,36 +83,19 @@ auto DescriptorHeapVulkan::size_of_descriptor(DescriptorType type) const -> uint
         : device_->size_of_descriptor(type);
 }
 
-auto DescriptorHeapVulkan::allocate_descriptor(DescriptorType type) -> DescriptorHandle {
-    auto size = size_of_descriptor(type);
-    if (size == 0) { return {}; }
-    if (curr_pos_ + size > top_pos_) { return {}; }
-    DescriptorHandle handle{};
-    if (gpu_buffer_) {
-        handle.cpu = reinterpret_cast<uint64_t>(mapped_cpu_buffer_) + curr_pos_;
-        handle.gpu = base_gpu_address() + curr_pos_;
-    } else {
-        handle.cpu = reinterpret_cast<uint64_t>(cpu_buffer_.get()) + curr_pos_;
-    }
-    curr_pos_ += size;
-    return handle;
-}
-
-auto DescriptorHeapVulkan::allocate_descriptor(BindGroupLayout const& layout) -> DescriptorHandle {
+auto DescriptorHeapVulkan::size_of_descriptor(BindGroupLayout const& layout) const -> uint32_t {
     auto desc_set_layout = device_->require_descriptor_set_layout(layout);
     VkDeviceSize size = 0;
     vkGetDescriptorSetLayoutSizeEXT(device_->raw(), desc_set_layout, &size);
-    if (size == 0) { return {}; }
-    if (curr_pos_ + size > top_pos_) { return {}; }
-    DescriptorHandle handle{};
-    if (gpu_buffer_) {
-        handle.cpu = reinterpret_cast<uint64_t>(mapped_cpu_buffer_) + curr_pos_;
-        handle.gpu = base_gpu_address() + curr_pos_;
-    } else {
-        handle.cpu = reinterpret_cast<uint64_t>(cpu_buffer_.get()) + curr_pos_;
+    return size;
+}
+
+auto DescriptorHeapVulkan::alignment_of_descriptor(BindGroupLayout const& layout) const -> uint32_t {
+    uint32_t alignment = device_->descriptor_offset_alignment();
+    for (auto& entry : layout) {
+        alignment = std::max(alignment, size_of_descriptor(entry.type));
     }
-    curr_pos_ += size;
-    return handle;
+    return alignment;
 }
 
 auto DescriptorHeapVulkan::base_gpu_address() const -> uint64_t {
@@ -135,7 +123,7 @@ DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> 
     VkDescriptorPoolCreateInfo desc_pool_ci{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = nullptr,
-        .flags = 0,
+        .flags = desc.shader_visible ? 0u : VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = desc.max_count,
         .poolSizeCount = desc.type == DescriptorHeapType::sampler
             ? 1u
@@ -188,13 +176,15 @@ DescriptorHeapVulkanLegacy::~DescriptorHeapVulkanLegacy() {
     }
 }
 
-auto DescriptorHeapVulkanLegacy::size_of_descriptor(DescriptorType type) const -> uint32_t {
-    return 0;
+auto DescriptorHeapVulkanLegacy::start_address() const -> DescriptorHandle {
+    auto addr = reinterpret_cast<uint64_t>(allocated_sets_.data());
+    return DescriptorHandle{
+        .cpu = addr,
+        .gpu = addr,
+    };
 }
 
-auto DescriptorHeapVulkanLegacy::allocate_descriptor(DescriptorType type) -> DescriptorHandle {
-    if (curr_pos_ == allocated_sets_.size()) { return {}; }
-
+auto DescriptorHeapVulkanLegacy::allocate_descriptor_at(DescriptorHandle handle, DescriptorType type) -> void {
     if (type == DescriptorType::read_only_storage_buffer) {
         type = DescriptorType::read_write_storage_buffer;
     }
@@ -209,20 +199,11 @@ auto DescriptorHeapVulkanLegacy::allocate_descriptor(DescriptorType type) -> Des
         .descriptorSetCount = 1,
         .pSetLayouts = &single_descriptor_layouts_[static_cast<size_t>(type)],
     };
-    vkAllocateDescriptorSets(device_->raw(), &set_ci, &allocated_sets_[curr_pos_]);
-    ++curr_pos_;
-
-    return DescriptorHandle{
-        .cpu = reinterpret_cast<uint64_t>(&allocated_sets_[curr_pos_ - 1]),
-        .gpu = 0,
-    };
+    vkAllocateDescriptorSets(device_->raw(), &set_ci, reinterpret_cast<VkDescriptorSet*>(handle.cpu));
 }
 
-auto DescriptorHeapVulkanLegacy::allocate_descriptor(BindGroupLayout const& layout) -> DescriptorHandle {
-    if (curr_pos_ == allocated_sets_.size()) { return {}; }
-
+auto DescriptorHeapVulkanLegacy::allocate_descriptor_at(DescriptorHandle handle, BindGroupLayout const& layout) -> void {
     auto set_layout = device_->require_descriptor_set_layout(layout);
-
     VkDescriptorSetAllocateInfo set_ci{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext = nullptr,
@@ -230,14 +211,16 @@ auto DescriptorHeapVulkanLegacy::allocate_descriptor(BindGroupLayout const& layo
         .descriptorSetCount = 1,
         .pSetLayouts = &set_layout,
     };
-    vkAllocateDescriptorSets(device_->raw(), &set_ci, &allocated_sets_[curr_pos_]);
-    ++curr_pos_;
+    vkAllocateDescriptorSets(device_->raw(), &set_ci, reinterpret_cast<VkDescriptorSet*>(handle.cpu));
+}
 
-    auto addr = reinterpret_cast<uint64_t>(&allocated_sets_[curr_pos_ - 1]);
-    return DescriptorHandle{
-        .cpu = addr,
-        .gpu = addr,
-    };
+auto DescriptorHeapVulkanLegacy::free_descriptor_at(DescriptorHandle handle) -> void {
+    auto desc_set = *reinterpret_cast<VkDescriptorSet*>(handle.cpu);
+    vkFreeDescriptorSets(device_->raw(), desc_pool_, 1, &desc_set);
+}
+
+auto DescriptorHeapVulkanLegacy::reset() -> void {
+    vkResetDescriptorPool(device_->raw(), desc_pool_, 0);
 }
 
 auto DescriptorHeapVulkanLegacy::allocate_descriptor_raw(VkDescriptorSetLayout layout) -> VkDescriptorSet {

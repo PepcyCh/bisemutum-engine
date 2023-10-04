@@ -21,6 +21,7 @@ struct DeviceProperties final {
     std::string gpu_name;
     uint32_t max_num_bind_groups = ~0u;
     bool separate_sampler_heap : 1 = true;
+    bool descriptor_heap_suballocation : 1 = true;
     bool meshlet_pipeline : 1 = false;
     bool raytracing_pipeline : 1 = false;
 };

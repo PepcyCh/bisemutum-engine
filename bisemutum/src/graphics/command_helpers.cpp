@@ -55,7 +55,7 @@ auto CommandHelpers::blit_2d(
     graphics_encoder->set_scissors({scissor});
     graphics_encoder->set_pipeline(pipeline);
 
-    auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
+    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(
         {src->get_srv(src_mip_level, 1, src_array_layer, 1)},
         pipeline->desc().bind_groups_layout[0]
     );
@@ -104,7 +104,7 @@ auto CommandHelpers::generate_mipmaps_2d(
             graphics_encoder->set_scissors({scissor});
             graphics_encoder->set_pipeline(pipeline);
 
-            auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
+            auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(
                 {texture->get_srv(mip_level, 1)},
                 pipeline->desc().bind_groups_layout[0]
             );
@@ -143,7 +143,7 @@ auto CommandHelpers::generate_mipmaps_2d(
             graphics_encoder->set_scissors({scissor});
             graphics_encoder->set_pipeline(pipeline);
 
-            auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
+            auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(
                 {texture->get_srv(mip_level, 1)},
                 pipeline->desc().bind_groups_layout[0]
             );
@@ -164,7 +164,7 @@ auto CommandHelpers::generate_mipmaps_2d(
             );
             compute_encoder->set_pipeline(pipeline);
 
-            auto descriptor = g_engine->graphics_manager()->get_descriptors_for(
+            auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(
                 {texture->get_srv(mip_level, 1), texture->get_uav(mip_level + 1)},
                 pipeline->desc().bind_groups_layout[0]
             );

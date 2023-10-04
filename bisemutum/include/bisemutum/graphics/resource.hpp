@@ -49,6 +49,7 @@ struct ShaderParameterMetadata;
 struct Buffer final {
     Buffer() = default;
     Buffer(rhi::BufferDesc const& desc, bool with_staging_buffer = true);
+    ~Buffer();
 
     Buffer(Buffer&& rhs) noexcept = default;
     auto operator=(Buffer&& rhs) noexcept -> Buffer& = default;
@@ -89,6 +90,9 @@ private:
 
     auto get_descriptor(details::BufferDescriptorKey&& key) -> rhi::DescriptorHandle;
 
+    auto free_all_cpu_descriptors() -> void;
+    auto free_cpu_descriptors_at_frame(uint32_t frame_index) -> void;
+
     Box<rhi::Buffer> buffer_;
     std::vector<Box<rhi::Buffer>> staging_buffers_;
     uint64_t desired_size_;
@@ -101,6 +105,7 @@ private:
 struct Texture final {
     Texture() = default;
     Texture(rhi::TextureDesc const& desc);
+    ~Texture();
 
     Texture(Texture&& rhs) noexcept = default;
     auto operator=(Texture&& rhs) noexcept -> Texture& = default;

@@ -118,7 +118,7 @@ auto ResourceBindingContext::set_shader_params(
         curr_binding += count;
     }
 
-    auto descriptor = g_engine->graphics_manager()->get_descriptors_for(std::move(cpu_descriptors), layout);
+    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
     cmd_encoder->set_descriptors(set, {descriptor});
 }
 
@@ -148,7 +148,7 @@ auto ResourceBindingContext::set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_e
         p_entries += set_samplers.layout.size();
     }
 
-    auto descriptor = g_engine->graphics_manager()->get_descriptors_for(std::move(cpu_descriptors), layout);
+    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
     cmd_encoder->set_descriptors(set, {descriptor});
 }
 
