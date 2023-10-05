@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/containers/hash.hpp>
 #include <bisemutum/containers/slotmap.hpp>
@@ -50,12 +51,17 @@ struct WindowManager::Impl final {
         std::string_view name, std::function<auto(ImGuiWindowArgs const&) -> void>&& func,
         ImGuiWindowConfig const& config
     ) -> void {
+        auto dpi_scale = g_engine->window()->dpi_scale();
+
         auto wd_it = windows_data.find(name);
         if (wd_it == windows_data.end()) {
             wd_it = windows_data.insert({std::string{name}, {}}).first;
         }
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {config.padding, config.padding});
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_WindowPadding,
+            {config.padding * dpi_scale, config.padding * dpi_scale}
+        );
         auto enabled = ImGui::Begin(wd_it->first.c_str(), config.p_open);
         auto window_pos = ImGui::GetWindowPos();
         auto window_size = ImGui::GetWindowSize();
@@ -68,12 +74,11 @@ struct WindowManager::Impl final {
         ImGui::PopStyleVar();
 
         auto frame_size = WindowSize{static_cast<uint32_t>(window_size.x), static_cast<uint32_t>(window_size.y)};
-        auto dpi_scale = ImGui::GetWindowDpiScale();
         auto logic_size = WindowSize{
             static_cast<uint32_t>(window_size.x / dpi_scale),
             static_cast<uint32_t>(window_size.y / dpi_scale),
         };
-        if (wd_it->second.frame_size != frame_size) {
+        if (wd_it->second.logic_size != logic_size) {
             wd_it->second.on_resize = true;
             wd_it->second.frame_size = frame_size;
             wd_it->second.logic_size = logic_size;

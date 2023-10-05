@@ -19,7 +19,10 @@ struct SceneObject final {
     ~SceneObject();
 
     auto get_name() const -> std::string_view { return name_; }
+    auto get_name_cstr() const -> const char* { return name_.c_str(); }
     auto set_name(std::string_view name) -> void;
+
+    auto get_id() const -> uint32_t;
 
     auto world_transform() const -> Transform const&;
     auto local_transform() const -> Transform const&;

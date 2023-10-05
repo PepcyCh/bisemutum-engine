@@ -76,7 +76,7 @@ struct World::Impl final {
 
     auto load_scene(std::string_view scene_file_str) -> bool {
         auto scene = create_scene();
-        // try {
+        try {
             auto scene_value = serde::Value::from_toml(scene_file_str);
             auto& scene_objects_value = scene_value["objects"].get_ref<serde::Value::Array>();
             std::vector<Ref<SceneObject>> parsed_objects;
@@ -99,6 +99,9 @@ struct World::Impl final {
                         deserializer(parsed_objects.back(), component_value["value"]);
                     }
                 }
+                if (auto it = object_table.find("name"); it != object_table.end()) {
+                    parsed_objects.back()->set_name(it->second.get_ref<serde::Value::String>());
+                }
             }
             for (size_t i = 0; i < parsed_objects.size(); i++) {
                 if (objects_parent[i] >= 0 && objects_parent[i] < parsed_objects.size()) {
@@ -106,11 +109,11 @@ struct World::Impl final {
                 }
             }
             return true;
-        // } catch (std::exception const& e) {
-        //     destroy_scene(scene);
-        //     log::error("general", "Scene file is invalid: {}", e.what());
-        //     return false;
-        // }
+        } catch (std::exception const& e) {
+            destroy_scene(scene);
+            log::error("general", "Scene file is invalid: {}", e.what());
+            return false;
+        }
     }
 
     std::list<Scene> scenes;

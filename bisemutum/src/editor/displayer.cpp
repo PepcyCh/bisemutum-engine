@@ -5,6 +5,8 @@
 #include <imgui.h>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/ecs.hpp>
+#include <bisemutum/runtime/world.hpp>
+#include <bisemutum/runtime/scene.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/window/window.hpp>
@@ -103,12 +105,36 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         }
     );
 
-    wm->imgui_window("Hierarchy", [](ImGuiWindowArgs const& args) {
-        // TODO
+    wm->imgui_window("Hierarchy", [this](ImGuiWindowArgs const& args) {
+        auto scene = g_engine->world()->current_scene();
+        if (!scene) { return; }
+        std::function<auto(Ref<rt::SceneObject>) -> void> object_visitor =
+            [this, &object_visitor](Ref<rt::SceneObject> object) {
+                auto id = object->get_id();
+                auto is_selected = selected_object_ == object;
+                auto tree_flags = ImGuiTreeNodeFlags_SpanAvailWidth
+                    | (is_selected ? ImGuiTreeNodeFlags_Selected : 0);
+                auto tree_open = ImGui::TreeNodeEx(
+                    reinterpret_cast<void*>(id), tree_flags, "%s", object->get_name_cstr()
+                );
+                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+                    selected_object_ = object;
+                }
+                if (tree_open) {
+                    object->for_each_children(object_visitor);
+                    ImGui::TreePop();
+                }
+            };
+        scene->for_each_root_object(object_visitor);
     });
 
-    wm->imgui_window("Properties", [](ImGuiWindowArgs const& args) {
+    wm->imgui_window("Properties", [this](ImGuiWindowArgs const& args) {
         // TODO
+        if (!selected_object_) {
+            ImGui::Text("No object is selected.");
+        } else {
+            ImGui::Text("%s", selected_object_->get_name_cstr());
+        }
     });
 
     wm->imgui_window("Contents", [](ImGuiWindowArgs const& args) {
@@ -147,20 +173,20 @@ auto EditorDisplayer::move_editor_camera(Ref<gfx::Camera> camera, float delta_ti
 
     float angle_horizontal = 0.0f;
     float angle_vertical = 0.0f;
-    static constexpr float turn_speed = 0.5f;
+    static constexpr float turn_speed = 2.0f;
 
-    if (!camera_turning && ws->mouse_state(input::Mouse::right) == input::KeyState::press) {
-        camera_turning = true;
-        camera_turning_from = ws->cursor_pos();
+    if (!camera_turning_ && ws->mouse_state(input::Mouse::right) == input::KeyState::press) {
+        camera_turning_ = true;
+        camera_turning_from_ = ws->cursor_pos();
     }
-    if (camera_turning && ws->mouse_state(input::Mouse::right) == input::KeyState::press) {
+    if (camera_turning_ && ws->mouse_state(input::Mouse::right) == input::KeyState::press) {
         auto pos = ws->cursor_pos();
-        angle_horizontal = turn_speed * (camera_turning_from.x - pos.x) / ws->frame_size().width / ws->dpi_scale();
-        angle_vertical = turn_speed * (camera_turning_from.y - pos.y) / ws->frame_size().height / ws->dpi_scale();
-        pos = camera_turning_from;
+        angle_horizontal = turn_speed * (camera_turning_from_.x - pos.x) / ws->frame_size().width / ws->dpi_scale();
+        angle_vertical = turn_speed * (camera_turning_from_.y - pos.y) / ws->frame_size().height / ws->dpi_scale();
+        camera_turning_from_ = pos;
     }
-    if (camera_turning && ws->mouse_state(input::Mouse::right) == input::KeyState::release) {
-        camera_turning = false;
+    if (camera_turning_ && ws->mouse_state(input::Mouse::right) == input::KeyState::release) {
+        camera_turning_ = false;
     }
 
     auto front = camera->front_dir;

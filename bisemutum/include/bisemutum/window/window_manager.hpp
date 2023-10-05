@@ -11,7 +11,7 @@ namespace bi {
 
 struct ImGuiWindowConfig final {
     bool* p_open = nullptr;
-    float padding = 20.0f;
+    float padding = 8.0f;
 };
 
 struct ImGuiWindowArgs final {

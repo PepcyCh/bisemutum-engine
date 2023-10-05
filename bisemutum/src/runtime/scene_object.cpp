@@ -23,6 +23,10 @@ SceneObject::~SceneObject() {
     ecs_registry_->destroy(ecs_entity_);
 }
 
+auto SceneObject::get_id() const -> uint32_t {
+    return static_cast<uint32_t>(ecs_entity_);
+}
+
 auto SceneObject::world_transform() const -> Transform const& {
     std::vector<CRef<SceneObject>> parent_chains;
     parent_chains.push_back(unsafe_make_ref(this));

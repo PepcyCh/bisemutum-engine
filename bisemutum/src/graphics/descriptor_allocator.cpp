@@ -206,6 +206,8 @@ auto GpuDescriptorAllocator::create_suballocator(uint32_t frame_index, uint32_t 
     if (!recycled_chunks_.empty()) {
         chunk_id = recycled_chunks_.back();
         recycled_chunks_.pop_back();
+    } else {
+        ++curr_chunk_;
     }
     if (chunk_id >= num_chunks_) {
         log::critical("general",

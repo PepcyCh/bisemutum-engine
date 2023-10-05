@@ -4,6 +4,7 @@
 #include <bisemutum/graphics/resource.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/rhi/command.hpp>
+#include <bisemutum/runtime/scene_object.hpp>
 #include <bisemutum/window/window_manager.hpp>
 
 namespace bi {
@@ -24,8 +25,10 @@ private:
     gfx::CameraHandle scene_camera_ = gfx::CameraHandle::invalid;
     bool display_scene_camera_ = false;
 
-    bool camera_turning = false;
-    float2 camera_turning_from;
+    bool camera_turning_ = false;
+    float2 camera_turning_from_;
+
+    Ptr<rt::SceneObject> selected_object_ = nullptr;
 
     WindowManager::ResizeCallbackHandle editor_camera_resize_;
 };
