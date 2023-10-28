@@ -8,7 +8,7 @@
 #include "mipmap_mode.hpp"
 #include "../prelude/idiom.hpp"
 #include "../rhi/pipeline.hpp"
-#include "../utils/reflection.hpp"
+#include "../utils/srefl.hpp"
 
 namespace bi::rhi {
 

@@ -2,9 +2,16 @@
 
 #include "math.hpp"
 #include "bbox.hpp"
+#include "../prelude/ref.hpp"
 #include "../utils/serde.hpp"
 
 namespace bi {
+
+namespace rt {
+
+struct SceneObject;
+
+}
 
 struct Transform final {
     static constexpr std::string_view component_type_name = "Transform";
@@ -25,6 +32,8 @@ struct Transform final {
 
     static auto to_value(serde::Value &v, Transform const& o) -> void;
     static auto from_value(serde::Value const& v, Transform& o) -> void;
+
+    static auto editor(Ref<rt::SceneObject> object, Transform* component_value) -> bool;
 };
 
 BI_SREFL(

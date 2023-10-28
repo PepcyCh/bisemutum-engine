@@ -13,6 +13,14 @@ auto register_systems(Ref<rt::EcsManager> mgr) -> void;
 
 auto register_assets(Ref<rt::AssetManager> mgr) -> void;
 
+namespace drefl {
+
+struct ReflectionManager;
+
+}
+
+auto register_reflections(Ref<drefl::ReflectionManager> mgr) -> void;
+
 namespace gfx {
 
 struct GraphicsManager;

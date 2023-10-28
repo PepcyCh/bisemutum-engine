@@ -3,6 +3,8 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <bisemutum/math/math_serde.hpp>
+#include <bisemutum/runtime/scene_object.hpp>
+#include <bisemutum/editor/basic.hpp>
 
 namespace bi {
 
@@ -70,12 +72,30 @@ auto Transform::operator*(Transform const& rhs) const -> Transform {
     return from_matrix(matrix() * rhs.matrix());
 }
 
+auto Transform::editor(Ref<rt::SceneObject> object, Transform* component_value) -> bool {
+    float3 rotation{};
+    math::extractEulerAngleZXY(float4x4{component_value->rotation}, rotation.z, rotation.x, rotation.y);
+    rotation = math::degrees(rotation);
+    auto dirty = editor::edit_float3("translation", component_value->translation);
+    dirty |= editor::edit_float3("scaling", component_value->scaling);
+    auto rotation_dirty = editor::edit_float3("rotation", rotation);
+    if (rotation_dirty) {
+        dirty = true;
+        rotation = math::radians(rotation);
+        component_value->rotation = math::eulerAngleZXY(rotation.z, rotation.x, rotation.y);
+    }
+    if (dirty) {
+        object->notify_component_dirty<Transform>();
+    }
+    return dirty;
+}
+
 auto Transform::to_value(serde::Value &v, Transform const& o) -> void {
     serde::to_value(v["translation"], o.translation);
     serde::to_value(v["scaling"], o.scaling);
     float3 rotation{};
     math::extractEulerAngleZXY(float4x4{o.rotation}, rotation.z, rotation.x, rotation.y);
-    serde::to_value(v["rotation"], o.rotation);
+    serde::to_value(v["rotation"], math::degrees(rotation));
 }
 
 auto Transform::from_value(serde::Value const& v, Transform& o) -> void {

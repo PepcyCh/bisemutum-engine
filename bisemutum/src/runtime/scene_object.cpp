@@ -140,4 +140,15 @@ auto SceneObject::for_each_children(std::function<auto(CRef<SceneObject>) -> voi
     }
 }
 
+auto SceneObject::for_each_component(std::function<auto(std::string_view, void*) -> void> func) -> void {
+    for (auto& [name, value] : components_) {
+        func(name, value);
+    }
+}
+auto SceneObject::for_each_component(std::function<auto(std::string_view, void const*) -> void> func) const -> void {
+    for (auto& [name, value] : components_) {
+        func(name, value);
+    }
+}
+
 }

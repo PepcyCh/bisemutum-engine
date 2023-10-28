@@ -15,6 +15,7 @@
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/runtime/component_manager.hpp>
 #include <bisemutum/runtime/asset_manager.hpp>
+#include <bisemutum/utils/drefl.hpp>
 #include <bisemutum/platform/exe_dir.hpp>
 
 #include "register.hpp"
@@ -151,6 +152,7 @@ struct Engine::Impl final {
         register_assets(asset_manager);
         register_systems(ecs_manager);
         register_renderers(graphics_manager);
+        register_reflections(reflection_manager);
     }
     auto read_project_file(char const* project_file_path) -> Option<ProjectInfo> {
         std::string project_file_str{};
@@ -209,6 +211,8 @@ struct Engine::Impl final {
     rt::AssetManager asset_manager;
     rt::World world;
 
+    drefl::ReflectionManager reflection_manager;
+
     bool is_editor_mode = false;
 };
 
@@ -264,6 +268,9 @@ auto Engine::component_manager() -> Ref<rt::ComponentManager> {
 }
 auto Engine::asset_manager() -> Ref<rt::AssetManager> {
     return impl()->asset_manager;
+}
+auto Engine::reflection_manager() -> Ref<drefl::ReflectionManager> {
+    return impl()->reflection_manager;
 }
 
 

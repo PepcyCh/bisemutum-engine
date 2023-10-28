@@ -16,6 +16,12 @@ struct GraphicsManager;
 
 }
 
+namespace drefl {
+
+struct ReflectionManager;
+
+}
+
 struct Engine final : PImpl<Engine> {
     struct Impl;
 
@@ -43,6 +49,8 @@ struct Engine final : PImpl<Engine> {
     auto logger_manager() -> Ref<rt::LoggerManager>;
     auto component_manager() -> Ref<rt::ComponentManager>;
     auto asset_manager() -> Ref<rt::AssetManager>;
+
+    auto reflection_manager() -> Ref<drefl::ReflectionManager>;
 };
 
 extern Engine* g_engine;

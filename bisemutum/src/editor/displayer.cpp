@@ -7,6 +7,7 @@
 #include <bisemutum/runtime/ecs.hpp>
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
+#include <bisemutum/runtime/component_manager.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/window/window.hpp>
@@ -74,8 +75,10 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
 
     auto wm = g_engine->window_manager();
 
-    wm->imgui_window("Viewport Top Bar", [this](ImGuiWindowArgs const& args) {
+    wm->imgui_window("Viewport Top Bar", [this, &io](ImGuiWindowArgs const& args) {
         int use_scene_camera = display_scene_camera_;
+        ImGui::Text("%.3f ms | %.1f FPS", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::SameLine();
         ImGui::RadioButton("Editor", &use_scene_camera, 0);
         ImGui::SameLine();
         ImGui::RadioButton("Scene", &use_scene_camera, 1);
@@ -129,11 +132,18 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     });
 
     wm->imgui_window("Properties", [this](ImGuiWindowArgs const& args) {
-        // TODO
         if (!selected_object_) {
             ImGui::Text("No object is selected.");
         } else {
             ImGui::Text("%s", selected_object_->get_name_cstr());
+            bool edited = false;
+            selected_object_->for_each_component([this, &edited](std::string_view component_type_name, void* value) {
+                if (ImGui::TreeNode(component_type_name.data())) {
+                    auto& editor_func = g_engine->component_manager()->get_editor(component_type_name);
+                    edited = editor_func(selected_object_.value(), value);
+                    ImGui::TreePop();
+                }
+            });
         }
     });
 

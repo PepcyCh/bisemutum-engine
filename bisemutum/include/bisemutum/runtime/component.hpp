@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../utils/reflection.hpp"
+#include "../utils/srefl.hpp"
 
 namespace bi::rt {
 

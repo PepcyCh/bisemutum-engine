@@ -10,7 +10,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * [x] main loop
   * [x] some helpers
 * [x] RHI on Vulkan and D3D12
-  * [ ] ImGUI integration
+  * [x] ImGUI integration
   * [ ] tessellation
   * [ ] meshlet pipeline
   * [ ] raytracing pipeline
@@ -63,7 +63,7 @@ directly via xmake
 * Vulkan Memory Allocator (MIT)
 * D3D12 Memory Allocator (MIT)
 * DirectXShaderCompiler ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
-* Dear ImGui (MiT)
+* Dear ImGui (MIT)
 * crypto algorithms
 * stb
 * assimp ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))

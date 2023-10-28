@@ -57,11 +57,13 @@ struct SceneObject final {
 
     template <TComponent Component>
     auto attach_component(Component&& component) -> void {
-        ecs_registry_->emplace<Component>(ecs_entity_, std::move(component));
+        auto& comp = ecs_registry_->emplace<Component>(ecs_entity_, std::move(component));
+        components_[Component::component_type_name] = &comp;
     }
     template <TComponent Component>
     auto dettach_component() -> void {
         ecs_registry_->remove<Component>(ecs_entity_);
+        components_.erase(Component::component_type_name);
     }
 
     template <TComponent Component>
@@ -80,6 +82,13 @@ struct SceneObject final {
     auto update_component(std::function<auto(Component&) -> void> func) -> void {
         ecs_registry_->patch<Component>(ecs_entity_, std::move(func));
     }
+    template <TComponent Component>
+    auto notify_component_dirty() -> void {
+        ecs_registry_->patch<Component>(ecs_entity_, [](Component&) {});
+    }
+
+    auto for_each_component(std::function<auto(std::string_view, void*) -> void> func) -> void;
+    auto for_each_component(std::function<auto(std::string_view, void const*) -> void> func) const -> void;
 
 private:
     friend TransformSystem;
@@ -100,6 +109,8 @@ private:
     Ptr<SceneObject> last_child_ = nullptr;
     Ptr<SceneObject> next_sibling_ = nullptr;
     Ptr<SceneObject> prev_sibling_ = nullptr;
+
+    std::unordered_map<std::string_view, void*> components_;
 };
 
 }
