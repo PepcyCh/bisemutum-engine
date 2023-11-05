@@ -16,6 +16,7 @@
 #include <bisemutum/runtime/component_manager.hpp>
 #include <bisemutum/runtime/asset_manager.hpp>
 #include <bisemutum/utils/drefl.hpp>
+#include <bisemutum/editor/menu_manager.hpp>
 #include <bisemutum/platform/exe_dir.hpp>
 
 #include "register.hpp"
@@ -153,6 +154,7 @@ struct Engine::Impl final {
         register_systems(ecs_manager);
         register_renderers(graphics_manager);
         register_reflections(reflection_manager);
+        register_menu_actions(menu_manager);
     }
     auto read_project_file(char const* project_file_path) -> Option<ProjectInfo> {
         std::string project_file_str{};
@@ -212,6 +214,7 @@ struct Engine::Impl final {
     rt::World world;
 
     drefl::ReflectionManager reflection_manager;
+    editor::MenuManager menu_manager;
 
     bool is_editor_mode = false;
 };
@@ -271,6 +274,9 @@ auto Engine::asset_manager() -> Ref<rt::AssetManager> {
 }
 auto Engine::reflection_manager() -> Ref<drefl::ReflectionManager> {
     return impl()->reflection_manager;
+}
+auto Engine::menu_manager() -> Ref<editor::MenuManager> {
+    return impl()->menu_manager;
 }
 
 

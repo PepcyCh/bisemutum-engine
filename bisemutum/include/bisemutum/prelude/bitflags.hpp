@@ -30,11 +30,11 @@ struct BitFlags final {
         return *this;
     }
 
-    constexpr auto set(BitFlags<E> rhs) noexcept -> BitFlags<E> & {
+    constexpr auto set(BitFlags<E> rhs) noexcept -> BitFlags<E>& {
         value_ |= rhs.value_;
         return *this;
     }
-    constexpr auto clear(BitFlags<E> rhs) noexcept -> BitFlags<E> & {
+    constexpr auto clear(BitFlags<E> rhs) noexcept -> BitFlags<E>& {
         value_ &= ~rhs.value_;
         return *this;
     }

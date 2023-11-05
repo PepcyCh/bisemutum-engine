@@ -22,6 +22,12 @@ struct ReflectionManager;
 
 }
 
+namespace editor {
+
+struct MenuManager;
+
+}
+
 struct Engine final : PImpl<Engine> {
     struct Impl;
 
@@ -51,6 +57,8 @@ struct Engine final : PImpl<Engine> {
     auto asset_manager() -> Ref<rt::AssetManager>;
 
     auto reflection_manager() -> Ref<drefl::ReflectionManager>;
+
+    auto menu_manager() -> Ref<editor::MenuManager>;
 };
 
 extern Engine* g_engine;

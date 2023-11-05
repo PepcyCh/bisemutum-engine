@@ -1,8 +1,8 @@
 add_requires("fmt", "spdlog", "glm", "entt", "magic_enum")
 add_requires("glfw", "directxshadercompiler", "crypto-algorithms")
 add_requires("vulkan-headers", "vulkan-memory-allocator")
-add_requires("imgui v1.89.9-docking", {configs = {glfw = true}})
 add_requires("nlohmann_json", "toml++", "assimp", "mikktspace", "stb")
+add_requires("imgui v1.89.9-docking", {configs = {glfw = true}})
 if is_plat("windows") then
     add_requires("d3d12-memory-allocator")
 end
@@ -18,6 +18,7 @@ target("bisemutum-lib")
 
     add_deps("anyany", {public = true})
     add_deps("pep-cprep")
+    add_deps("imgui-file-dialog")
 
     add_packages("fmt", "spdlog", "glm", "entt", "magic_enum", "imgui", {public = true})
     add_packages("glfw", "directxshadercompiler", "crypto-algorithms")

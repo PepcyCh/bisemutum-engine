@@ -29,4 +29,12 @@ struct GraphicsManager;
 
 auto register_renderers(Ref<gfx::GraphicsManager> mgr) -> void;
 
+namespace editor {
+
+struct MenuManager;
+
+}
+
+auto register_menu_actions(Ref<editor::MenuManager> mgr) -> void;
+
 }

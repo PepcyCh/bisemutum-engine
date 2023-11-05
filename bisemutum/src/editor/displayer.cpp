@@ -12,6 +12,7 @@
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/window/imgui_renderer.hpp>
+#include <bisemutum/editor/menu_manager.hpp>
 #include <bisemutum/scene_basic/camera_system.hpp>
 
 namespace bi {
@@ -46,11 +47,19 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
 
     auto& io = ImGui::GetIO();
 
+    if (ImGui::BeginMainMenuBar()) {
+        editor::MenuActionContext ctx{
+            .file_dialog = file_dialog_,
+        };
+        g_engine->menu_manager()->display(ctx);
+        ImGui::EndMainMenuBar();
+    }
+
     ImGui::SetNextWindowSize({
         static_cast<float>(target_texture->desc().extent.width),
         static_cast<float>(target_texture->desc().extent.height),
     });
-    ImGui::SetNextWindowPos({0.0f, 0.0f});
+    ImGui::SetNextWindowPos({0.0f, 20.0f});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
     ImGui::Begin(
         "##Global", nullptr,
@@ -58,6 +67,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
             | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking
     );
     ImGui::DockSpace(ImGui::GetID("Dockspace"));
+    ImGui::PopStyleVar();
 
     auto camera_system = g_engine->ecs_manager()->get_system<CameraSystem>();
     auto scene_camera_handle = camera_system->main_camera_handle();
@@ -68,7 +78,6 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
 
     if (!is_valid()) {
         ImGui::End();
-        ImGui::PopStyleVar();
         g_engine->imgui_renderer()->render_draw_data(cmd_encoder, target_texture);
         return;
     }
@@ -151,8 +160,9 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         // TODO
     });
 
+    file_dialog_.update();
+
     ImGui::End();
-    ImGui::PopStyleVar();
     g_engine->imgui_renderer()->render_draw_data(cmd_encoder, target_texture);
 }
 

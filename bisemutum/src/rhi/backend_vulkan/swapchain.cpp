@@ -157,6 +157,10 @@ void SwapchainVulkan::create_swapchain(uint32_t width, uint32_t height, VkSurfac
 }
 
 void SwapchainVulkan::resize(uint32_t width, uint32_t height) {
+    VkSurfaceCapabilitiesKHR surface_caps{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device_->raw_physical_device(), surface_, &surface_caps);
+    width = surface_caps.currentExtent.width;
+    height = surface_caps.currentExtent.height;
     if (width != width_ || height != height_) {
         create_swapchain(width, height, transform_);
     }

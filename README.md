@@ -51,6 +51,7 @@ in source
 * AnyAny (Apache-2.0)
 * volk (MIT)
 * pep-cprep (MIT)
+* ImGui File Dialog (MIT)
 
 directly via xmake
 

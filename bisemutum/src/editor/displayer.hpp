@@ -6,6 +6,7 @@
 #include <bisemutum/rhi/command.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
 #include <bisemutum/window/window_manager.hpp>
+#include <bisemutum/editor/file_dialog.hpp>
 
 namespace bi {
 
@@ -31,6 +32,8 @@ private:
     Ptr<rt::SceneObject> selected_object_ = nullptr;
 
     WindowManager::ResizeCallbackHandle editor_camera_resize_;
+
+    editor::FileDialog file_dialog_;
 };
 
 }

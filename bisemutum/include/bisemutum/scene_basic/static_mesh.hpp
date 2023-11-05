@@ -61,11 +61,21 @@ struct StaticMesh final {
     auto texcoord_at(size_t index) const -> float2 const& { return texcoords_[index]; }
     auto index_at(size_t index) const -> uint32_t { return indices_[index]; }
 
+    auto resize(size_t num_vertices, size_t num_indices) -> void;
     auto set_position_at(size_t index, float3 const& data) -> void;
     auto set_normal_at(size_t index, float3 const& data) -> void;
     auto set_tangent_at(size_t index, float4 const& data) -> void;
     auto set_texcoord_at(size_t index, float2 const& data) -> void;
     auto set_index_at(size_t index, uint32_t data) -> void;
+
+    auto set_positions_raw(float3 const* data) -> void;
+    auto set_normals_raw(float3 const* data) -> void;
+    auto set_tangents_raw(float4 const* data) -> void;
+    auto set_texcoords_raw(float2 const* data) -> void;
+    auto set_indices_raw(uint32_t const* data) -> void;
+    auto set_bouding_box_raw(float3 const& p_min, float3 const& p_max) -> void;
+
+    auto calculate_tspace() -> void;
 
     auto update_gpu_buffer() -> void;
 
