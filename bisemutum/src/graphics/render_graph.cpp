@@ -70,8 +70,8 @@ struct TexturePool final {
 auto need_barrier(BitFlags<rhi::ResourceAccessType> from, BitFlags<rhi::ResourceAccessType> to) -> bool {
     return from != to
         || (
-            from.contains(rhi::ResourceAccessType::storage_resource_write)
-            && to.contains(rhi::ResourceAccessType::storage_resource_write)
+            from.contains_any(rhi::ResourceAccessType::storage_resource_write)
+            && to.contains_any(rhi::ResourceAccessType::storage_resource_write)
         );
 }
 
@@ -262,8 +262,8 @@ struct RenderGraph::Impl final {
             auto mat_is_opaque = drawable.material->blend_mode == BlendMode::opaque
                 || drawable.material->blend_mode == BlendMode::alpha_test;
             if (
-                (desc.type.contains(RenderedObjectType::opaque) && mat_is_opaque)
-                || (desc.type.contains(RenderedObjectType::transparent) && !mat_is_opaque)
+                (desc.type.contains_any(RenderedObjectType::opaque) && mat_is_opaque)
+                || (desc.type.contains_any(RenderedObjectType::transparent) && !mat_is_opaque)
             ) {
                 drawables.push_back(drawable);
             }
@@ -592,11 +592,11 @@ auto get_shader_barriers(
     for (auto handle : read_buffers) {
         auto& pool_buffer = rg.pool_buffer(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
-        if (pool_buffer.buffer->desc().usages.contains(rhi::BufferUsage::uniform)) {
+        if (pool_buffer.buffer->desc().usages.contains_any(rhi::BufferUsage::uniform)) {
             target_access.set(rhi::ResourceAccessType::uniform_buffer_read);
-        } else if (pool_buffer.buffer->desc().usages.contains(rhi::BufferUsage::indirect)) {
+        } else if (pool_buffer.buffer->desc().usages.contains_any(rhi::BufferUsage::indirect)) {
             target_access.set(rhi::ResourceAccessType::indirect_read);
-        } else if (pool_buffer.buffer->desc().usages.contains(rhi::BufferUsage::storage_read)) {
+        } else if (pool_buffer.buffer->desc().usages.contains_any(rhi::BufferUsage::storage_read)) {
             // Only add storage_resource_read when buffer cannot be used as others
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
@@ -612,9 +612,9 @@ auto get_shader_barriers(
     for (auto handle : read_textures) {
         auto& pool_texture = rg.pool_texture(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
-        if (pool_texture.texture->desc().usages.contains(rhi::TextureUsage::sampled)) {
+        if (pool_texture.texture->desc().usages.contains_any(rhi::TextureUsage::sampled)) {
             target_access.set(rhi::ResourceAccessType::sampled_texture_read);
-        } else if (pool_texture.texture->desc().usages.contains(rhi::TextureUsage::storage_read)) {
+        } else if (pool_texture.texture->desc().usages.contains_any(rhi::TextureUsage::storage_read)) {
             // Only add storage_resource_read when texture cannot be used as a sampled texture
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
@@ -630,7 +630,7 @@ auto get_shader_barriers(
     for (auto handle : write_buffers) {
         auto& pool_buffer = rg.pool_buffer(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
-        if (pool_buffer.buffer->desc().usages.contains(rhi::BufferUsage::storage_read_write)) {
+        if (pool_buffer.buffer->desc().usages.contains_any(rhi::BufferUsage::storage_read_write)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_write);
         }
         if (need_barrier(pool_buffer.access, target_access)) {
@@ -645,7 +645,7 @@ auto get_shader_barriers(
     for (auto handle : write_textures) {
         auto& pool_texture = rg.pool_texture(handle);
         BitFlags<rhi::ResourceAccessType> target_access{};
-        if (pool_texture.texture->desc().usages.contains(rhi::TextureUsage::storage_read_write)) {
+        if (pool_texture.texture->desc().usages.contains_any(rhi::TextureUsage::storage_read_write)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_write);
         }
         if (need_barrier(pool_texture.access, target_access)) {

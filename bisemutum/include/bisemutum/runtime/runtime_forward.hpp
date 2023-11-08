@@ -5,7 +5,7 @@ namespace bi::rt {
 struct World;
 struct FrameTimer;
 struct ModuleManager;
-struct EcsManager;
+struct SystemManager;
 struct FileSystem;
 struct LoggerManager;
 struct ComponentManager;

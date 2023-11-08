@@ -2,16 +2,14 @@
 
 #include <fmt/format.h>
 #include <bisemutum/runtime/scene.hpp>
-#include <bisemutum/runtime/ecs.hpp>
 #include <bisemutum/engine/engine.hpp>
 
 namespace bi::rt {
 
 SceneObject::SceneObject(Ref<Scene> scene, bool with_transform)
-    : scene_(scene), ecs_registry_(g_engine->ecs_manager()->ecs_registry())
+    : scene_(scene), ecs_registry_(scene->ecs_registry())
 {
     ecs_entity_ = ecs_registry_->create();
-    g_engine->ecs_manager()->add_scene_object(unsafe_make_ref(this), ecs_entity_);
     if (with_transform) {
         attach_component(Transform{});
     }
@@ -19,7 +17,6 @@ SceneObject::SceneObject(Ref<Scene> scene, bool with_transform)
 }
 
 SceneObject::~SceneObject() {
-    g_engine->ecs_manager()->remove_scene_object(ecs_entity_);
     ecs_registry_->destroy(ecs_entity_);
 }
 
@@ -99,7 +96,7 @@ auto SceneObject::remove_self_from_sibling_list(bool add_to_root) -> void {
         parent_->first_child_ = next_sibling_;
     }
     if (add_to_root && parent_) {
-        scene_->add_root_object(unsafe_make_ref(this));
+        scene_->detach_as_root_object(unsafe_make_ref(this));
     }
     parent_ = nullptr;
     next_sibling_ = nullptr;
@@ -124,7 +121,7 @@ auto SceneObject::extract_all_children() -> void {
             object->next_sibling_ = nullptr;
             object->prev_sibling_ = nullptr;
             object->parent_ = nullptr;
-            scene_->add_root_object(object);
+            scene_->detach_as_root_object(object);
         });
     }
 }

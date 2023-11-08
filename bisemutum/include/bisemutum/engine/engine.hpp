@@ -50,7 +50,7 @@ struct Engine final : PImpl<Engine> {
     auto world() -> Ref<rt::World>;
     auto frame_timer() -> Ref<rt::FrameTimer>;
     auto module_manager() -> Ref<rt::ModuleManager>;
-    auto ecs_manager() -> Ref<rt::EcsManager>;
+    auto system_manager() -> Ref<rt::SystemManager>;
     auto file_system() -> Ref<rt::FileSystem>;
     auto logger_manager() -> Ref<rt::LoggerManager>;
     auto component_manager() -> Ref<rt::ComponentManager>;

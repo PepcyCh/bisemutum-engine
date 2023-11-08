@@ -1,6 +1,6 @@
 #include "register.hpp"
 
-#include <bisemutum/runtime/ecs.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 
 #include <bisemutum/runtime/transform_system.hpp>
 
@@ -9,7 +9,7 @@
 
 namespace bi {
 
-auto register_systems(Ref<rt::EcsManager> mgr) -> void {
+auto register_systems(Ref<rt::SystemManager> mgr) -> void {
     mgr->register_system<rt::TransformSystem>();
 
     mgr->register_system<CameraSystem>();

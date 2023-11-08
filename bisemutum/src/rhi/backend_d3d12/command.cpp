@@ -37,27 +37,27 @@ auto pop_label_impl(ID3D12GraphicsCommandList4* cmd_list) -> void {
 auto to_dx_buffer_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_STATES {
     auto states = D3D12_RESOURCE_STATE_COMMON;
     if (
-        type.contains(ResourceAccessType::vertex_buffer_read)
-        || type.contains(ResourceAccessType::uniform_buffer_read)
+        type.contains_any(ResourceAccessType::vertex_buffer_read)
+        || type.contains_any(ResourceAccessType::uniform_buffer_read)
     ) {
         states |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     }
-    if (type.contains(ResourceAccessType::index_buffer_read)) {
+    if (type.contains_any(ResourceAccessType::index_buffer_read)) {
         states |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
     }
-    if (type.contains(ResourceAccessType::indirect_read)) {
+    if (type.contains_any(ResourceAccessType::indirect_read)) {
         states |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
     }
-    if (type.contains(ResourceAccessType::storage_resource_read)) {
+    if (type.contains_any(ResourceAccessType::storage_resource_read)) {
         states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     }
-    if (type.contains(ResourceAccessType::depth_stencil_attachment_write)) {
+    if (type.contains_any(ResourceAccessType::depth_stencil_attachment_write)) {
         states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     }
-    if (type.contains(ResourceAccessType::transfer_read)) {
+    if (type.contains_any(ResourceAccessType::transfer_read)) {
         states |= D3D12_RESOURCE_STATE_COPY_SOURCE;
     }
-    if (type.contains(ResourceAccessType::transfer_write)) {
+    if (type.contains_any(ResourceAccessType::transfer_write)) {
         states |= D3D12_RESOURCE_STATE_COPY_DEST;
     }
     return states;
@@ -66,39 +66,39 @@ auto to_dx_buffer_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_STA
 auto to_dx_texture_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_STATES {
     auto states = D3D12_RESOURCE_STATE_COMMON;
     if (
-        type.contains(ResourceAccessType::sampled_texture_read)
-        || type.contains(ResourceAccessType::storage_resource_read)
+        type.contains_any(ResourceAccessType::sampled_texture_read)
+        || type.contains_any(ResourceAccessType::storage_resource_read)
     ) {
         states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     }
-    if (type.contains(ResourceAccessType::storage_resource_write)) {
+    if (type.contains_any(ResourceAccessType::storage_resource_write)) {
         states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     }
     if (
-        type.contains(ResourceAccessType::color_attachment_read)
-        || type.contains(ResourceAccessType::color_attachment_write)
+        type.contains_any(ResourceAccessType::color_attachment_read)
+        || type.contains_any(ResourceAccessType::color_attachment_write)
     ) {
         states |= D3D12_RESOURCE_STATE_RENDER_TARGET;
     }
-    if (type.contains(ResourceAccessType::depth_stencil_attachment_read)) {
+    if (type.contains_any(ResourceAccessType::depth_stencil_attachment_read)) {
         states |= D3D12_RESOURCE_STATE_DEPTH_READ;
     }
-    if (type.contains(ResourceAccessType::depth_stencil_attachment_write)) {
+    if (type.contains_any(ResourceAccessType::depth_stencil_attachment_write)) {
         states |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
     }
-    if (type.contains(ResourceAccessType::transfer_read)) {
+    if (type.contains_any(ResourceAccessType::transfer_read)) {
         states |= D3D12_RESOURCE_STATE_COPY_SOURCE;
     }
-    if (type.contains(ResourceAccessType::transfer_write)) {
+    if (type.contains_any(ResourceAccessType::transfer_write)) {
         states |= D3D12_RESOURCE_STATE_COPY_DEST;
     }
-    if (type.contains(ResourceAccessType::resolve_read)) {
+    if (type.contains_any(ResourceAccessType::resolve_read)) {
         states |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
     }
-    if (type.contains(ResourceAccessType::resolve_write)) {
+    if (type.contains_any(ResourceAccessType::resolve_write)) {
         states |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
     }
-    if (type.contains(ResourceAccessType::present)) {
+    if (type.contains_any(ResourceAccessType::present)) {
         states |= D3D12_RESOURCE_STATE_PRESENT;
     }
     return states;

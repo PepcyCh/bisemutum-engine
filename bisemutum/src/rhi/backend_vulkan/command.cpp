@@ -36,38 +36,38 @@ auto to_vk_buffer_access_type(
 ) -> void {
     type_vk = 0;
     stage_vk = 0;
-    if (type.contains(ResourceAccessType::vertex_buffer_read)) {
+    if (type.contains_any(ResourceAccessType::vertex_buffer_read)) {
         type_vk |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
     }
-    if (type.contains(ResourceAccessType::index_buffer_read)) {
+    if (type.contains_any(ResourceAccessType::index_buffer_read)) {
         type_vk |= VK_ACCESS_2_INDEX_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
     }
-    if (type.contains(ResourceAccessType::indirect_read)) {
+    if (type.contains_any(ResourceAccessType::indirect_read)) {
         type_vk |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
     }
-    if (type.contains(ResourceAccessType::uniform_buffer_read)) {
+    if (type.contains_any(ResourceAccessType::uniform_buffer_read)) {
         type_vk |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
             | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
     }
-    if (type.contains(ResourceAccessType::storage_resource_read)) {
+    if (type.contains_any(ResourceAccessType::storage_resource_read)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
             | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
     }
-    if (type.contains(ResourceAccessType::storage_resource_write)) {
+    if (type.contains_any(ResourceAccessType::storage_resource_write)) {
         type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
             | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
     }
-    if (type.contains(ResourceAccessType::transfer_read)) {
+    if (type.contains_any(ResourceAccessType::transfer_read)) {
         type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
-    if (type.contains(ResourceAccessType::transfer_write)) {
+    if (type.contains_any(ResourceAccessType::transfer_write)) {
         type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
@@ -80,66 +80,66 @@ auto to_vk_image_access_type(
     type_vk = 0;
     stage_vk = 0;
     layout_vk = VK_IMAGE_LAYOUT_UNDEFINED;
-    if (type.contains(ResourceAccessType::sampled_texture_read)) {
+    if (type.contains_any(ResourceAccessType::sampled_texture_read)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
             | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         layout_vk = is_depth_stencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
             : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::storage_resource_read)) {
+    if (type.contains_any(ResourceAccessType::storage_resource_read)) {
         type_vk |= VK_ACCESS_2_SHADER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
             | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         layout_vk = VK_IMAGE_LAYOUT_GENERAL;
     }
-    if (type.contains(ResourceAccessType::storage_resource_write)) {
+    if (type.contains_any(ResourceAccessType::storage_resource_write)) {
         type_vk |= VK_ACCESS_2_SHADER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
             | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         layout_vk = VK_IMAGE_LAYOUT_GENERAL;
     }
-    if (type.contains(ResourceAccessType::color_attachment_read)) {
+    if (type.contains_any(ResourceAccessType::color_attachment_read)) {
         type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::depth_stencil_attachment_read)) {
+    if (type.contains_any(ResourceAccessType::depth_stencil_attachment_read)) {
         type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
         layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::color_attachment_write)) {
+    if (type.contains_any(ResourceAccessType::color_attachment_write)) {
         type_vk |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         layout_vk = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::depth_stencil_attachment_write)) {
+    if (type.contains_any(ResourceAccessType::depth_stencil_attachment_write)) {
         type_vk |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
         layout_vk = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::transfer_read)) {
+    if (type.contains_any(ResourceAccessType::transfer_read)) {
         type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::transfer_write)) {
+    if (type.contains_any(ResourceAccessType::transfer_write)) {
         type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::resolve_read)) {
+    if (type.contains_any(ResourceAccessType::resolve_read)) {
         type_vk |= VK_ACCESS_2_TRANSFER_READ_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::resolve_write)) {
+    if (type.contains_any(ResourceAccessType::resolve_write)) {
         type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
         layout_vk = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     }
-    if (type.contains(ResourceAccessType::present)) {
+    if (type.contains_any(ResourceAccessType::present)) {
         stage_vk |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
         layout_vk = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     }

@@ -38,7 +38,12 @@ struct BitFlags final {
         value_ &= ~rhs.value_;
         return *this;
     }
-    constexpr auto contains(BitFlags<E> rhs) const noexcept -> bool { return (value_ & rhs.value_) != 0; }
+    constexpr auto contains_any(BitFlags<E> rhs) const noexcept -> bool {
+        return rhs.value_ == 0 || (value_ & rhs.value_) != 0;
+    }
+    constexpr auto contains_all(BitFlags<E> rhs) const noexcept -> bool {
+        return (value_ & rhs.value_) == rhs.value_;
+    }
 
     constexpr auto raw_value() const noexcept -> ValueType { return value_; }
 

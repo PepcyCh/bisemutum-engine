@@ -5,7 +5,6 @@
 #include <bisemutum/scene_basic/camera.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
-#include <bisemutum/runtime/ecs.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
 #include <bisemutum/window/window_manager.hpp>
 
@@ -30,10 +29,11 @@ auto copy_camera_data(Ref<gfx::Camera> camera, Ref<rt::SceneObject> object, Came
 }
 
 struct CameraSystem::Impl final {
-    Impl() {
-        g_engine->ecs_manager()->ecs_registry().on_construct<CameraComponent>().connect<&Impl::on_construct>(this);
-        g_engine->ecs_manager()->ecs_registry().on_destroy<CameraComponent>().connect<&Impl::on_destroy>(this);
-        g_engine->ecs_manager()->ecs_registry().on_update<CameraComponent>().connect<&Impl::on_update>(this);
+    auto init_on(Ref<rt::Scene> scene) -> void {
+        this->scene = scene;
+        scene->ecs_registry().on_construct<CameraComponent>().connect<&Impl::on_construct>(this);
+        scene->ecs_registry().on_destroy<CameraComponent>().connect<&Impl::on_destroy>(this);
+        scene->ecs_registry().on_update<CameraComponent>().connect<&Impl::on_update>(this);
 
         window_resize = g_engine->window_manager()->register_resize_callback(
             g_engine->window_manager()->main_viewport_name(),
@@ -42,7 +42,7 @@ struct CameraSystem::Impl final {
                     g_engine->graphics_manager()->wait_idle();
                 }
                 for (auto entity : window_cameras) {
-                    g_engine->ecs_manager()->ecs_registry().patch<CameraComponent>(
+                    this->scene->ecs_registry().patch<CameraComponent>(
                         entity,
                         [logic_size](CameraComponent& component) {
                             component.render_target_size = {logic_size.width, logic_size.height};
@@ -66,10 +66,10 @@ struct CameraSystem::Impl final {
 
         auto wm = g_engine->window_manager();
         for (auto entity : dirty_cameras) {
-            auto object = g_engine->ecs_manager()->scene_object_of(entity);
+            auto object = scene->object_of(entity);
             auto handle = camera_handles.at(entity);
             auto camera = g_engine->graphics_manager()->get_camera(handle);
-            auto& component = g_engine->ecs_manager()->ecs_registry().get<CameraComponent>(entity);
+            auto& component = scene->ecs_registry().get<CameraComponent>(entity);
 
             auto window_camera_it = window_cameras.find(entity);
             if (
@@ -126,6 +126,8 @@ struct CameraSystem::Impl final {
         }
     }
 
+    Ptr<rt::Scene> scene;
+
     std::unordered_map<entt::entity, gfx::CameraHandle> camera_handles;
     gfx::CameraHandle main_camera = gfx::CameraHandle::invalid;
     entt::entity main_camera_entity;
@@ -143,6 +145,9 @@ CameraSystem::~CameraSystem() = default;
 CameraSystem::CameraSystem(CameraSystem&& rhs) noexcept = default;
 auto CameraSystem::operator=(CameraSystem&& rhs) noexcept -> CameraSystem& = default;
 
+auto CameraSystem::init_on(Ref<rt::Scene> scene) -> void {
+    impl()->init_on(scene);
+}
 auto CameraSystem::update() -> void {
     impl()->update();
 }

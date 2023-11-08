@@ -2,7 +2,8 @@
 
 #include <bisemutum/graphics/resource_builder.hpp>
 #include <bisemutum/engine/engine.hpp>
-#include <bisemutum/runtime/ecs.hpp>
+#include <bisemutum/runtime/world.hpp>
+#include <bisemutum/runtime/scene.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
 #include <bisemutum/scene_basic/light.hpp>
 
@@ -13,9 +14,11 @@ auto LightsContext::collect_all_lights() -> void {
     point_lights.clear();
     spot_lights.clear();
 
-    auto lights_view = g_engine->ecs_manager()->ecs_registry().view<LightComponent>();
+    auto scene = g_engine->world()->current_scene().value();
+
+    auto lights_view = scene->ecs_registry().view<LightComponent>();
     for (auto entity : lights_view) {
-        auto object = g_engine->ecs_manager()->scene_object_of(entity);
+        auto object = scene->object_of(entity);
         auto& transform = object->world_transform();
         auto& light = lights_view.get<LightComponent>(entity);
         LightData data{};
@@ -33,8 +36,8 @@ auto LightsContext::collect_all_lights() -> void {
             case LightType::spot:
                 data.position = transform.transform_position({0.0f, 0.0f, 0.0f});
                 data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
-                data.cos_outer = std::cos(light.spot_outer_angle);
-                data.cos_inner = std::cos(light.spot_inner_angle);
+                data.cos_outer = std::cos(math::radians(light.spot_outer_angle));
+                data.cos_inner = std::cos(math::radians(light.spot_inner_angle));
                 data.range_sqr = light.range * light.range;
                 spot_lights.push_back(data);
                 break;

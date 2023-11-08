@@ -8,9 +8,10 @@
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/rhi/device.hpp>
 #include <bisemutum/runtime/world.hpp>
+#include <bisemutum/runtime/scene.hpp>
 #include <bisemutum/runtime/frame_timer.hpp>
 #include <bisemutum/runtime/module.hpp>
-#include <bisemutum/runtime/ecs.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/runtime/vfs.hpp>
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/runtime/component_manager.hpp>
@@ -151,7 +152,7 @@ struct Engine::Impl final {
     auto do_register() -> void {
         register_components(component_manager);
         register_assets(asset_manager);
-        register_systems(ecs_manager);
+        register_systems(system_manager);
         register_renderers(graphics_manager);
         register_reflections(reflection_manager);
         register_menu_actions(menu_manager);
@@ -188,10 +189,10 @@ struct Engine::Impl final {
             window_manager.new_frame();
             graphics_manager.new_frame();
             frame_timer.tick();
-            ecs_manager.tick();
+            system_manager.tick();
             graphics_manager.render_frame();
             ui.execute();
-            world.do_destroy_scene_objects();
+            world.current_scene()->do_destroy_scene_objects();
         });
     }
 
@@ -208,7 +209,7 @@ struct Engine::Impl final {
     gfx::GraphicsManager graphics_manager;
     ImGuiRenderer imgui_renderer;
 
-    rt::EcsManager ecs_manager;
+    rt::SystemManager system_manager;
     rt::ComponentManager component_manager;
     rt::AssetManager asset_manager;
     rt::World world;
@@ -257,8 +258,8 @@ auto Engine::frame_timer() -> Ref<rt::FrameTimer> {
 auto Engine::module_manager() -> Ref<rt::ModuleManager> {
     return impl()->module_manager;
 }
-auto Engine::ecs_manager() -> Ref<rt::EcsManager> {
-    return impl()->ecs_manager;
+auto Engine::system_manager() -> Ref<rt::SystemManager> {
+    return impl()->system_manager;
 }
 auto Engine::file_system() -> Ref<rt::FileSystem> {
     return impl()->file_system;

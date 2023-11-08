@@ -55,6 +55,8 @@ struct SceneObject final {
     auto for_each_children(std::function<auto(Ref<SceneObject>) -> void> op) -> void;
     auto for_each_children(std::function<auto(CRef<SceneObject>) -> void> op) const -> void;
 
+    auto ecs_entity() const -> entt::entity { return ecs_entity_; }
+
     template <TComponent Component>
     auto attach_component(Component&& component) -> void {
         auto& comp = ecs_registry_->emplace<Component>(ecs_entity_, std::move(component));

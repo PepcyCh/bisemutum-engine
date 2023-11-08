@@ -32,7 +32,7 @@ auto from_dx_format(DXGI_FORMAT format) -> ResourceFormat {
 
 auto to_dx_usage(BitFlags<TextureUsage> usage) -> DXGI_USAGE {
     DXGI_USAGE dx_usage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    if (usage.contains(TextureUsage::storage_read_write)) {
+    if (usage.contains_any(TextureUsage::storage_read_write)) {
         dx_usage |= DXGI_USAGE_UNORDERED_ACCESS;
     }
     return dx_usage;

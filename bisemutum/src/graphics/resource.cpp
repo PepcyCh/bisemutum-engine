@@ -122,15 +122,15 @@ auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> v
 
     if (buffer_) {
         BitFlags<rhi::ResourceAccessType> target_access{};
-        if (desc().usages.contains(rhi::BufferUsage::uniform)) {
+        if (desc().usages.contains_any(rhi::BufferUsage::uniform)) {
             target_access.set(rhi::ResourceAccessType::uniform_buffer_read);
-        } else if (desc().usages.contains(rhi::BufferUsage::indirect)) {
+        } else if (desc().usages.contains_any(rhi::BufferUsage::indirect)) {
             target_access.set(rhi::ResourceAccessType::indirect_read);
-        } else if (desc().usages.contains(rhi::BufferUsage::vertex)) {
+        } else if (desc().usages.contains_any(rhi::BufferUsage::vertex)) {
             target_access.set(rhi::ResourceAccessType::vertex_buffer_read);
-        } else if (desc().usages.contains(rhi::BufferUsage::index)) {
+        } else if (desc().usages.contains_any(rhi::BufferUsage::index)) {
             target_access.set(rhi::ResourceAccessType::index_buffer_read);
-        } else if (desc().usages.contains(rhi::BufferUsage::storage_read)) {
+        } else if (desc().usages.contains_any(rhi::BufferUsage::storage_read)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
 
@@ -171,11 +171,11 @@ auto Buffer::set_multiple_data_raw(CSpan<DataSetDesc> descs) -> void {
 
     if (buffer_) {
         BitFlags<rhi::ResourceAccessType> target_access{};
-        if (desc().usages.contains(rhi::BufferUsage::uniform)) {
+        if (desc().usages.contains_any(rhi::BufferUsage::uniform)) {
             target_access.set(rhi::ResourceAccessType::uniform_buffer_read);
-        } else if (desc().usages.contains(rhi::BufferUsage::indirect)) {
+        } else if (desc().usages.contains_any(rhi::BufferUsage::indirect)) {
             target_access.set(rhi::ResourceAccessType::indirect_read);
-        } else if (desc().usages.contains(rhi::BufferUsage::storage_read)) {
+        } else if (desc().usages.contains_any(rhi::BufferUsage::storage_read)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
 

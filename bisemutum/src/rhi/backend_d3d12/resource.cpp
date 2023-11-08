@@ -27,7 +27,7 @@ auto to_dx_dimension(TextureDimension dim) -> D3D12_RESOURCE_DIMENSION {
 
 auto to_dx_resource_flags(BitFlags<BufferUsage> usage) -> D3D12_RESOURCE_FLAGS {
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-    if (usage.contains(BufferUsage::storage_read_write)) {
+    if (usage.contains_any(BufferUsage::storage_read_write)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
     return flags;
@@ -35,13 +35,13 @@ auto to_dx_resource_flags(BitFlags<BufferUsage> usage) -> D3D12_RESOURCE_FLAGS {
 
 auto to_dx_resource_flags(BitFlags<TextureUsage> usage) -> D3D12_RESOURCE_FLAGS {
     D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-    if (usage.contains(TextureUsage::storage_read_write)) {
+    if (usage.contains_any(TextureUsage::storage_read_write)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
-    if (usage.contains(TextureUsage::color_attachment)) {
+    if (usage.contains_any(TextureUsage::color_attachment)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
     }
-    if (usage.contains(TextureUsage::depth_stencil_attachment)) {
+    if (usage.contains_any(TextureUsage::depth_stencil_attachment)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
     }
     return flags;
@@ -60,7 +60,7 @@ auto to_dx_heap_type(BufferMemoryProperty prop) -> D3D12_HEAP_TYPE {
 
 BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : device_(device) {
     desc_ = desc;
-    if (desc.usages.contains(BufferUsage::uniform)) {
+    if (desc.usages.contains_any(BufferUsage::uniform)) {
         desc_.size = (desc.size + 255) >> 8 << 8;
         desc_.size = aligned_size<uint64_t>(desc_.size, 256);
     }

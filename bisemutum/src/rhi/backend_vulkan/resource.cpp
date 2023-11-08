@@ -21,22 +21,22 @@ auto to_vk_buffer_usage(BitFlags<BufferUsage> usage) -> VkBufferUsageFlags{
     VkBufferUsageFlags vk_usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    if (usage.contains(BufferUsage::vertex)) {
+    if (usage.contains_any(BufferUsage::vertex)) {
         vk_usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     }
-    if (usage.contains(BufferUsage::index)) {
+    if (usage.contains_any(BufferUsage::index)) {
         vk_usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     }
-    if (usage.contains(BufferUsage::uniform)) {
+    if (usage.contains_any(BufferUsage::uniform)) {
         vk_usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    if (usage.contains(BufferUsage::storage_read)) {
+    if (usage.contains_any(BufferUsage::storage_read)) {
         vk_usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
-    if (usage.contains(BufferUsage::indirect)) {
+    if (usage.contains_any(BufferUsage::indirect)) {
         vk_usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
     }
-    if (usage.contains(BufferUsage::acceleration_structure)) {
+    if (usage.contains_any(BufferUsage::acceleration_structure)) {
         vk_usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     }
     return vk_usage;
@@ -53,16 +53,16 @@ auto to_vk_image_type(TextureDimension dim) -> VkImageType {
 
 auto to_vk_image_usage(BitFlags<TextureUsage> usage) -> VkImageUsageFlags {
     VkImageUsageFlags vk_usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    if (usage.contains(TextureUsage::sampled)) {
+    if (usage.contains_any(TextureUsage::sampled)) {
         vk_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
     }
-    if (usage.contains(TextureUsage::storage_read)) {
+    if (usage.contains_any(TextureUsage::storage_read)) {
         vk_usage |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
-    if (usage.contains(TextureUsage::color_attachment)) {
+    if (usage.contains_any(TextureUsage::color_attachment)) {
         vk_usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     }
-    if (usage.contains(TextureUsage::depth_stencil_attachment)) {
+    if (usage.contains_any(TextureUsage::depth_stencil_attachment)) {
         vk_usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
     return vk_usage;

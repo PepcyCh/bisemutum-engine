@@ -4,10 +4,10 @@
 
 #include <imgui.h>
 #include <bisemutum/engine/engine.hpp>
-#include <bisemutum/runtime/ecs.hpp>
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
 #include <bisemutum/runtime/component_manager.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/window/window.hpp>
@@ -69,7 +69,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     ImGui::DockSpace(ImGui::GetID("Dockspace"));
     ImGui::PopStyleVar();
 
-    auto camera_system = g_engine->ecs_manager()->get_system<CameraSystem>();
+    auto camera_system = g_engine->system_manager()->get_system<CameraSystem>();
     auto scene_camera_handle = camera_system->main_camera_handle();
     if (scene_camera_ != scene_camera_handle) {
         scene_camera_ = scene_camera_handle;

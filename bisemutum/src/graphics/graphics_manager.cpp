@@ -297,8 +297,6 @@ struct GraphicsManager::Impl final {
 
     auto set_descriptor_heaps(Box<rhi::CommandEncoder>& cmd_encoder) -> void {
         cmd_encoder->set_descriptor_heaps({
-            // fd.resource_heap.ref(),
-            // fd.sampler_heap.ref(),
             gpu_resource_descriptor_allocator->heap(),
             gpu_sampler_descriptor_allocator->heap(),
         });
