@@ -11,13 +11,13 @@
 namespace bi {
 
 struct EditorDisplayer final {
-    EditorDisplayer();
-
     auto display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Texture> target_texture) -> void;
 
     auto is_valid() const -> bool;
 
 private:
+    auto init_displayer() -> void;
+
     auto init_editor_camera() -> void;
 
     auto move_editor_camera(Ref<gfx::Camera> camera, float delta_time) -> void;

@@ -2,7 +2,6 @@
 
 #include <functional>
 
-#include "handles.hpp"
 #include "renderer.hpp"
 #include "displayer.hpp"
 #include "mipmap_mode.hpp"
@@ -72,18 +71,6 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
         set_displayer(Displayer{});
     }
     auto set_displayer(Dyn<IDisplayer>::Ref displayer) -> void;
-
-    auto add_camera() -> CameraHandle;
-    auto remove_camera(CameraHandle handle) -> void;
-    auto get_camera(CameraHandle handle) -> Ref<Camera>;
-    auto for_each_camera(std::function<auto(Camera&) -> void> func) -> void;
-    auto for_each_camera(std::function<auto(Camera const&) -> void> func) const -> void;
-
-    auto add_drawable() -> DrawableHandle;
-    auto remove_drawable(DrawableHandle handle) -> void;
-    auto get_drawable(DrawableHandle handle) -> Ref<Drawable>;
-    auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void;
-    auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void;
 
     auto get_sampler(rhi::SamplerDesc const& desc) -> Ref<Sampler>;
 

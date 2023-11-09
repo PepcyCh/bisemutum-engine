@@ -6,13 +6,14 @@
 #include <bisemutum/scene_basic/static_mesh.hpp>
 #include <bisemutum/scene_basic/mesh_renderer.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/graphics/drawable.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
 
 namespace bi {
 
 struct StaticMeshRenderSystem::Impl final {
-    // Impl(Ref<rt::Scene> scene) : scene(scene) {
     auto init_on(Ref<rt::Scene> scene) -> void {
         this->scene = scene;
         scene->ecs_registry().on_construct<StaticMeshComponent>().connect<&Impl::on_construct>(this);
@@ -24,10 +25,12 @@ struct StaticMeshRenderSystem::Impl final {
     }
 
     auto update() -> void {
+        auto gpu_scene = g_engine->system_manager()->get_system_for<gfx::GpuSceneSystem>(scene.value());
+
         for (auto entity : destroyed_entities) {
             auto handle_it = drawable_handles.find(entity);
             if (handle_it != drawable_handles.end()) {
-                g_engine->graphics_manager()->remove_drawable(handle_it->second);
+                gpu_scene->remove_drawable(handle_it->second);
                 drawable_handles.erase(handle_it);
             }
             if (auto it = dirty_entities.find(entity); it != dirty_entities.end()) {
@@ -43,9 +46,9 @@ struct StaticMeshRenderSystem::Impl final {
             }
             auto handle_it = drawable_handles.find(entity);
             if (handle_it == drawable_handles.end()) {
-                handle_it = drawable_handles.insert({entity, g_engine->graphics_manager()->add_drawable()}).first;
+                handle_it = drawable_handles.insert({entity, gpu_scene->add_drawable()}).first;
             }
-            auto drawable = g_engine->graphics_manager()->get_drawable(handle_it->second);
+            auto drawable = gpu_scene->get_drawable(handle_it->second);
             auto mesh = object->get_component<StaticMeshComponent>();
             auto renderer = object->get_component<MeshRendererComponent>();
             mesh->static_mesh.load();
@@ -64,7 +67,7 @@ struct StaticMeshRenderSystem::Impl final {
 
         for (auto& [entity, handle] : drawable_handles) {
             auto object = scene->object_of(entity);
-            auto drawable = g_engine->graphics_manager()->get_drawable(handle);
+            auto drawable = gpu_scene->get_drawable(handle);
             drawable->transform = object->world_transform();
         }
     }

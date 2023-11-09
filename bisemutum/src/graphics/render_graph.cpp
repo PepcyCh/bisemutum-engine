@@ -4,8 +4,10 @@
 #include <unordered_map>
 
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/graphics/render_graph_pass.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/prelude/hash.hpp>
 
 namespace bi::gfx {
@@ -258,7 +260,8 @@ struct RenderGraph::Impl final {
 
     auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {
         std::vector<Ref<Drawable>> drawables;
-        g_engine->graphics_manager()->for_each_drawable([this, &drawables, &desc](Drawable& drawable) {
+        auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
+        gpu_scene->for_each_drawable([this, &drawables, &desc](Drawable& drawable) {
             auto mat_is_opaque = drawable.material->blend_mode == BlendMode::opaque
                 || drawable.material->blend_mode == BlendMode::alpha_test;
             if (

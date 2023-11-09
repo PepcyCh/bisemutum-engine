@@ -5,6 +5,8 @@
 #include <bisemutum/scene_basic/camera.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
 #include <bisemutum/window/window_manager.hpp>
 
@@ -54,9 +56,11 @@ struct CameraSystem::Impl final {
     }
 
     auto update() -> void {
+        auto gpu_scene = g_engine->system_manager()->get_system_for<gfx::GpuSceneSystem>(scene.value());
+
         for (auto entity : destroyed_cameras) {
             auto handle_it = camera_handles.find(entity);
-            g_engine->graphics_manager()->remove_camera(handle_it->second);
+            gpu_scene->remove_camera(handle_it->second);
             camera_handles.erase(handle_it);
             if (auto it = dirty_cameras.find(entity); it != dirty_cameras.end()) {
                 dirty_cameras.erase(it);
@@ -68,7 +72,7 @@ struct CameraSystem::Impl final {
         for (auto entity : dirty_cameras) {
             auto object = scene->object_of(entity);
             auto handle = camera_handles.at(entity);
-            auto camera = g_engine->graphics_manager()->get_camera(handle);
+            auto camera = gpu_scene->get_camera(handle);
             auto& component = scene->ecs_registry().get<CameraComponent>(entity);
 
             auto window_camera_it = window_cameras.find(entity);
@@ -98,7 +102,8 @@ struct CameraSystem::Impl final {
     }
 
     auto on_construct(entt::registry& ecs_registry, entt::entity entity) -> void {
-        auto handle = g_engine->graphics_manager()->add_camera();
+        auto gpu_scene = g_engine->system_manager()->get_system_for<gfx::GpuSceneSystem>(scene.value());
+        auto handle = gpu_scene->add_camera();
         camera_handles.insert({entity, handle});
         dirty_cameras.insert(entity);
 

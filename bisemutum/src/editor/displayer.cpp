@@ -9,6 +9,7 @@
 #include <bisemutum/runtime/component_manager.hpp>
 #include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/window/imgui_renderer.hpp>
@@ -23,15 +24,19 @@ constexpr rhi::ResourceFormat editor_camera_format = rhi::ResourceFormat::rgba8_
 
 } // namespace
 
-EditorDisplayer::EditorDisplayer() {
-    editor_camera_ = g_engine->graphics_manager()->add_camera();
-    auto editor_camera = g_engine->graphics_manager()->get_camera(editor_camera_);
+auto EditorDisplayer::init_displayer() -> void {
+    auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
+
+    // TODO - There should be one editor camera for each scene
+    editor_camera_ = gpu_scene->add_camera();
+    auto editor_camera = gpu_scene->get_camera(editor_camera_);
     editor_camera->enabled = false;
 
     editor_camera_resize_ = g_engine->window_manager()->register_resize_callback(
         g_engine->window_manager()->main_viewport_name(),
         [this](WindowManager const& window, WindowSize frame_size, WindowSize logic_size) {
-            auto editor_camera = g_engine->graphics_manager()->get_camera(editor_camera_);
+            auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
+            auto editor_camera = gpu_scene->get_camera(editor_camera_);
             if (editor_camera->enabled) {
                 g_engine->graphics_manager()->wait_idle();
                 editor_camera->recreate_target_texture(
@@ -43,6 +48,8 @@ EditorDisplayer::EditorDisplayer() {
 }
 
 auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Texture> target_texture) -> void {
+    if (editor_camera_ == gfx::CameraHandle::invalid) { init_displayer(); }
+
     g_engine->imgui_renderer()->new_frame();
 
     auto& io = ImGui::GetIO();
@@ -69,7 +76,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     ImGui::DockSpace(ImGui::GetID("Dockspace"));
     ImGui::PopStyleVar();
 
-    auto camera_system = g_engine->system_manager()->get_system<CameraSystem>();
+    auto camera_system = g_engine->system_manager()->get_system_for_current_scene<CameraSystem>();
     auto scene_camera_handle = camera_system->main_camera_handle();
     if (scene_camera_ != scene_camera_handle) {
         scene_camera_ = scene_camera_handle;
@@ -94,8 +101,9 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         display_scene_camera_ = use_scene_camera;
     });
 
-    auto scene_camera = g_engine->graphics_manager()->get_camera(scene_camera_);
-    auto editor_camera = g_engine->graphics_manager()->get_camera(editor_camera_);
+    auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
+    auto scene_camera = gpu_scene->get_camera(scene_camera_);
+    auto editor_camera = gpu_scene->get_camera(editor_camera_);
     scene_camera->enabled = display_scene_camera_;
     editor_camera->enabled = !display_scene_camera_;
     auto displayed_camera = display_scene_camera_ ? scene_camera : editor_camera;
@@ -171,8 +179,9 @@ auto EditorDisplayer::is_valid() const -> bool {
 }
 
 auto EditorDisplayer::init_editor_camera() -> void {
-    auto scene_camera = g_engine->graphics_manager()->get_camera(scene_camera_);
-    auto editor_camera = g_engine->graphics_manager()->get_camera(editor_camera_);
+    auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
+    auto scene_camera = gpu_scene->get_camera(scene_camera_);
+    auto editor_camera = gpu_scene->get_camera(editor_camera_);
 
     editor_camera->position = scene_camera->position;
     editor_camera->front_dir = scene_camera->front_dir;

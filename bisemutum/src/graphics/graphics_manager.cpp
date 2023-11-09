@@ -2,6 +2,7 @@
 
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/logger.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/rhi/device.hpp>
 #include <bisemutum/graphics/shader_compiler.hpp>
@@ -9,6 +10,7 @@
 #include <bisemutum/graphics/shader.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/graphics/drawable.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/containers/slotmap.hpp>
 #include <bisemutum/prelude/math.hpp>
 #include <fmt/format.h>
@@ -120,45 +122,45 @@ struct GraphicsManager::Impl final {
         this->displayer = &displayer;
     }
 
-    auto add_camera() -> CameraHandle {
-        return cameras.emplace();
-    }
-    auto remove_camera(CameraHandle handle) -> void {
-        cameras.remove(handle);
-    }
-    auto get_camera(CameraHandle handle) -> Ref<Camera> {
-        return cameras.get(handle);
-    }
-    auto for_each_camera(std::function<auto(Camera&) -> void>&& func) -> void {
-        for (auto& camera : cameras) {
-            func(camera);
-        }
-    }
-    auto for_each_camera(std::function<auto(Camera const&) -> void>&& func) const -> void {
-        for (auto const& camera : cameras) {
-            func(camera);
-        }
-    }
+    // auto add_camera() -> CameraHandle {
+    //     return cameras.emplace();
+    // }
+    // auto remove_camera(CameraHandle handle) -> void {
+    //     cameras.remove(handle);
+    // }
+    // auto get_camera(CameraHandle handle) -> Ref<Camera> {
+    //     return cameras.get(handle);
+    // }
+    // auto for_each_camera(std::function<auto(Camera&) -> void>&& func) -> void {
+    //     for (auto& camera : cameras) {
+    //         func(camera);
+    //     }
+    // }
+    // auto for_each_camera(std::function<auto(Camera const&) -> void>&& func) const -> void {
+    //     for (auto const& camera : cameras) {
+    //         func(camera);
+    //     }
+    // }
 
-    auto add_drawable() -> DrawableHandle {
-        return drawables.emplace();
-    }
-    auto remove_drawable(DrawableHandle handle) -> void {
-        drawables.remove(handle);
-    }
-    auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
-        return drawables.get(handle);
-    }
-    auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
-        for (auto& drawable : drawables) {
-            func(drawable);
-        }
-    }
-    auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
-        for (auto const& drawable : drawables) {
-            func(drawable);
-        }
-    }
+    // auto add_drawable() -> DrawableHandle {
+    //     return drawables.emplace();
+    // }
+    // auto remove_drawable(DrawableHandle handle) -> void {
+    //     drawables.remove(handle);
+    // }
+    // auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
+    //     return drawables.get(handle);
+    // }
+    // auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
+    //     for (auto& drawable : drawables) {
+    //         func(drawable);
+    //     }
+    // }
+    // auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
+    //     for (auto const& drawable : drawables) {
+    //         func(drawable);
+    //     }
+    // }
 
     auto get_sampler(rhi::SamplerDesc const& desc) -> Ref<Sampler> {
         if (auto it = samplers.find(desc); it != samplers.end()) {
@@ -184,22 +186,24 @@ struct GraphicsManager::Impl final {
     auto render_frame() -> void {
         if (!renderer.has_value() || !displayer.has_value()) { return; }
 
+        auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
+
         auto& fd = curr_frame_data();
 
         renderer.prepare_renderer_per_frame_data();
 
-        for (auto& drawable : drawables) {
+        gpu_scene->for_each_drawable([](Drawable& drawable) {
             drawable.mesh->fill_shader_params(drawable);
             drawable.shader_params.update_uniform_buffer();
             drawable.material->shader_parameters.update_uniform_buffer();
-        }
+        });
         size_t num_enabled_camera = 0;
-        for (auto& camera : cameras) {
+        gpu_scene->for_each_camera([&num_enabled_camera](Camera& camera) {
             if (camera.enabled) {
                 camera.update_shader_params();
                 ++num_enabled_camera;
             }
-        }
+        });
 
         if (fd.camera_semaphores.size() < num_enabled_camera) {
             for (size_t i = fd.camera_semaphores.size(); i < num_enabled_camera; i++) {
@@ -208,8 +212,9 @@ struct GraphicsManager::Impl final {
         }
 
         // Render each camera
-        for (size_t camera_index = 0; auto& camera : cameras) {
-            if (!camera.enabled) { continue; }
+        size_t camera_index = 0;
+        gpu_scene->for_each_camera([&camera_index, &fd, this](Camera& camera) {
+            if (!camera.enabled) { return; }
 
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
             set_descriptor_heaps(cmd_encoder);
@@ -234,7 +239,7 @@ struct GraphicsManager::Impl final {
             );
 
             ++camera_index;
-        }
+        });
 
         // Display camera target texture draw and UI
         {
@@ -616,8 +621,8 @@ struct GraphicsManager::Impl final {
     Ptr<rhi::CommandEncoder> curr_cmd_encoder;
 
     RenderGraph render_graph;
-    SlotMap<Camera, CameraHandle> cameras;
-    SlotMap<Drawable, DrawableHandle> drawables;
+    // SlotMap<Camera, CameraHandle> cameras;
+    // SlotMap<Drawable, DrawableHandle> drawables;
     std::unordered_map<rhi::SamplerDesc, Sampler> samplers;
 
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;
@@ -652,37 +657,37 @@ auto GraphicsManager::set_displayer(Dyn<IDisplayer>::Ref displayer) -> void {
     impl()->set_displayer(displayer);
 }
 
-auto GraphicsManager::add_camera() -> CameraHandle {
-    return impl()->add_camera();
-}
-auto GraphicsManager::remove_camera(CameraHandle handle) -> void {
-    impl()->remove_camera(handle);
-}
-auto GraphicsManager::get_camera(CameraHandle handle) -> Ref<Camera> {
-    return impl()->get_camera(handle);
-}
-auto GraphicsManager::for_each_camera(std::function<auto(Camera&) -> void> func) -> void {
-    impl()->for_each_camera(std::move(func));
-}
-auto GraphicsManager::for_each_camera(std::function<auto(Camera const&) -> void> func) const -> void {
-    impl()->for_each_camera(std::move(func));
-}
+// auto GraphicsManager::add_camera() -> CameraHandle {
+//     return impl()->add_camera();
+// }
+// auto GraphicsManager::remove_camera(CameraHandle handle) -> void {
+//     impl()->remove_camera(handle);
+// }
+// auto GraphicsManager::get_camera(CameraHandle handle) -> Ref<Camera> {
+//     return impl()->get_camera(handle);
+// }
+// auto GraphicsManager::for_each_camera(std::function<auto(Camera&) -> void> func) -> void {
+//     impl()->for_each_camera(std::move(func));
+// }
+// auto GraphicsManager::for_each_camera(std::function<auto(Camera const&) -> void> func) const -> void {
+//     impl()->for_each_camera(std::move(func));
+// }
 
-auto GraphicsManager::add_drawable() -> DrawableHandle {
-    return impl()->add_drawable();
-}
-auto GraphicsManager::remove_drawable(DrawableHandle handle) -> void {
-    impl()->remove_drawable(handle);
-}
-auto GraphicsManager::get_drawable(DrawableHandle handle) -> Ref<Drawable> {
-    return impl()->get_drawable(handle);
-}
-auto GraphicsManager::for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
-    impl()->for_each_drawable(std::move(func));
-}
-auto GraphicsManager::for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
-    impl()->for_each_drawable(std::move(func));
-}
+// auto GraphicsManager::add_drawable() -> DrawableHandle {
+//     return impl()->add_drawable();
+// }
+// auto GraphicsManager::remove_drawable(DrawableHandle handle) -> void {
+//     impl()->remove_drawable(handle);
+// }
+// auto GraphicsManager::get_drawable(DrawableHandle handle) -> Ref<Drawable> {
+//     return impl()->get_drawable(handle);
+// }
+// auto GraphicsManager::for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
+//     impl()->for_each_drawable(std::move(func));
+// }
+// auto GraphicsManager::for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
+//     impl()->for_each_drawable(std::move(func));
+// }
 
 auto GraphicsManager::get_sampler(rhi::SamplerDesc const& desc) -> Ref<Sampler> {
     return impl()->get_sampler(desc);
