@@ -1,7 +1,6 @@
 #include <bisemutum/runtime/vfs.hpp>
 
 #include <list>
-#include <variant>
 #include <fstream>
 
 #include <bisemutum/prelude/ref.hpp>
@@ -99,10 +98,7 @@ struct VirtualDirectory final {
         auto p = normalized_path.find('/');
         size_t last_p = 0;
         while (true) {
-            if (p == std::string::npos) {
-                break;
-            }
-            auto name = std::string_view{normalized_path.data() + last_p, p - last_p};
+            auto name = normalized_path.substr(last_p, p - last_p);
             if (name == "..") {
                 break;
             }
@@ -112,6 +108,10 @@ struct VirtualDirectory final {
             if (auto it = curr_dir->name_map_.find(name); it != curr_dir->name_map_.end()) {
                 curr_dir = it->second;
             } else {
+                break;
+            }
+            if (p == std::string::npos) {
+                last_p = normalized_path.size();
                 break;
             }
             last_p = p + 1;
@@ -134,10 +134,7 @@ struct VirtualDirectory final {
         auto p = normalized_path.find('/');
         size_t last_p = 0;
         while (true) {
-            if (p == std::string::npos) {
-                break;
-            }
-            auto name = std::string_view{normalized_path.data() + last_p, p - last_p};
+            auto name = normalized_path.substr(last_p, p - last_p);
             if (name == "..") {
                 break;
             }
@@ -147,6 +144,10 @@ struct VirtualDirectory final {
             if (auto it = curr_dir->name_map_.find(name); it != curr_dir->name_map_.end()) {
                 curr_dir = it->second;
             } else {
+                break;
+            }
+            if (p == std::string::npos) {
+                last_p = normalized_path.size();
                 break;
             }
             last_p = p + 1;
@@ -258,6 +259,27 @@ struct FileSystem::Impl final {
         return false;
     }
 
+    auto try_convert_physical_path_to_vfs_path(std::filesystem::path const& path) -> std::string {
+        // Some special paths
+        std::string_view mount_points[]{
+            "/project/",
+        };
+        auto path_norm = path.lexically_normal();
+        for (auto mp : mount_points) {
+            auto sub_fs_pairs = root.collect_sub_fs(mp);
+            if (sub_fs_pairs.empty()) { continue; }
+            auto fs_path = sub_fs_pairs[0].second.get_physical_path();
+            if (fs_path.empty()) { continue; }
+            auto root_path = std::filesystem::absolute(fs_path).lexically_normal();
+            auto m = std::mismatch(root_path.begin(), root_path.end(), path_norm.begin(), path_norm.end());
+            if (m.first == root_path.end()) {
+                auto rel_path = std::filesystem::proximate(path, root_path);
+                return std::string{mp} + rel_path.string();
+            }
+        }
+        return "";
+    }
+
     VirtualDirectory root;
 };
 
@@ -282,6 +304,9 @@ auto FileSystem::create_file(std::string_view path) -> Option<Dyn<IFile>::Box> {
 }
 auto FileSystem::remove_file(std::string_view path) -> bool {
     return impl()->remove_file(path);
+}
+auto FileSystem::try_convert_physical_path_to_vfs_path(std::filesystem::path const& path) -> std::string {
+    return impl()->try_convert_physical_path_to_vfs_path(path);
 }
 
 

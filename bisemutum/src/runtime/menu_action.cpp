@@ -14,10 +14,12 @@ namespace {
 
 auto menu_action_add_prefab_to_scene(MenuActionContext const& ctx) -> void {
     ctx.file_dialog->choose_file(
-        "Add Prefab", "Choose Prefab", ".prefab.toml",
+        "Add Prefab", "Choose Prefab", ".toml",
         [](std::string choosed_path) {
             if (!std::filesystem::exists(choosed_path)) { return; }
-            rt::TAssetPtr<rt::Prefab> prefab{choosed_path};
+            auto vfs_choosed_path = g_engine->file_system()->try_convert_physical_path_to_vfs_path(choosed_path);
+            if (vfs_choosed_path.empty()) { return; }
+            rt::TAssetPtr<rt::Prefab> prefab{vfs_choosed_path};
             prefab.load();
             prefab.asset()->instantiate();
         }

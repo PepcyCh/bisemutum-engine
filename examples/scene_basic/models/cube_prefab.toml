@@ -1,0 +1,17 @@
+name = "Cube"
+
+[[components]]
+type = "Transform"
+[components.value]
+translation = [ 0.0, 0.0, 0.0 ]
+rotation = [ 0.0, 0.0, 0.0 ]
+
+[[components]]
+type = "StaticMeshComponent"
+[components.value]
+static_mesh = { asset_path = "/project/meshes/cube.obj" }
+
+[[components]]
+type = "MeshRendererComponent"
+[components.value]
+material = { asset_path = "/project/materials/white.toml" }

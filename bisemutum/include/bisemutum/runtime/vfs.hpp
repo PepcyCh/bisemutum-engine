@@ -31,6 +31,7 @@ BI_TRAIT_BEGIN(ISubFileSystem, move)
         (&self, std::string_view path) requires (self.create_file(path)) -> Option<Dyn<IFile>::Box>
     )
     BI_TRAIT_METHOD(remove_file, (&self, std::string_view path) requires (self.remove_file(path)) -> bool)
+    BI_TRAIT_METHOD(get_physical_path, (const& self) requires (self.get_physical_path()) -> std::filesystem::path)
 BI_TRAIT_END(ISubFileSystem)
 
 struct FileSystem final : PImpl<FileSystem> {
@@ -46,6 +47,8 @@ struct FileSystem final : PImpl<FileSystem> {
     auto get_file(std::string_view path) const -> Option<Dyn<IFile>::Box>;
     auto create_file(std::string_view path) -> Option<Dyn<IFile>::Box>;
     auto remove_file(std::string_view path) -> bool;
+
+    auto try_convert_physical_path_to_vfs_path(std::filesystem::path const& path) -> std::string;
 };
 
 
@@ -77,6 +80,8 @@ struct PhysicalSubFileSystem final {
 
     auto create_file(std::string_view path) -> Option<Dyn<IFile>::Box>;
     auto remove_file(std::string_view path) -> bool;
+
+    auto get_physical_path() const -> std::filesystem::path { return root_path_; }
 
 private:
     std::filesystem::path root_path_;
