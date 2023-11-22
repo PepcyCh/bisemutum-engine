@@ -33,8 +33,8 @@ namespace editor {
 
 struct MenuManager;
 
-}
+auto register_menu_actions(Ref<MenuManager> mgr) -> void;
 
-auto register_menu_actions(Ref<editor::MenuManager> mgr) -> void;
+}
 
 }

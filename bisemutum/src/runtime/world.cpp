@@ -14,10 +14,10 @@
 namespace bi::rt {
 
 struct World::Impl final {
-    auto create_scene() -> Ref<Scene> {
+    auto create_scene(bool is_dummy_scene) -> Ref<Scene> {
         auto& scene = scenes.emplace_front();
         scenes_it_map.insert({&scene, scenes.begin()});
-        if (!current_scene) {
+        if (!current_scene && !is_dummy_scene) {
             current_scene = &scene;
         }
         g_engine->system_manager()->init_on(scene);
@@ -36,7 +36,7 @@ struct World::Impl final {
     }
 
     auto load_scene(std::string_view scene_file_str) -> bool {
-        auto scene = create_scene();
+        auto scene = create_scene(false);
         try {
             auto scene_value = serde::Value::from_toml(scene_file_str);
             scene->load_from_value(std::move(scene_value));
@@ -70,8 +70,8 @@ auto World::current_scene() const -> CPtr<Scene> {
     return impl()->current_scene;
 }
 
-auto World::create_scene() -> Ref<Scene> {
-    return impl()->create_scene();
+auto World::create_scene(bool is_dummy_scene) -> Ref<Scene> {
+    return impl()->create_scene(is_dummy_scene);
 }
 
 auto World::load_scene(std::string_view scene_json_str) -> bool {

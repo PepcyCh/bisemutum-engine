@@ -877,8 +877,52 @@ struct Preprocessor::Impl final {
             spaces.clear();
         }
 
-        // replace macro in replaced string
+        // replace __VA_OPT__
         inputs.emplace(result_phase1);
+        std::string result_phase2{};
+        while (true) {
+            token = get_next_token(inputs.top(), result_phase2);
+            if (token.type == TokenType::eEof) {
+                inputs.pop();
+                break;
+            }
+            if (token.type == TokenType::eIdentifier) {
+                if (macro.has_va_params && token.value == "__VA_OPT__") {
+                    token = get_next_token(inputs.top(), result_phase2);
+                    if (token.type == TokenType::eLeftBracketRound) {
+                        size_t num_brackets = 0;
+                        auto opt_true = args.size() > macro.params.size()
+                            && (!args[macro.params.size()].empty() || args.size() > macro.params.size() + 1);
+                        while (true) {
+                            token = get_next_token(inputs.top(), result_phase2);
+                            if (token.type == TokenType::eEof) {
+                                break;
+                            } else if (token.type == TokenType::eLeftBracketRound) {
+                                ++num_brackets;
+                                if (opt_true) { result_phase2 += token.value; }
+                            } else if (token.type == TokenType::eRightBracketRound) {
+                                if (num_brackets == 0) {
+                                    break;
+                                }
+                                --num_brackets;
+                                if (opt_true) { result_phase2 += token.value; }
+                            } else {
+                                if (opt_true) { result_phase2 += token.value; }
+                            }
+                        }
+                    } else {
+                        result_phase2 += token.value;
+                    }
+                } else {
+                    result_phase2 += token.value;
+                }
+            } else {
+                result_phase2 += token.value;
+            }
+        }
+
+        // replace macro in replaced string
+        inputs.emplace(result_phase2);
         std::string result{};
         while (true) {
             token = get_next_token(inputs.top(), result);
@@ -889,32 +933,6 @@ struct Preprocessor::Impl final {
             if (token.type == TokenType::eIdentifier) {
                 if (auto it = defines.find(token.value); it != defines.end()) {
                     result += replace_macro(token.value, it->second, false, depth + 1);
-                } else if (macro.has_va_params && token.value == "__VA_OPT__") {
-                    token = get_next_token(inputs.top(), result);
-                    if (token.type == TokenType::eLeftBracketRound) {
-                        size_t num_brackets = 0;
-                        auto opt_true = args.size() > macro.params.size()
-                            && (!args[macro.params.size()].empty() || args.size() > macro.params.size() + 1);
-                        while (true) {
-                            token = get_next_token(inputs.top(), result);
-                            if (token.type == TokenType::eEof) {
-                                break;
-                            } else if (token.type == TokenType::eLeftBracketRound) {
-                                ++num_brackets;
-                                if (opt_true) { result += token.value; }
-                            } else if (token.type == TokenType::eRightBracketRound) {
-                                if (num_brackets == 0) {
-                                    break;
-                                }
-                                --num_brackets;
-                                if (opt_true) { result += token.value; }
-                            } else {
-                                if (opt_true) { result += token.value; }
-                            }
-                        }
-                    } else {
-                        result += token.value;
-                    }
                 } else {
                     result += token.value;
                 }

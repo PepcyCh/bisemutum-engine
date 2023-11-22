@@ -12,6 +12,7 @@
 namespace bi::rt {
 
 struct SceneObject;
+struct Prefab;
 
 struct Scene final {
     auto ecs_registry() -> entt::registry&;
@@ -37,6 +38,7 @@ struct Scene final {
     auto load_from_value(serde::Value &&value) -> void;
 
 private:
+    friend Prefab;
     auto create_scene_object(Ptr<SceneObject> parent, bool with_transform) -> Ref<SceneObject>;
 
     entt::registry ecs_registry_;

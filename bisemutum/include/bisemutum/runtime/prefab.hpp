@@ -1,7 +1,7 @@
 #pragma once
 
 #include "asset.hpp"
-#include "component_manager.hpp"
+#include "scene_object.hpp"
 
 namespace bi::rt {
 
@@ -10,9 +10,10 @@ struct Prefab final {
 
     static auto load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny;
 
+    auto instantiate() -> void;
+
 private:
-    std::string name_;
-    std::vector<std::function<ComponentDeserializer>> components_;
+    Ptr<SceneObject> object_;
 };
 
 }

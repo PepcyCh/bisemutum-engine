@@ -116,6 +116,22 @@ int foo2d;
     return expect_ok(Preprocessor, includer, in_src, expected, nullptr, 0);
 }
 
+bool test8(pep::cprep::Preprocessor &Preprocessor, pep::cprep::ShaderIncluder &includer) {
+    auto in_src =
+R"(#define FOO1(a, b, ...) func(a, b __VA_OPT__(,) __VA_ARGS__)
+#define FOO2(a, b, ...) FOO1(a, b __VA_OPT__(,) __VA_ARGS__)
+FOO2(var1, var2);
+FOO2(var1, var2, var3);
+)";
+    auto expected =
+R"(
+
+func(var1, var2  );
+func(var1, var2 , var3);
+)";
+    return expect_ok(Preprocessor, includer, in_src, expected, nullptr, 0);
+}
+
 int main() {
     pep::cprep::Preprocessor Preprocessor{};
     pep::cprep::EmptyInclude includer{};
@@ -129,6 +145,7 @@ int main() {
     pass &= test5(Preprocessor, includer);
     pass &= test6(Preprocessor, includer);
     pass &= test7(Preprocessor, includer);
+    pass &= test8(Preprocessor, includer);
 
     return pass ? 0 : 1;
 }

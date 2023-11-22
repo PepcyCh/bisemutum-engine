@@ -31,6 +31,12 @@ struct AssetPtr final {
 
 template <TAsset Asset>
 struct TAssetPtr final {
+    TAssetPtr() = default;
+    TAssetPtr(std::string_view path) {
+        asset_ = nullptr;
+        asset_ptr_.asset_path = path;
+    }
+
     auto asset() -> Ptr<Asset> { return asset_; }
     auto asset() const -> Ptr<Asset> { return asset_; }
 

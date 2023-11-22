@@ -11,6 +11,7 @@ namespace bi::rt {
 
 using ComponentDeserializer = auto(Ref<SceneObject>, serde::Value const&) -> void;
 using ComponentEditor = auto(Ref<SceneObject>, void*) -> bool;
+using ComponentClone = auto(Ref<SceneObject>, void*) -> void;
 
 struct ComponentManager final : PImpl<ComponentManager> {
     struct Impl;
@@ -22,6 +23,7 @@ struct ComponentManager final : PImpl<ComponentManager> {
         std::type_index type_index;
         std::function<ComponentDeserializer> deserializer;
         std::function<ComponentEditor> editor;
+        std::function<ComponentClone> clone_to;
     };
 
     template <TComponent Component>
@@ -30,6 +32,10 @@ struct ComponentManager final : PImpl<ComponentManager> {
             .type_index = typeid(Component),
             .deserializer = [](Ref<SceneObject> object, serde::Value const& component_value) {
                 object->attach_component(component_value.get<Component>());
+            },
+            .clone_to = [](Ref<SceneObject> object, void* component_value) {
+                auto component = *reinterpret_cast<Component*>(component_value);
+                object->attach_component(std::move(component));
             },
         };
         if constexpr (
