@@ -10,6 +10,8 @@ struct Prefab final {
 
     static auto load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny;
 
+    static auto create_from(CRef<SceneObject> object, std::string_view dst_path) -> void;
+
     auto instantiate() -> void;
 
 private:

@@ -41,6 +41,12 @@ struct AssetManager::Impl final {
         }
     }
 
+    auto create_asset(std::string_view asset_path, AssetAny&& asset) -> void {
+        auto it = assets.try_emplace(std::string{asset_path}).first;
+        it->second.content = std::move(asset);
+        it->second.state = AssetState::loaded;
+    }
+
     struct Asset final {
         AssetAny content;
         AssetState state = AssetState::not_loaded;
@@ -62,6 +68,10 @@ auto AssetManager::state_of(std::string_view asset_path) -> AssetState {
 
 auto AssetManager::load_asset(std::string_view type, std::string_view asset_path) -> AssetAny* {
     return impl()->load_asset(type, asset_path);
+}
+
+auto AssetManager::create_asset(std::string_view asset_path, AssetAny asset) -> void {
+    impl()->create_asset(asset_path, std::move(asset));
 }
 
 }

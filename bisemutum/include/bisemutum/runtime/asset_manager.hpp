@@ -22,11 +22,18 @@ struct AssetManager final : PImpl<AssetManager> {
 
     auto state_of(std::string_view asset_path) -> AssetState;
 
+    template <TAsset Asset>
+    auto create_asset(std::string_view asset_path, Asset&& asset) -> void {
+        create_asset(asset_path, AssetAny{std::move(asset)});
+    }
+
 private:
     auto register_asset(std::string_view type, std::function<AssetLoader> loader) -> void;
 
     friend AssetPtr;
     auto load_asset(std::string_view type, std::string_view asset_path) -> AssetAny*;
+
+    auto create_asset(std::string_view asset_path, AssetAny asset) -> void;
 };
 
 }
