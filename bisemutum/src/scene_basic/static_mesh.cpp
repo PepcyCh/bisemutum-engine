@@ -162,18 +162,23 @@ auto StaticMesh::set_index_at(size_t index, uint32_t data) -> void {
 
 auto StaticMesh::set_positions_raw(float3 const* data) -> void {
     std::copy_n(data, positions_.size(), positions_.data());
+    positions_dirty_ = true;
 }
 auto StaticMesh::set_normals_raw(float3 const* data) -> void {
     std::copy_n(data, normals_.size(), normals_.data());
+    normals_dirty_ = true;
 }
 auto StaticMesh::set_tangents_raw(float4 const* data) -> void {
     std::copy_n(data, tangents_.size(), tangents_.data());
+    tangents_dirty_ = true;
 }
 auto StaticMesh::set_texcoords_raw(float2 const* data) -> void {
     std::copy_n(data, texcoords_.size(), texcoords_.data());
+    texcoords_dirty_ = true;
 }
 auto StaticMesh::set_indices_raw(uint32_t const* data) -> void {
     std::copy_n(data, indices_.size(), indices_.data());
+    indices_dirty_ = true;
 }
 auto StaticMesh::set_bouding_box_raw(float3 const& p_min, float3 const& p_max) -> void {
     bbox_.p_min = p_min;

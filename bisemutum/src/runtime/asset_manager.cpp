@@ -41,15 +41,18 @@ struct AssetManager::Impl final {
         }
     }
 
-    auto create_asset(std::string_view asset_path, AssetAny&& asset) -> void {
+    auto create_asset(std::string_view asset_path, AssetAny&& asset) -> AssetAny* {
         auto it = assets.try_emplace(std::string{asset_path}).first;
         it->second.content = std::move(asset);
         it->second.state = AssetState::loaded;
+        it->second.dirty = true;
+        return std::addressof(it->second.content);
     }
 
     struct Asset final {
         AssetAny content;
         AssetState state = AssetState::not_loaded;
+        bool dirty = false;
     };
     std::unordered_map<std::string_view, std::function<AssetLoader>> loaders;
     StringHashMap<Asset> assets;
@@ -70,8 +73,8 @@ auto AssetManager::load_asset(std::string_view type, std::string_view asset_path
     return impl()->load_asset(type, asset_path);
 }
 
-auto AssetManager::create_asset(std::string_view asset_path, AssetAny asset) -> void {
-    impl()->create_asset(asset_path, std::move(asset));
+auto AssetManager::create_asset(std::string_view asset_path, AssetAny asset) -> AssetAny* {
+    return impl()->create_asset(asset_path, std::move(asset));
 }
 
 }

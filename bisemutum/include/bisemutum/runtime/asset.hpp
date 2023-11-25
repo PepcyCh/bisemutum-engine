@@ -36,6 +36,10 @@ struct TAssetPtr final {
         asset_ = nullptr;
         asset_ptr_.asset_path = path;
     }
+    TAssetPtr(std::string&& path) {
+        asset_ = nullptr;
+        asset_ptr_.asset_path = std::move(path);
+    }
 
     auto asset() -> Ptr<Asset> { return asset_; }
     auto asset() const -> Ptr<Asset> { return asset_; }

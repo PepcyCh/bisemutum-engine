@@ -122,46 +122,6 @@ struct GraphicsManager::Impl final {
         this->displayer = &displayer;
     }
 
-    // auto add_camera() -> CameraHandle {
-    //     return cameras.emplace();
-    // }
-    // auto remove_camera(CameraHandle handle) -> void {
-    //     cameras.remove(handle);
-    // }
-    // auto get_camera(CameraHandle handle) -> Ref<Camera> {
-    //     return cameras.get(handle);
-    // }
-    // auto for_each_camera(std::function<auto(Camera&) -> void>&& func) -> void {
-    //     for (auto& camera : cameras) {
-    //         func(camera);
-    //     }
-    // }
-    // auto for_each_camera(std::function<auto(Camera const&) -> void>&& func) const -> void {
-    //     for (auto const& camera : cameras) {
-    //         func(camera);
-    //     }
-    // }
-
-    // auto add_drawable() -> DrawableHandle {
-    //     return drawables.emplace();
-    // }
-    // auto remove_drawable(DrawableHandle handle) -> void {
-    //     drawables.remove(handle);
-    // }
-    // auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
-    //     return drawables.get(handle);
-    // }
-    // auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
-    //     for (auto& drawable : drawables) {
-    //         func(drawable);
-    //     }
-    // }
-    // auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
-    //     for (auto const& drawable : drawables) {
-    //         func(drawable);
-    //     }
-    // }
-
     auto get_sampler(rhi::SamplerDesc const& desc) -> Ref<Sampler> {
         if (auto it = samplers.find(desc); it != samplers.end()) {
             return it->second;

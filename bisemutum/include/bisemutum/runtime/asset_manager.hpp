@@ -4,6 +4,7 @@
 
 #include "asset.hpp"
 #include "../prelude/idiom.hpp"
+#include "../prelude/ref.hpp"
 
 namespace bi::rt {
 
@@ -23,8 +24,8 @@ struct AssetManager final : PImpl<AssetManager> {
     auto state_of(std::string_view asset_path) -> AssetState;
 
     template <TAsset Asset>
-    auto create_asset(std::string_view asset_path, Asset&& asset) -> void {
-        create_asset(asset_path, AssetAny{std::move(asset)});
+    auto create_asset(std::string_view asset_path, Asset&& asset) -> Ref<Asset> {
+        return Ptr<Asset>{aa::any_cast<Asset>(create_asset(asset_path, AssetAny{std::move(asset)}))}.value();
     }
 
 private:
@@ -33,7 +34,7 @@ private:
     friend AssetPtr;
     auto load_asset(std::string_view type, std::string_view asset_path) -> AssetAny*;
 
-    auto create_asset(std::string_view asset_path, AssetAny asset) -> void;
+    auto create_asset(std::string_view asset_path, AssetAny asset) -> AssetAny*;
 };
 
 }
