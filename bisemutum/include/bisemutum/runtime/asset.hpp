@@ -8,6 +8,10 @@ namespace bi::rt {
 
 using AssetAny = aa::any_with<aa::type_info, aa::move>;
 
+enum class AssetId : uint64_t {
+    invalid = static_cast<uint64_t>(-1),
+};
+
 template <typename T>
 concept TAsset = requires () {
     { T::asset_type_name } -> std::same_as<std::string_view const&>;
@@ -26,19 +30,15 @@ struct AssetPtr final {
     auto state() const -> AssetState;
     auto load(std::string_view type) const -> AssetAny*;
 
-    std::string asset_path;
+    AssetId asset_id = AssetId::invalid;
 };
 
 template <TAsset Asset>
 struct TAssetPtr final {
     TAssetPtr() = default;
-    TAssetPtr(std::string_view path) {
+    TAssetPtr(AssetId asset_id) {
         asset_ = nullptr;
-        asset_ptr_.asset_path = path;
-    }
-    TAssetPtr(std::string&& path) {
-        asset_ = nullptr;
-        asset_ptr_.asset_path = std::move(path);
+        asset_ptr_.asset_id = asset_id;
     }
 
     auto asset() -> Ptr<Asset> { return asset_; }
@@ -52,15 +52,15 @@ struct TAssetPtr final {
     }
 
     auto empty() const -> bool {
-        return asset_ptr_.asset_path.empty();
+        return asset_ptr_.asset_id == AssetId::invalid;
     }
 
     static auto to_value(serde::Value &v, rt::TAssetPtr<Asset> const& o) -> void {
-        v["asset_path"] = o.asset_ptr_.asset_path;
+        v["asset_id"] = static_cast<serde::Value::Integer>(o.asset_ptr_.asset_id);
     }
     static auto from_value(serde::Value const& v, rt::TAssetPtr<Asset>& o) -> void {
         o.asset_ = nullptr;
-        o.asset_ptr_.asset_path = v["asset_path"].get<std::string>();
+        o.asset_ptr_.asset_id = static_cast<AssetId>(v["asset_id"].get<serde::Value::Integer>());
     }
 
 private:

@@ -4,7 +4,8 @@
 
 #include <bisemutum/runtime/prefab.hpp>
 #include <bisemutum/scene_basic/static_mesh.hpp>
-#include <bisemutum/scene_basic/mesh_renderer.hpp>
+#include <bisemutum/scene_basic/texture.hpp>
+#include <bisemutum/scene_basic/material.hpp>
 
 namespace bi {
 

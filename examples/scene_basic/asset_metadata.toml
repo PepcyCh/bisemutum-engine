@@ -1,0 +1,44 @@
+[[assets]]
+id = 0
+type = "StaticMesh"
+path = "/project/meshes/plane.obj"
+
+[[assets]]
+id = 1
+type = "StaticMesh"
+path = "/project/meshes/cube.obj"
+
+[[assets]]
+id = 2
+type = "StaticMesh"
+path = "/project/meshes/sphere.obj"
+
+[[assets]]
+id = 3
+type = "Material"
+path = "/project/materials/checkerboard.toml"
+
+[[assets]]
+id = 4
+type = "Material"
+path = "/project/materials/textured.toml"
+
+[[assets]]
+id = 5
+type = "Material"
+path = "/project/materials/white.toml"
+
+[[assets]]
+id = 6
+type = "Texture"
+path = "/project/textures/earth_diffuse.toml"
+
+[[assets]]
+id = 7
+type = "Texture"
+path = "/project/textures/earth_normal.toml"
+
+[[assets]]
+id = 8
+type = "Texture"
+path = "/project/models/cube_prefab.toml"

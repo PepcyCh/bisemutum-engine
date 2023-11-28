@@ -273,8 +273,9 @@ struct FileSystem::Impl final {
             auto root_path = std::filesystem::absolute(fs_path).lexically_normal();
             auto m = std::mismatch(root_path.begin(), root_path.end(), path_norm.begin(), path_norm.end());
             if (m.first == root_path.end()) {
-                auto rel_path = std::filesystem::proximate(path, root_path);
-                return std::string{mp} + rel_path.string();
+                auto rel_path = std::filesystem::proximate(path, root_path).string();
+                std::replace(rel_path.begin(), rel_path.end(), '\\', '/');
+                return std::string{mp} + rel_path;
             }
         }
         return "";

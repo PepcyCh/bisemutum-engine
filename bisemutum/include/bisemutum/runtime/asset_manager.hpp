@@ -9,6 +9,7 @@
 namespace bi::rt {
 
 using AssetLoader = auto(Dyn<IFile>::Ref) -> AssetAny;
+using AssetSaver = auto(Dyn<IFile>::Ref, AssetAny const&) -> void;
 
 struct AssetManager final : PImpl<AssetManager> {
     struct Impl;
@@ -16,25 +17,40 @@ struct AssetManager final : PImpl<AssetManager> {
     AssetManager();
     ~AssetManager();
 
+    struct AssetFunctions final {
+        std::function<AssetLoader> loader;
+        std::function<AssetSaver> saver;
+    };
+
+    auto initialize(Dyn<IFile>::Ref metadata_file) -> bool;
+
     template <TAsset Asset>
     auto register_asset() -> void {
-        register_asset(Asset::asset_type_name, Asset::load);
+        AssetFunctions functions{
+            .loader = Asset::load,
+        };
+        register_asset(Asset::asset_type_name, std::move(functions));
     }
 
-    auto state_of(std::string_view asset_path) -> AssetState;
+    auto state_of(AssetId asset_id) -> AssetState;
+
+    auto asset_id_of(std::string_view path) -> AssetId;
 
     template <TAsset Asset>
-    auto create_asset(std::string_view asset_path, Asset&& asset) -> Ref<Asset> {
-        return Ptr<Asset>{aa::any_cast<Asset>(create_asset(asset_path, AssetAny{std::move(asset)}))}.value();
+    auto create_asset(std::string_view asset_path, Asset&& asset) -> std::pair<AssetId, Ref<Asset>> {
+        auto [id, asset_ptr] = create_asset(asset_path, AssetAny{std::move(asset)});
+        return {id, Ptr<Asset>{aa::any_cast<Asset>(asset_ptr)}.value()};
     }
 
+    auto save_all_assets() -> void;
+
 private:
-    auto register_asset(std::string_view type, std::function<AssetLoader> loader) -> void;
+    auto register_asset(std::string_view type, AssetFunctions&& functions) -> void;
 
     friend AssetPtr;
-    auto load_asset(std::string_view type, std::string_view asset_path) -> AssetAny*;
+    auto load_asset(std::string_view type, AssetId asset_id) -> AssetAny*;
 
-    auto create_asset(std::string_view asset_path, AssetAny asset) -> AssetAny*;
+    auto create_asset(std::string_view asset_path, AssetAny asset) -> std::pair<AssetId, AssetAny*>;
 };
 
 }

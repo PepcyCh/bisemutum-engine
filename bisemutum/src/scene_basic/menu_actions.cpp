@@ -64,7 +64,7 @@ auto menu_action_import_model_assimp(MenuActionContext const& ctx) -> void {
             auto curr_object = object;
 
             std::unordered_set<std::string> used_names{};
-            std::vector<std::string> mat_paths{scene->mNumMaterials};
+            std::vector<rt::AssetId> mat_ids{scene->mNumMaterials};
             for (uint32_t i = 0; i < scene->mNumMaterials; i++) {
                 auto ai_mat = scene->mMaterials[i];
 
@@ -75,8 +75,8 @@ auto menu_action_import_model_assimp(MenuActionContext const& ctx) -> void {
                 used_names.insert(mat_name);
 
                 auto mat_path = fmt::format("/project/imported/models/{}/{}.material.biasset", model_name, mat_name);
-                auto mat = g_engine->asset_manager()->create_asset(mat_path, MaterialAsset{});
-                mat_paths[i] = std::move(mat_path);
+                auto [mat_asset_id, mat] = g_engine->asset_manager()->create_asset(mat_path, MaterialAsset{});
+                mat_ids[i] = mat_asset_id;
 
                 mat->material.material_function = R"(
 surface.base_color = diffuse;
@@ -113,7 +113,7 @@ surface.roughness = roughness;
                 }
 
                 auto mesh_path = fmt::format("/project/imported/models/{}/{}.static_mesh.biasset", model_name, mesh_name);
-                auto mesh = g_engine->asset_manager()->create_asset(mesh_path, StaticMesh{});
+                auto [mesh_asset_id, mesh] = g_engine->asset_manager()->create_asset(mesh_path, StaticMesh{});
 
                 mesh->resize(ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
                 mesh->set_positions_raw(reinterpret_cast<float3 const*>(ai_mesh->mVertices));
@@ -133,10 +133,10 @@ surface.roughness = roughness;
                 mesh->update_gpu_buffer();
 
                 curr_object->attach_component(StaticMeshComponent{
-                    .static_mesh = {std::move(mesh_path)}
+                    .static_mesh = {mesh_asset_id},
                 });
                 curr_object->attach_component(MeshRendererComponent{
-                    .material = {mat_paths[ai_mesh->mMaterialIndex]}
+                    .material = {mat_ids[ai_mesh->mMaterialIndex]},
                 });
             }
 

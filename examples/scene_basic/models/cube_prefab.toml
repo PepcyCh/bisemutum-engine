@@ -9,9 +9,9 @@ rotation = [ 0.0, 0.0, 0.0 ]
 [[components]]
 type = "StaticMeshComponent"
 [components.value]
-static_mesh = { asset_path = "/project/meshes/cube.obj" }
+static_mesh = { asset_id = 1 }
 
 [[components]]
 type = "MeshRendererComponent"
 [components.value]
-material = { asset_path = "/project/materials/white.toml" }
+material = { asset_id = 5 }

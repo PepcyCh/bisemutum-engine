@@ -8,7 +8,7 @@ surface.normal_map_value = normal_map.Sample(normal_map_sampler, vertex.texcoord
 
 [[params]]
 name = "base_color_tex"
-value = { asset_path = "/project/textures/earth_diffuse.toml" }
+value = { asset_id = 6 }
 [[params]]
 name = "normal_map"
-value = { asset_path = "/project/textures/earth_normal.toml" }
+value = { asset_id = 7 }

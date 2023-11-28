@@ -46,11 +46,15 @@ struct ProjectInfo final {
     static constexpr std::string_view type_name = "";
 
     std::string name;
+    std::string asset_metadata_file;
     std::string scene_file;
     std::string renderer;
     ProjectSettings settings;
 };
-BI_SREFL(type(ProjectInfo), field(name), field(scene_file), field(renderer), field(settings));
+BI_SREFL(
+    type(ProjectInfo),
+    field(name), field(asset_metadata_file), field(scene_file), field(renderer), field(settings)
+);
 
 struct ExecutableOptions final {
     char const* project_file = nullptr;
@@ -102,6 +106,11 @@ struct Engine::Impl final {
             "/project/",
             rt::PhysicalSubFileSystem{std::filesystem::path{opt.project_file}.parent_path()}
         );
+
+        auto asset_metadata_file = file_system.get_file(project_info.asset_metadata_file).value();
+        if (!asset_manager.initialize(*&asset_metadata_file)) {
+            return false;
+        }
 
         auto graphics_backend_str = magic_enum::enum_name(project_info.settings.graphics.backend);
         graphics_manager.initialize(project_info.settings.graphics);

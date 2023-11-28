@@ -6,11 +6,11 @@
 namespace bi::rt {
 
 auto AssetPtr::state() const -> AssetState {
-    return g_engine->asset_manager()->state_of(asset_path);
+    return g_engine->asset_manager()->state_of(asset_id);
 }
 
 auto AssetPtr::load(std::string_view type) const -> AssetAny* {
-    return g_engine->asset_manager()->load_asset(type, asset_path);
+    return g_engine->asset_manager()->load_asset(type, asset_id);
 }
 
 }

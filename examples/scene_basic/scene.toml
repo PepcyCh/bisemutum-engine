@@ -10,12 +10,12 @@ scaling = [ 5.0, 1.0, 5.0 ]
 [[objects.components]]
 type = "StaticMeshComponent"
 [objects.components.value]
-static_mesh = { asset_path = "/project/meshes/plane.obj" }
+static_mesh = { asset_id = 0 }
 
 [[objects.components]]
 type = "MeshRendererComponent"
 [objects.components.value]
-material = { asset_path = "/project/materials/checkerboard.toml" }
+material = { asset_id = 3 }
 
 [[objects]]
 name = "Cube"
@@ -29,12 +29,12 @@ rotation = [ 0.0, 30.0, 0.0 ]
 [[objects.components]]
 type = "StaticMeshComponent"
 [objects.components.value]
-static_mesh = { asset_path = "/project/meshes/cube.obj" }
+static_mesh = { asset_id = 1 }
 
 [[objects.components]]
 type = "MeshRendererComponent"
 [objects.components.value]
-material = { asset_path = "/project/materials/white.toml" }
+material = { asset_id = 5 }
 
 [[objects]]
 name = "Sphere"
@@ -47,12 +47,12 @@ translation = [ -1.0, 0.0, 1.0 ]
 [[objects.components]]
 type = "StaticMeshComponent"
 [objects.components.value]
-static_mesh = { asset_path = "/project/meshes/sphere.obj" }
+static_mesh = { asset_id = 2 }
 
 [[objects.components]]
 type = "MeshRendererComponent"
 [objects.components.value]
-material = { asset_path = "/project/materials/textured.toml" }
+material = { asset_id = 4 }
 
 [[objects]]
 name = "Dir Light"

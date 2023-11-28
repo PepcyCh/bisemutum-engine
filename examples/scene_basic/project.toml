@@ -1,5 +1,6 @@
 name = "Scene Basic"
 
+asset_metadata_file = "/project/asset_metadata.toml"
 scene_file = "/project/scene.toml"
 
 renderer = "ForwardRenderer"

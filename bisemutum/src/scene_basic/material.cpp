@@ -1,5 +1,6 @@
 #include <bisemutum/scene_basic/material.hpp>
 
+#include <bisemutum/scene_basic/texture.hpp>
 #include <bisemutum/math/math_serde.hpp>
 #include <bisemutum/runtime/logger.hpp>
 
@@ -112,6 +113,16 @@ auto MaterialAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     }
     mat.material.update_shader_parameter();
     return mat;
+}
+
+auto MaterialAsset::save(Dyn<rt::IFile>::Ref file, rt::AssetAny const& asset) -> void {
+    auto& mat = aa::any_cast<MaterialAsset const&>(asset);
+    MaterialDesc desc{
+        .surface_model = mat.material.surface_model,
+        .blend_mode = mat.material.blend_mode,
+        .value_params = mat.material.value_params,
+        .material_function = mat.material.material_function,
+    };
 }
 
 }
