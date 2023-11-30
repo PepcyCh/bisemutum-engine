@@ -115,13 +115,13 @@ auto MaterialAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     return mat;
 }
 
-auto MaterialAsset::save(Dyn<rt::IFile>::Ref file, rt::AssetAny const& asset) -> void {
-    auto& mat = aa::any_cast<MaterialAsset const&>(asset);
+auto MaterialAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
     MaterialDesc desc{
-        .surface_model = mat.material.surface_model,
-        .blend_mode = mat.material.blend_mode,
-        .value_params = mat.material.value_params,
-        .material_function = mat.material.material_function,
+        .surface_model = material.surface_model,
+        .blend_mode = material.blend_mode,
+        .value_params = material.value_params,
+        .material_function = material.material_function,
+        // .referenced_material = material.referenced_material.
     };
 }
 

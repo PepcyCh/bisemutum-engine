@@ -36,6 +36,7 @@ struct Scene final {
     auto do_destroy_scene_objects() -> void;
 
     auto load_from_value(serde::Value &&value) -> void;
+    auto save_to_value(serde::Value& value) const -> void;
 
 private:
     friend Prefab;

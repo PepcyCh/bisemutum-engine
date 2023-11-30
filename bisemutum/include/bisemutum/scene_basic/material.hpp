@@ -10,10 +10,9 @@ struct MaterialAsset final {
 
     static auto load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny;
 
-    static auto save(Dyn<rt::IFile>::Ref file, rt::AssetAny const& asset) -> void;
+    auto save(Dyn<rt::IFile>::Ref file) const -> void;
 
     gfx::Material material;
-    // std::string_view
 };
 
 }

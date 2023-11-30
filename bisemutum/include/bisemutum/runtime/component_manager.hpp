@@ -10,6 +10,7 @@
 namespace bi::rt {
 
 using ComponentDeserializer = auto(Ref<SceneObject>, serde::Value const&) -> void;
+using ComponentSerializer = auto(serde::Value&, void const*) -> void;
 using ComponentEditor = auto(Ref<SceneObject>, void*) -> bool;
 using ComponentClone = auto(Ref<SceneObject>, void const*) -> void;
 
@@ -22,6 +23,7 @@ struct ComponentManager final : PImpl<ComponentManager> {
     struct ComponentMetadata final {
         std::type_index type_index;
         std::function<ComponentDeserializer> deserializer;
+        std::function<ComponentSerializer> serializer;
         std::function<ComponentEditor> editor;
         std::function<ComponentClone> clone_to;
     };
@@ -32,6 +34,9 @@ struct ComponentManager final : PImpl<ComponentManager> {
             .type_index = typeid(Component),
             .deserializer = [](Ref<SceneObject> object, serde::Value const& component_value) {
                 object->attach_component(component_value.get<Component>());
+            },
+            .serializer = [](serde::Value& serde_value, void const* component_value) {
+                serde::to_value(serde_value, *reinterpret_cast<Component const*>(component_value));
             },
             .clone_to = [](Ref<SceneObject> object, void const* component_value) {
                 auto component = *reinterpret_cast<Component const*>(component_value);
@@ -56,6 +61,7 @@ struct ComponentManager final : PImpl<ComponentManager> {
 
     auto get_metadata(std::string_view type) const -> ComponentMetadata const&;
     auto get_deserializer(std::string_view type) const -> std::function<ComponentDeserializer> const&;
+    auto get_serializer(std::string_view type) const -> std::function<ComponentSerializer> const&;
     auto get_editor(std::string_view type) const -> std::function<ComponentEditor> const&;
 
 private:

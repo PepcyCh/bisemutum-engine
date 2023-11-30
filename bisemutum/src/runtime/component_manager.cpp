@@ -34,6 +34,9 @@ auto ComponentManager::get_metadata(std::string_view type) const -> ComponentMet
 auto ComponentManager::get_deserializer(std::string_view type) const -> std::function<ComponentDeserializer> const& {
     return get_metadata(type).deserializer;
 }
+auto ComponentManager::get_serializer(std::string_view type) const -> std::function<ComponentSerializer> const& {
+    return get_metadata(type).serializer;
+}
 auto ComponentManager::get_editor(std::string_view type) const -> std::function<ComponentEditor> const& {
     return get_metadata(type).editor;
 }

@@ -28,6 +28,9 @@ struct AssetManager final : PImpl<AssetManager> {
     auto register_asset() -> void {
         AssetFunctions functions{
             .loader = Asset::load,
+            .saver = [](Dyn<IFile>::Ref file, AssetAny const& value) {
+                aa::any_cast<Asset const&>(value).save(file);
+            },
         };
         register_asset(Asset::asset_type_name, std::move(functions));
     }
@@ -42,13 +45,13 @@ struct AssetManager final : PImpl<AssetManager> {
         return {id, Ptr<Asset>{aa::any_cast<Asset>(asset_ptr)}.value()};
     }
 
-    auto save_all_assets() -> void;
+    auto save_all_assets(Dyn<IFile>::Ref metadata_file) -> void;
 
 private:
     auto register_asset(std::string_view type, AssetFunctions&& functions) -> void;
 
     friend AssetPtr;
-    auto load_asset(std::string_view type, AssetId asset_id) -> AssetAny*;
+    auto load_asset(AssetId asset_id) -> AssetAny*;
 
     auto create_asset(std::string_view asset_path, AssetAny asset) -> std::pair<AssetId, AssetAny*>;
 };

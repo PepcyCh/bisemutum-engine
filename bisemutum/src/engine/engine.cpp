@@ -43,8 +43,6 @@ struct ProjectSettings final {
 BI_SREFL(type(ProjectSettings), field(graphics));
 
 struct ProjectInfo final {
-    static constexpr std::string_view type_name = "";
-
     std::string name;
     std::string asset_metadata_file;
     std::string scene_file;
@@ -101,7 +99,7 @@ struct Engine::Impl final {
 
         auto project_info_opt = read_project_file(opt.project_file);
         if (!project_info_opt) { return false; }
-        auto& project_info = project_info_opt.value();
+        project_info = std::move(project_info_opt).value();
         file_system.mount(
             "/project/",
             rt::PhysicalSubFileSystem{std::filesystem::path{opt.project_file}.parent_path()}
@@ -205,6 +203,14 @@ struct Engine::Impl final {
         });
     }
 
+    auto save_all() -> void {
+        auto current_scene_file = file_system.create_file(project_info.scene_file).value();
+        world.save_currnet_scene(*&current_scene_file);
+
+        auto asset_metadata_file = file_system.create_file(project_info.asset_metadata_file).value();
+        asset_manager.save_all_assets(*&asset_metadata_file);
+    }
+
     rt::LoggerManager logger_manager;
 
     Window window;
@@ -225,6 +231,8 @@ struct Engine::Impl final {
 
     drefl::ReflectionManager reflection_manager;
     editor::MenuManager menu_manager;
+
+    ProjectInfo project_info;
 
     bool is_editor_mode = false;
 };
@@ -287,6 +295,10 @@ auto Engine::reflection_manager() -> Ref<drefl::ReflectionManager> {
 }
 auto Engine::menu_manager() -> Ref<editor::MenuManager> {
     return impl()->menu_manager;
+}
+
+auto Engine::save_all() -> void {
+    impl()->save_all();
 }
 
 

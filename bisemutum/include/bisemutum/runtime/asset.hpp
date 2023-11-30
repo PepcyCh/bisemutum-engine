@@ -13,9 +13,10 @@ enum class AssetId : uint64_t {
 };
 
 template <typename T>
-concept TAsset = requires () {
+concept TAsset = requires (T v) {
     { T::asset_type_name } -> std::same_as<std::string_view const&>;
     { T::load(std::declval<Dyn<IFile>::Ref>()) } -> std::same_as<AssetAny>;
+    { v.save(std::declval<Dyn<IFile>::Ref>()) } -> std::same_as<void>;
 };
 
 enum class AssetState : uint8_t {
@@ -28,7 +29,7 @@ enum class AssetState : uint8_t {
 
 struct AssetPtr final {
     auto state() const -> AssetState;
-    auto load(std::string_view type) const -> AssetAny*;
+    auto load() const -> AssetAny*;
 
     AssetId asset_id = AssetId::invalid;
 };
@@ -48,7 +49,7 @@ struct TAssetPtr final {
         return asset_ptr_.state();
     }
     auto load() const -> void {
-        asset_ = aa::any_cast<Asset>(asset_ptr_.load(Asset::asset_type_name));
+        asset_ = aa::any_cast<Asset>(asset_ptr_.load());
     }
 
     auto empty() const -> bool {

@@ -12,6 +12,8 @@ struct Prefab final {
 
     static auto create_from(CRef<SceneObject> object, std::string_view dst_path) -> void;
 
+    auto save(Dyn<rt::IFile>::Ref file) const -> void;
+
     auto instantiate() -> void;
 
 private:

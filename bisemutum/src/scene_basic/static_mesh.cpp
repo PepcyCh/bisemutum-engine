@@ -67,6 +67,10 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     return mesh;
 }
 
+auto StaticMesh::save(Dyn<rt::IFile>::Ref file) const -> void {
+    // TODO
+}
+
 auto StaticMesh::vertex_input_desc(
     gfx::VertexAttributesType attributes_type
 ) const -> std::vector<rhi::VertexInputBufferDesc> {

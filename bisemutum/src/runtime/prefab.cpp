@@ -96,6 +96,41 @@ auto Prefab::create_from(CRef<SceneObject> object, std::string_view dst_path) ->
     g_engine->asset_manager()->create_asset(dst_path, std::move(prefab));
 }
 
+auto Prefab::save(Dyn<rt::IFile>::Ref file) const -> void {
+    serde::Value value{};
+    auto& components_value = value["components"];
+    object_->for_each_component([&components_value](std::string_view component_type, void const* component_value) {
+        auto serializer = g_engine->component_manager()->get_serializer(component_type);
+        serde::Value value{};
+        serializer(value, component_value);
+        value["type"] = serde::Value::String{component_type};
+        components_value.push_back(std::move(value));
+    });
+
+    auto& objects_value = value["objects"];
+    std::vector<std::pair<CRef<SceneObject>, size_t>> stack{{object_.value(), 0}};
+    while (!stack.empty()) {
+        auto [u, index] = stack.back();
+        stack.pop_back();
+        u->for_each_children([&objects_value, &stack, index](CRef<SceneObject> ch) {
+            serde::Value object_value{};
+            object_value["parent"] = static_cast<serde::Value::Integer>(index);
+            auto& components_value = object_value["components"];
+            ch->for_each_component([&components_value](std::string_view component_type, void const* component_value) {
+                auto serializer = g_engine->component_manager()->get_serializer(component_type);
+                serde::Value value{};
+                serializer(value, component_value);
+                value["type"] = serde::Value::String{component_type};
+                components_value.push_back(std::move(value));
+            });
+            objects_value.push_back(std::move(object_value));
+            stack.emplace_back(ch, objects_value.size());
+        });
+    }
+
+    file.write_string_data(value.to_toml());
+}
+
 auto Prefab::instantiate() -> void {
     auto current_scene = g_engine->world()->current_scene().value();
     auto object = current_scene->create_scene_object(nullptr, false);

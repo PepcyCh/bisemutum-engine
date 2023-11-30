@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vfs.hpp"
 #include "../prelude/ref.hpp"
 #include "../prelude/idiom.hpp"
 
@@ -21,6 +22,7 @@ struct World final : PImpl<World> {
     auto destroy_scene(Ref<Scene> scene) -> void;
 
     auto load_scene(std::string_view scene_file_str) -> bool;
+    auto save_currnet_scene(Dyn<IFile>::Ref scene_file) const -> void;
 };
 
 }

@@ -47,6 +47,13 @@ struct World::Impl final {
             return false;
         }
     }
+    auto save_currnet_scene(Dyn<IFile>::Ref scene_file) const -> void {
+        if (current_scene) {
+            serde::Value value{};
+            current_scene->save_to_value(value);
+            scene_file.write_string_data(value.to_toml());
+        }
+    }
 
     std::list<Scene> scenes;
     std::list<SceneObject> scene_objects;
@@ -76,6 +83,9 @@ auto World::create_scene(bool is_dummy_scene) -> Ref<Scene> {
 
 auto World::load_scene(std::string_view scene_json_str) -> bool {
     return impl()->load_scene(scene_json_str);
+}
+auto World::save_currnet_scene(Dyn<IFile>::Ref scene_file) const -> void {
+    impl()->save_currnet_scene(scene_file);
 }
 
 }

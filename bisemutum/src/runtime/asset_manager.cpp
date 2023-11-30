@@ -59,13 +59,13 @@ struct AssetManager::Impl final {
         }
     }
 
-    auto load_asset(std::string_view type, AssetId asset_id) -> AssetAny* {
+    auto load_asset(AssetId asset_id) -> AssetAny* {
         auto it = assets.find(static_cast<uint64_t>(asset_id));
         if (it == assets.end()) {
             return nullptr;
         }
         if (it->second.state == AssetState::not_loaded) {
-            auto& loader = asset_functions.at(type).loader;
+            auto& loader = asset_functions.at(it->second.metadata.type).loader;
             auto asset_file = g_engine->file_system()->get_file(it->second.metadata.path).value();
             it->second.content = loader(*&asset_file);
             it->second.state = it->second.content.has_value() ? AssetState::loaded : AssetState::error;
@@ -85,10 +85,24 @@ struct AssetManager::Impl final {
         return {id, std::addressof(it->second.content)};
     }
 
-    auto save_all_assets() -> void {
-        for (auto& [path, asset] : assets) {
-            if (!asset.dirty) { continue; }
+    auto save_all_assets(Dyn<IFile>::Ref metadata_file) -> void {
+        for (auto& [_, asset] : assets) {
+            if (!asset.dirty || !asset.content.has_value()) { continue; }
+            auto asset_file = g_engine->file_system()->create_file(asset.metadata.path).value();
+            auto& saver = asset_functions[asset.metadata.type].saver;
+            saver(*&asset_file, asset.content);
+            asset.dirty = false;
         }
+
+        std::vector<AssetMetadata> metadata(assets.size());
+        for (size_t i = 0; auto& [_, asset] : assets) {
+            metadata[i] = asset.metadata;
+            ++i;
+        }
+        serde::Value value{};
+        serde::to_value(value["assets"], metadata);
+        auto metadata_toml = value.to_toml();
+        metadata_file.write_string_data(metadata_toml);
     }
 
     struct Asset final {
@@ -122,16 +136,16 @@ auto AssetManager::asset_id_of(std::string_view path) -> AssetId {
     return impl()->asset_id_of(path);
 }
 
-auto AssetManager::load_asset(std::string_view type, AssetId asset_id) -> AssetAny* {
-    return impl()->load_asset(type, asset_id);
+auto AssetManager::load_asset(AssetId asset_id) -> AssetAny* {
+    return impl()->load_asset(asset_id);
 }
 
 auto AssetManager::create_asset(std::string_view asset_path, AssetAny asset) -> std::pair<AssetId, AssetAny*> {
     return impl()->create_asset(asset_path, std::move(asset));
 }
 
-auto AssetManager::save_all_assets() -> void {
-    impl()->save_all_assets();
+auto AssetManager::save_all_assets(Dyn<IFile>::Ref metadata_file) -> void {
+    impl()->save_all_assets(metadata_file);
 }
 
 }

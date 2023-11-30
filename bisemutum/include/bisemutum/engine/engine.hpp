@@ -59,6 +59,8 @@ struct Engine final : PImpl<Engine> {
     auto reflection_manager() -> Ref<drefl::ReflectionManager>;
 
     auto menu_manager() -> Ref<editor::MenuManager>;
+
+    auto save_all() -> void;
 };
 
 extern Engine* g_engine;

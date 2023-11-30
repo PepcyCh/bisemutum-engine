@@ -200,4 +200,8 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     return texture;
 }
 
+auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
+    // TODO
+}
+
 }

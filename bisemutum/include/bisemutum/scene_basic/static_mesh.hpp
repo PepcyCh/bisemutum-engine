@@ -1,13 +1,12 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
 #include "../math/bbox.hpp"
 #include "../runtime/asset.hpp"
 #include "../graphics/shader_param.hpp"
 #include "../graphics/drawable.hpp"
 #include "../graphics/vertex_attributes_type.hpp"
-#include "../graphics/shader_compilation_environment.hpp"
 #include "../rhi/command.hpp"
 #include "../rhi/pipeline.hpp"
 
@@ -18,6 +17,8 @@ struct StaticMesh final {
 
     // -- For TAsset --
     static auto load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny;
+
+    auto save(Dyn<rt::IFile>::Ref file) const -> void;
 
     // -- For IMesh --
     BI_SHADER_PARAMETERS_BEGIN(ShaderParams)
