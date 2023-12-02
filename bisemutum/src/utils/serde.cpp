@@ -216,10 +216,9 @@ auto Value::to_json(int indent) const -> std::string {
 }
 auto Value::to_toml() const -> std::string {
     auto toml = value_to_toml(*this);
-    std::string toml_str{};
-    std::ostringstream sout{toml_str};
+    std::ostringstream sout{};
     sout << toml;
-    return toml_str;
+    return sout.str();
 }
 
 auto Value::from_json(std::string_view json_str) -> Value {

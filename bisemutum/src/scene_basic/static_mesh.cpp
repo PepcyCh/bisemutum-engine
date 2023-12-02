@@ -1,5 +1,6 @@
 #include <bisemutum/scene_basic/static_mesh.hpp>
 
+#include <bisemutum/prelude/byte_stream.hpp>
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/resource_builder.hpp>
 #include <assimp/Importer.hpp>
@@ -68,7 +69,17 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
 }
 
 auto StaticMesh::save(Dyn<rt::IFile>::Ref file) const -> void {
-    // TODO
+    WriteByteStream bs{};
+    bs.write(rt::asset_magic_number).write(StaticMesh::asset_type_name);
+
+    bs.write(bbox_);
+    bs.write(positions_);
+    bs.write(texcoords_);
+    bs.write(normals_);
+    bs.write(tangents_);
+    bs.write(indices_);
+
+    file.write_binary_data(bs.data());
 }
 
 auto StaticMesh::vertex_input_desc(

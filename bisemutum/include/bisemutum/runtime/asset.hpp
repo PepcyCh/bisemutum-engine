@@ -12,6 +12,8 @@ enum class AssetId : uint64_t {
     invalid = static_cast<uint64_t>(-1),
 };
 
+inline constexpr uint32_t asset_magic_number = 0x0b1a55e7u;
+
 template <typename T>
 concept TAsset = requires (T v) {
     { T::asset_type_name } -> std::same_as<std::string_view const&>;
@@ -52,6 +54,9 @@ struct TAssetPtr final {
         asset_ = aa::any_cast<Asset>(asset_ptr_.load());
     }
 
+    auto asset_id() const -> AssetId {
+        return asset_ptr_.asset_id;
+    }
     auto empty() const -> bool {
         return asset_ptr_.asset_id == AssetId::invalid;
     }

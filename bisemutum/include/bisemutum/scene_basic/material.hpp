@@ -13,6 +13,9 @@ struct MaterialAsset final {
     auto save(Dyn<rt::IFile>::Ref file) const -> void;
 
     gfx::Material material;
+
+    rt::AssetId referenced_material = rt::AssetId::invalid;
+    std::vector<std::pair<std::string, rt::AssetId>> referenced_textures;
 };
 
 }

@@ -15,6 +15,7 @@ struct TextureAsset final {
 
     auto save(Dyn<rt::IFile>::Ref file) const -> void;
 
+    std::vector<std::byte> texture_data;
     gfx::Texture texture;
     Ptr<gfx::Sampler> sampler;
 };

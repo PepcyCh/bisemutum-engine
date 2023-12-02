@@ -40,5 +40,5 @@ path = "/project/textures/earth_normal.toml"
 
 [[assets]]
 id = 8
-type = "Texture"
+type = "Prefab"
 path = "/project/models/cube_prefab.toml"

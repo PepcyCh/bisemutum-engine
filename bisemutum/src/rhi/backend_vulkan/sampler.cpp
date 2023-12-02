@@ -27,6 +27,7 @@ auto to_vk_border_color(SamplerBorderColor border) -> VkBorderColor {
 }
 
 SamplerVulkan::SamplerVulkan(Ref<DeviceVulkan> device, SamplerDesc const& desc) : device_(device) {
+    desc_ = desc;
     VkSamplerCreateInfo sampler_ci {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .pNext = nullptr,

@@ -1,5 +1,6 @@
 #include <bisemutum/scene_basic/texture.hpp>
 
+#include <bisemutum/prelude/byte_stream.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
@@ -197,11 +198,25 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         }
     );
 
+    texture.texture_data.resize(image_size_bytes);
+    std::copy_n(reinterpret_cast<std::byte const*>(image_data), image_size_bytes, texture.texture_data.data());
+
+    image_deleter(image_data);
     return texture;
 }
 
 auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
-    // TODO
+    WriteByteStream bs{};
+    bs.write(rt::asset_magic_number).write(TextureAsset::asset_type_name);
+
+    auto& sampler_desc = sampler->rhi_sampler()->desc();
+    bs.write(sampler_desc);
+    auto& texture_desc = texture.desc();
+    bs.write(texture_desc);
+
+    bs.write(texture_data);
+
+    file.write_binary_data(bs.data());
 }
 
 }

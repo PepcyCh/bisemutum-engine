@@ -93,6 +93,7 @@ auto to_dx_static_border_color(SamplerBorderColor border) -> D3D12_STATIC_BORDER
 }
 
 SamplerD3D12::SamplerD3D12(Ref<DeviceD3D12> device, SamplerDesc const& desc) : device_(device) {
+    desc_ = desc;
     sampler_desc_ = D3D12_SAMPLER_DESC{
         .Filter = to_dx_filter_mode(desc.min_filter, desc.mag_filter, desc.mipmap_mode),
         .AddressU = to_dx_address_mode(desc.address_mode_u),

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <memory>
-#include <string>
+#include <cstdint>
 
 #include "defines.hpp"
 #include "../prelude/hash.hpp"
@@ -55,6 +54,11 @@ struct SamplerDesc final {
 
 struct Sampler {
     virtual ~Sampler() = default;
+
+    auto desc() const -> SamplerDesc const& { return desc_; }
+
+protected:
+    SamplerDesc desc_;
 };
 
 }

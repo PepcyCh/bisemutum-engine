@@ -3,6 +3,7 @@
 #include <bisemutum/scene_basic/texture.hpp>
 #include <bisemutum/math/math_serde.hpp>
 #include <bisemutum/runtime/logger.hpp>
+#include <bisemutum/prelude/misc.hpp>
 
 namespace bi {
 
@@ -62,7 +63,20 @@ struct MaterialDesc final {
         }
         auto& params_value = v["params"];
         for (auto& [name, value] : o.value_params) {
-            serde::to_value(params_value[name], value);
+            auto& param_value = params_value[name];
+            std::visit(
+                FunctorsHelper{
+                    [&param_value](float v) { serde::to_value(param_value, v); },
+                    [&param_value](float2 v) { serde::to_value(param_value, v); },
+                    [&param_value](float3 v) { serde::to_value(param_value, v); },
+                    [&param_value](float4 v) { serde::to_value(param_value, v); },
+                    [&param_value](int v) { serde::to_value(param_value, v); },
+                    [&param_value](int2 v) { serde::to_value(param_value, v); },
+                    [&param_value](int3 v) { serde::to_value(param_value, v); },
+                    [&param_value](int4 v) { serde::to_value(param_value, v); },
+                },
+                value
+            );
         }
         for (auto& [name, value] : o.texture_params) {
             serde::to_value(params_value[name], value);
@@ -105,9 +119,12 @@ auto MaterialAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
             .referenced_material = &desc.referenced_material.asset()->material,
         },
     };
+    mat.referenced_material = desc.referenced_material.asset_id();
+    mat.referenced_textures.reserve(desc.texture_params.size());
     mat.material.texture_params.reserve(desc.texture_params.size());
     mat.material.sampler_params.reserve(desc.texture_params.size());
     for (auto& [name, tex] : desc.texture_params) {
+        mat.referenced_textures.emplace_back(name, tex.asset_id());
         mat.material.sampler_params.emplace_back(name + "_sampler", tex.asset()->sampler.value());
         mat.material.texture_params.emplace_back(std::move(name), make_ref(tex.asset()->texture));
     }
@@ -121,8 +138,16 @@ auto MaterialAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
         .blend_mode = material.blend_mode,
         .value_params = material.value_params,
         .material_function = material.material_function,
-        // .referenced_material = material.referenced_material.
+        .referenced_material = referenced_material,
     };
+    desc.texture_params.resize(referenced_textures.size());
+    for (size_t i = 0; auto& [name, tex] : referenced_textures) {
+        desc.texture_params[i] = {name, tex};
+    }
+
+    serde::Value value;
+    MaterialDesc::to_value(value, desc);
+    file.write_string_data(value.to_toml());
 }
 
 }

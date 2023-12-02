@@ -250,6 +250,15 @@ auto from_value(Value const& v, T& o) -> void {
     o = magic_enum::enum_cast<T>(v.get<Value::String>()).value();
 }
 
+template <>
+inline auto to_value(Value &v, std::string const& o) -> void {
+    v = o;
+}
+template <>
+inline auto from_value(Value const& v, std::string& o) -> void {
+    o = v.get<Value::String>();
+}
+
 template <typename T>
 auto to_value(Value &v, std::vector<T> const& o) -> void {
     Value::Array arr(o.size());

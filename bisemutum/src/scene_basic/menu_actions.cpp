@@ -74,7 +74,7 @@ auto menu_action_import_model_assimp(MenuActionContext const& ctx) -> void {
                 }
                 used_names.insert(mat_name);
 
-                auto mat_path = fmt::format("/project/imported/models/{}/{}.material.biasset", model_name, mat_name);
+                auto mat_path = fmt::format("/project/imported/models/{}/{}.material.toml", model_name, mat_name);
                 auto [mat_asset_id, mat] = g_engine->asset_manager()->create_asset(mat_path, MaterialAsset{});
                 mat_ids[i] = mat_asset_id;
 

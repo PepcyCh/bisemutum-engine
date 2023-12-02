@@ -14,7 +14,7 @@ namespace bi::editor {
 namespace {
 
 auto menu_action_save_project(MenuActionContext const& ctx) -> void {
-    // TODO
+    g_engine->save_all();
 }
 
 auto menu_action_add_prefab_to_scene(MenuActionContext const& ctx) -> void {
