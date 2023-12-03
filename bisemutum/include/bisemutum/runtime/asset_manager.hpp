@@ -41,7 +41,7 @@ struct AssetManager final : PImpl<AssetManager> {
 
     template <TAsset Asset>
     auto create_asset(std::string_view asset_path, Asset&& asset) -> std::pair<AssetId, Ref<Asset>> {
-        auto [id, asset_ptr] = create_asset(asset_path, AssetAny{std::move(asset)});
+        auto [id, asset_ptr] = create_asset(Asset::asset_type_name, asset_path, AssetAny{std::move(asset)});
         return {id, Ptr<Asset>{aa::any_cast<Asset>(asset_ptr)}.value()};
     }
 
@@ -53,7 +53,9 @@ private:
     friend AssetPtr;
     auto load_asset(AssetId asset_id) -> AssetAny*;
 
-    auto create_asset(std::string_view asset_path, AssetAny asset) -> std::pair<AssetId, AssetAny*>;
+    auto create_asset(
+        std::string_view asset_type_name, std::string_view asset_path, AssetAny asset
+    ) -> std::pair<AssetId, AssetAny*>;
 };
 
 }

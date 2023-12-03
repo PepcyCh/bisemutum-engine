@@ -617,38 +617,6 @@ auto GraphicsManager::set_displayer(Dyn<IDisplayer>::Ref displayer) -> void {
     impl()->set_displayer(displayer);
 }
 
-// auto GraphicsManager::add_camera() -> CameraHandle {
-//     return impl()->add_camera();
-// }
-// auto GraphicsManager::remove_camera(CameraHandle handle) -> void {
-//     impl()->remove_camera(handle);
-// }
-// auto GraphicsManager::get_camera(CameraHandle handle) -> Ref<Camera> {
-//     return impl()->get_camera(handle);
-// }
-// auto GraphicsManager::for_each_camera(std::function<auto(Camera&) -> void> func) -> void {
-//     impl()->for_each_camera(std::move(func));
-// }
-// auto GraphicsManager::for_each_camera(std::function<auto(Camera const&) -> void> func) const -> void {
-//     impl()->for_each_camera(std::move(func));
-// }
-
-// auto GraphicsManager::add_drawable() -> DrawableHandle {
-//     return impl()->add_drawable();
-// }
-// auto GraphicsManager::remove_drawable(DrawableHandle handle) -> void {
-//     impl()->remove_drawable(handle);
-// }
-// auto GraphicsManager::get_drawable(DrawableHandle handle) -> Ref<Drawable> {
-//     return impl()->get_drawable(handle);
-// }
-// auto GraphicsManager::for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
-//     impl()->for_each_drawable(std::move(func));
-// }
-// auto GraphicsManager::for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
-//     impl()->for_each_drawable(std::move(func));
-// }
-
 auto GraphicsManager::get_sampler(rhi::SamplerDesc const& desc) -> Ref<Sampler> {
     return impl()->get_sampler(desc);
 }

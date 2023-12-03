@@ -3,66 +3,29 @@
 #include <bisemutum/prelude/byte_stream.hpp>
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/resource_builder.hpp>
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
-#include <assimp/mesh.h>
 #include <mikktspace.h>
 
 namespace bi {
 
 auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
-    auto file_data = file.read_binary_data();
-    Assimp::Importer importer{};
-    importer.SetPropertyInteger(
-        AI_CONFIG_PP_RVC_FLAGS,
-        aiComponent_LIGHTS
-        | aiComponent_CAMERAS
-        | aiComponent_COLORS
-        | aiComponent_TEXTURES
-        | aiComponent_MATERIALS
-        | aiComponent_BONEWEIGHTS
-        | aiComponent_ANIMATIONS
-    );
-    auto scene = importer.ReadFileFromMemory(
-        file_data.data(), file_data.size(),
-        aiProcess_Triangulate
-        | aiProcess_SortByPType
-        | aiProcess_GenNormals
-        | aiProcess_GenUVCoords
-        | aiProcess_JoinIdenticalVertices
-        | aiProcess_PreTransformVertices
-        | aiProcess_RemoveComponent
-    );
-    if (scene == nullptr) {
-        log::critical("general", "Failed to load mesh file '{}': {}", file.filename(), importer.GetErrorString());
+    auto binary_data = file.read_binary_data();
+    ReadByteStream bs{binary_data};
+
+    uint32_t magic_number = 0;
+    std::string asset_type_name;
+    uint32_t version = 0;
+    bs.read(magic_number).read(asset_type_name).read(version);
+    if (!rt::check_if_binary_asset_valid<StaticMesh>(file.filename(), magic_number, asset_type_name)) {
         return {};
     }
-    if (scene->mNumMeshes != 1) {
-        log::critical("general", "Failed to load mesh file '{}': Unexpected # meshes", file.filename());
-        return {};
-    }
-    auto ai_mesh = scene->mMeshes[0];
 
     StaticMesh mesh{};
-    mesh.resize(ai_mesh->mNumVertices, ai_mesh->mNumFaces * 3);
-    mesh.set_positions_raw(reinterpret_cast<float3 const*>(ai_mesh->mVertices));
-    mesh.set_normals_raw(reinterpret_cast<float3 const*>(ai_mesh->mNormals));
-    for (uint32_t i = 0; i < ai_mesh->mNumVertices; i++) {
-        mesh.texcoords_[i] = {ai_mesh->mTextureCoords[0][i].x, ai_mesh->mTextureCoords[0][i].y};
-    }
-    for (uint32_t i = 0; i < ai_mesh->mNumFaces; i++) {
-        auto& ai_face = ai_mesh->mFaces[i];
-        mesh.indices_[3 * i] = ai_face.mIndices[0];
-        mesh.indices_[3 * i + 1] = ai_face.mIndices[1];
-        mesh.indices_[3 * i + 2] = ai_face.mIndices[2];
-    }
-    mesh.calculate_tspace();
-
-    auto& aabb = ai_mesh->mAABB;
-    mesh.bbox_.p_min = {aabb.mMin.x, aabb.mMin.y, aabb.mMin.z};
-    mesh.bbox_.p_max = {aabb.mMax.x, aabb.mMax.y, aabb.mMax.z};
-
+    bs.read(mesh.bbox_);
+    bs.read(mesh.positions_);
+    bs.read(mesh.texcoords_);
+    bs.read(mesh.normals_);
+    bs.read(mesh.tangents_);
+    bs.read(mesh.indices_);
     mesh.update_gpu_buffer();
 
     return mesh;
@@ -70,7 +33,7 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
 
 auto StaticMesh::save(Dyn<rt::IFile>::Ref file) const -> void {
     WriteByteStream bs{};
-    bs.write(rt::asset_magic_number).write(StaticMesh::asset_type_name);
+    bs.write(rt::asset_magic_number).write(StaticMesh::asset_type_name).write(1u);
 
     bs.write(bbox_);
     bs.write(positions_);

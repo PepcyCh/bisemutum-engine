@@ -20,7 +20,7 @@ namespace bi {
 
 namespace {
 
-constexpr rhi::ResourceFormat editor_camera_format = rhi::ResourceFormat::rgba8_unorm;
+constexpr rhi::ResourceFormat editor_camera_format = rhi::ResourceFormat::rgba16_sfloat;
 
 } // namespace
 
@@ -165,7 +165,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     });
 
     wm->imgui_window("Contents", [](ImGuiWindowArgs const& args) {
-        // TODO
+        // TODO - contents viewer
     });
 
     file_dialog_.update();

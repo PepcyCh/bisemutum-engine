@@ -75,12 +75,15 @@ struct AssetManager::Impl final {
         }
     }
 
-    auto create_asset(std::string_view asset_path, AssetAny&& asset) -> std::pair<AssetId, AssetAny*> {
+    auto create_asset(
+        std::string_view asset_type_name, std::string_view asset_path, AssetAny&& asset
+    ) -> std::pair<AssetId, AssetAny*> {
         auto id = static_cast<AssetId>(next_id);
         auto it = assets.try_emplace(next_id++).first;
         it->second.content = std::move(asset);
         it->second.state = AssetState::loaded;
         it->second.dirty = true;
+        it->second.metadata = {it->first, std::string{asset_type_name}, std::string{asset_path}};
         assets_path_map[it->second.metadata.path] = id;
         return {id, std::addressof(it->second.content)};
     }
@@ -140,8 +143,10 @@ auto AssetManager::load_asset(AssetId asset_id) -> AssetAny* {
     return impl()->load_asset(asset_id);
 }
 
-auto AssetManager::create_asset(std::string_view asset_path, AssetAny asset) -> std::pair<AssetId, AssetAny*> {
-    return impl()->create_asset(asset_path, std::move(asset));
+auto AssetManager::create_asset(
+    std::string_view asset_type_name, std::string_view asset_path, AssetAny asset
+) -> std::pair<AssetId, AssetAny*> {
+    return impl()->create_asset(asset_type_name, asset_path, std::move(asset));
 }
 
 auto AssetManager::save_all_assets(Dyn<IFile>::Ref metadata_file) -> void {

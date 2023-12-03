@@ -1,7 +1,0 @@
-image_file = "/project/textures/earth_diffuse.jpg"
-srgb = true
-
-[sampler]
-mag_filter = "linear"
-min_filter = "linear"
-mipmap_mode = "linear"

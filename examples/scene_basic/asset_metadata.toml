@@ -1,44 +1,44 @@
 [[assets]]
 id = 0
-type = "StaticMesh"
-path = "/project/meshes/plane.obj"
+path = '/project/meshes/plane.static_mesh.biasset'
+type = 'StaticMesh'
 
 [[assets]]
 id = 1
-type = "StaticMesh"
-path = "/project/meshes/cube.obj"
+path = '/project/meshes/cube.static_mesh.biasset'
+type = 'StaticMesh'
 
 [[assets]]
 id = 2
-type = "StaticMesh"
-path = "/project/meshes/sphere.obj"
+path = '/project/meshes/sphere.static_mesh.biasset'
+type = 'StaticMesh'
 
 [[assets]]
 id = 3
-type = "Material"
-path = "/project/materials/checkerboard.toml"
+path = '/project/materials/checkerboard.toml'
+type = 'Material'
 
 [[assets]]
 id = 4
-type = "Material"
-path = "/project/materials/textured.toml"
+path = '/project/materials/textured.toml'
+type = 'Material'
 
 [[assets]]
 id = 5
-type = "Material"
-path = "/project/materials/white.toml"
+path = '/project/materials/white.toml'
+type = 'Material'
 
 [[assets]]
 id = 6
-type = "Texture"
-path = "/project/textures/earth_diffuse.toml"
+path = '/project/textures/earth_diffuse.texture.biasset'
+type = 'Texture'
 
 [[assets]]
 id = 7
-type = "Texture"
-path = "/project/textures/earth_normal.toml"
+path = '/project/textures/earth_normal.texture.biasset'
+type = 'Texture'
 
 [[assets]]
 id = 8
-type = "Prefab"
-path = "/project/models/cube_prefab.toml"
+path = '/project/models/cube_prefab.toml'
+type = 'Prefab'

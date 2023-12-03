@@ -63,23 +63,28 @@ struct MaterialDesc final {
         }
         auto& params_value = v["params"];
         for (auto& [name, value] : o.value_params) {
-            auto& param_value = params_value[name];
+            serde::Value param_value;
+            param_value["name"] = name;
             std::visit(
                 FunctorsHelper{
-                    [&param_value](float v) { serde::to_value(param_value, v); },
-                    [&param_value](float2 v) { serde::to_value(param_value, v); },
-                    [&param_value](float3 v) { serde::to_value(param_value, v); },
-                    [&param_value](float4 v) { serde::to_value(param_value, v); },
-                    [&param_value](int v) { serde::to_value(param_value, v); },
-                    [&param_value](int2 v) { serde::to_value(param_value, v); },
-                    [&param_value](int3 v) { serde::to_value(param_value, v); },
-                    [&param_value](int4 v) { serde::to_value(param_value, v); },
+                    [&param_value](float v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](float2 v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](float3 v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](float4 v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](int v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](int2 v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](int3 v) { serde::to_value(param_value["value"], v); },
+                    [&param_value](int4 v) { serde::to_value(param_value["value"], v); },
                 },
                 value
             );
+            params_value.push_back(std::move(param_value));
         }
         for (auto& [name, value] : o.texture_params) {
-            serde::to_value(params_value[name], value);
+            serde::Value param_value;
+            param_value["name"] = name;
+            serde::to_value(param_value["value"], value);
+            params_value.push_back(std::move(param_value));
         }
     }
 };
@@ -143,6 +148,7 @@ auto MaterialAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
     desc.texture_params.resize(referenced_textures.size());
     for (size_t i = 0; auto& [name, tex] : referenced_textures) {
         desc.texture_params[i] = {name, tex};
+        ++i;
     }
 
     serde::Value value;

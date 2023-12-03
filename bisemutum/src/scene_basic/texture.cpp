@@ -6,8 +6,11 @@
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/resource_builder.hpp>
 #include <bisemutum/rhi/sampler.hpp>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 namespace bi {
 
@@ -78,106 +81,49 @@ auto get_format(uint32_t num_bits, uint32_t num_channels, bool srgb, bool is_flo
 } // namespace
 
 auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
-    TextureAssetDesc desc{};
-    try {
-        desc = serde::Value::from_toml(file.read_string_data()).get<TextureAssetDesc>();
-    } catch (std::exception const& e) {
-        log::critical("general", "Failed to load texture: {}.", e.what());
+    auto binary_data = file.read_binary_data();
+    ReadByteStream bs{binary_data};
+
+    uint32_t magic_number = 0;
+    std::string asset_type_name;
+    uint32_t version = 0;
+    bs.read(magic_number).read(asset_type_name).read(version);
+    if (!rt::check_if_binary_asset_valid<TextureAsset>(file.filename(), magic_number, asset_type_name)) {
         return {};
     }
 
-    auto image_file_opt = g_engine->file_system()->get_file(desc.image_file);
-    if (!image_file_opt.has_value()) {
-        log::critical("general", "Failed to load texture (image file '{}'): File not found.", desc.image_file);
-        return {};
-    }
-    auto& image_file = image_file_opt.value();
-    auto image_ext = image_file.extension();
-    auto image_bytes = image_file.read_binary_data();
+    rhi::SamplerDesc sampler_desc{};
+    bs.read(sampler_desc);
+    rhi::TextureDesc texture_desc{};
+    bs.read(texture_desc);
 
-    stbi_set_flip_vertically_on_load(1);
-    int num_channels;
-    int num_bits;
-    bool is_float;
-    int width;
-    int height;
-    stbi_uc* image_data = nullptr;
-    std::function<auto(stbi_uc*) -> void> image_deleter = [](stbi_uc* data) { stbi_image_free(data); };
-    if (
-        image_ext == ".jpg" || image_ext == ".jpeg" || image_ext == ".png" || image_ext == ".bmp"
-        || image_ext == ".tga"
-    ) {
-        num_bits = 8;
-        is_float = false;
-        image_data = stbi_load_from_memory(
-            reinterpret_cast<stbi_uc*>(image_bytes.data()), image_bytes.size(),
-            &width, &height, &num_channels, 0
-        );
-    } else {
-        log::critical("general", "Failed to load texture (image file '{}'): Unsupported extension.", image_ext);
-        return {};
-    }
-    if (!image_data) {
-        log::critical("general", "Failed to load texture (image file '{}'): Failed to load data.", desc.image_file);
-        return {};
-    }
-
-    if (num_channels == 3) {
-        num_channels = 4;
-        auto num_pixels = width * height;
-        auto pixel_size = num_bits / 8;
-        auto new_image_data = new stbi_uc[num_pixels * pixel_size * num_channels];
-        image_deleter = [](stbi_uc* data) { delete[] data; };
-
-        std::function<auto(stbi_uc*) -> void> fill_alpha;
-        if (num_bits == 8) {
-            fill_alpha = [](stbi_uc* data) { *data = 1; };
-        } else if (num_bits == 16) {
-            if (is_float) {
-                fill_alpha = [](stbi_uc* data) { *reinterpret_cast<uint16_t*>(data) = 0x3c00; };
-            } else {
-                fill_alpha = [](stbi_uc* data) { *reinterpret_cast<uint16_t*>(data) = 1; };
-            }
-        } else if (num_bits == 32) {
-            fill_alpha = [](stbi_uc* data) { *reinterpret_cast<float*>(data) = 1.0f; };
-        }
-
-        for (uint32_t i = 0; i < num_pixels; i++) {
-            std::copy_n(image_data + i * 3 * pixel_size, 3 * pixel_size, new_image_data + i * 4 * pixel_size);
-            fill_alpha(new_image_data + (i * 4 + 3) * pixel_size);
-        }
-
-        std::swap(new_image_data, image_data);
-        stbi_image_free(new_image_data);
-    }
-
-    auto format = get_format(num_bits, num_channels, desc.srgb, is_float);
-    if (format == rhi::ResourceFormat::undefined) {
-        image_deleter(image_data);
-        log::critical("general", "Failed to load texture (image file '{}'): Failed to detect format.", desc.image_file);
-        return {};
-    }
-
-    auto mipmap_use_compute = !rhi::is_compressed_format(format) && !rhi::is_srgb_format(format);
-    rhi::TextureDesc texture_desc = gfx::TextureBuilder()
-        .dim_2d(format, width, height)
-        .mipmap()
-        .usage({
-            rhi::TextureUsage::sampled,
-            mipmap_use_compute ? rhi::TextureUsage::storage_read_write : rhi::TextureUsage::color_attachment,
-        });
     TextureAsset texture{
         .texture = texture_desc,
-        .sampler = g_engine->graphics_manager()->get_sampler(desc.sampler),
+        .sampler = g_engine->graphics_manager()->get_sampler(sampler_desc),
     };
 
-    auto image_pitch = width * (num_bits / 8) * num_channels;
-    auto image_size_bytes = image_pitch * height;
-    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(image_size_bytes).mem_upload()};
-    temp_buffer.set_data_raw(image_data, image_size_bytes);
+    uint32_t storage_type = 0;
+    bs.read(storage_type);
+    if (storage_type == 0) {
+        bs.read(texture.texture_data);
+    } else if (storage_type == 1) {
+        std::vector<std::byte> png_data;
+        bs.read(png_data);
+        int temp_width, temp_height, temp_comp;
+        auto image_data = stbi_load_from_memory(
+            reinterpret_cast<stbi_uc*>(png_data.data()), png_data.size(),
+            &temp_width, &temp_height, &temp_comp, 0
+        );
+        auto image_size_bytes =
+            texture_desc.extent.width * texture_desc.extent.height * rhi::format_texel_size(texture_desc.format);
+        texture.texture_data.resize(image_size_bytes);
+        std::copy_n(reinterpret_cast<std::byte const*>(image_data), image_size_bytes, texture.texture_data.data());
+    }
 
+    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture.texture_data.size()).mem_upload()};
+    temp_buffer.set_data_raw(texture.texture_data.data(), texture.texture_data.size());
     g_engine->graphics_manager()->execute_immediately(
-        [&temp_buffer, &texture, width, height](Ref<rhi::CommandEncoder> cmd) {
+        [&temp_buffer, &texture, &texture_desc](Ref<rhi::CommandEncoder> cmd) {
             auto access = BitFlags{rhi::ResourceAccessType::transfer_write};
             cmd->resource_barriers({}, {
                 rhi::TextureBarrier{
@@ -189,8 +135,8 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
                 temp_buffer.rhi_buffer(),
                 texture.texture.rhi_texture(),
                 rhi::BufferTextureCopyDesc{
-                    .buffer_pixels_per_row = static_cast<uint32_t>(width),
-                    .buffer_rows_per_texture = static_cast<uint32_t>(height),
+                    .buffer_pixels_per_row = texture_desc.extent.width,
+                    .buffer_rows_per_texture = texture_desc.extent.height,
                 }
             );
             g_engine->graphics_manager()->generate_mipmaps_2d(cmd, texture.texture, access);
@@ -198,23 +144,66 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         }
     );
 
-    texture.texture_data.resize(image_size_bytes);
-    std::copy_n(reinterpret_cast<std::byte const*>(image_data), image_size_bytes, texture.texture_data.data());
-
-    image_deleter(image_data);
     return texture;
 }
 
 auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
     WriteByteStream bs{};
-    bs.write(rt::asset_magic_number).write(TextureAsset::asset_type_name);
+    bs.write(rt::asset_magic_number).write(TextureAsset::asset_type_name).write(1u);
 
     auto& sampler_desc = sampler->rhi_sampler()->desc();
     bs.write(sampler_desc);
     auto& texture_desc = texture.desc();
     bs.write(texture_desc);
 
-    bs.write(texture_data);
+    struct StbiContext final {
+        WriteByteStream& bs;
+    };
+    auto stored = false;
+    if (texture_desc.dim == rhi::TextureDimension::d2 && texture_desc.extent.depth_or_layers == 1) {
+        if (
+            texture_desc.format == rhi::ResourceFormat::r8_unorm
+            || texture_desc.format == rhi::ResourceFormat::r8_srgb
+            || texture_desc.format == rhi::ResourceFormat::rg8_unorm
+            || texture_desc.format == rhi::ResourceFormat::rg8_srgb
+            || texture_desc.format == rhi::ResourceFormat::rgba8_unorm
+            || texture_desc.format == rhi::ResourceFormat::rgba8_srgb
+            || texture_desc.format == rhi::ResourceFormat::bgra8_unorm
+            || texture_desc.format == rhi::ResourceFormat::bgra8_srgb
+        ) {
+            int num_components;
+            if (
+                texture_desc.format == rhi::ResourceFormat::r8_unorm
+                || texture_desc.format == rhi::ResourceFormat::r8_srgb
+            ) {
+                num_components = 1;
+            } else if (
+                texture_desc.format == rhi::ResourceFormat::rg8_unorm
+                || texture_desc.format == rhi::ResourceFormat::rg8_srgb
+            ) {
+                num_components = 2;
+            } else {
+                num_components = 4;
+            }
+
+            bs.write(1u);
+            auto stbi_write_func = [](void* context, void* data, int size) {
+                auto ctx = reinterpret_cast<StbiContext*>(context);
+                ctx->bs.write(static_cast<uint64_t>(size));
+                ctx->bs.write_raw(reinterpret_cast<std::byte*>(data), size);
+            };
+            StbiContext ctx{bs};
+            stbi_write_png_to_func(
+                stbi_write_func, &ctx, texture_desc.extent.width, texture_desc.extent.height, num_components,
+                texture_data.data(), texture_desc.extent.width * num_components
+            );
+            stored = true;
+        }
+    }
+    if (!stored) {
+        bs.write(0u);
+        bs.write(texture_data);
+    }
 
     file.write_binary_data(bs.data());
 }

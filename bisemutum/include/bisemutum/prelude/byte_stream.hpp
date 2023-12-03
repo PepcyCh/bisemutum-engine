@@ -20,6 +20,7 @@ struct ReadByteStream final {
     auto set_offset(size_t offset) -> void;
 
     auto read_raw(std::byte* dst, size_t size) -> ReadByteStream&;
+
     template <typename T> requires can_be_used_for_byte_stream<T>
     auto read(T& value) -> ReadByteStream& {
         if constexpr (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t)) {
@@ -34,11 +35,20 @@ struct ReadByteStream final {
 
     auto read(std::string& str) -> ReadByteStream&;
 
-    template <typename T> requires can_be_used_for_byte_stream<T>
+    template <typename T>
     auto read(std::vector<T>& vector) -> ReadByteStream& {
         uint64_t length = 0;
         read(length);
         vector.resize(length);
+        if constexpr (
+            can_be_used_for_byte_stream<T>
+            || (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t))
+        ) {
+            read_raw(reinterpret_cast<std::byte*>(vector.data()), length * sizeof(T));
+        } else {
+            for (uint64_t i = 0; i < length; i++) { read(vector[i]); }
+        }
+        return *this;
     }
 
 private:
@@ -71,10 +81,17 @@ struct WriteByteStream final {
     auto write(std::string const& str) -> WriteByteStream& { return write(std::string_view{str}); }
     auto write(char const* str) -> WriteByteStream& { return write(std::string_view{str}); }
 
-    template <typename T> requires can_be_used_for_byte_stream<T>
+    template <typename T>
     auto write(std::vector<T> const& vector) -> WriteByteStream& {
         write(vector.size());
-        for (auto const& elem : vector) { write(elem); }
+        if constexpr (
+            can_be_used_for_byte_stream<T>
+            || (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t))
+        ) {
+            write_raw(reinterpret_cast<std::byte const*>(vector.data()), vector.size() * sizeof(T));
+        } else {
+            for (auto const& elem : vector) { write(elem); }
+        }
         return *this;
     }
 

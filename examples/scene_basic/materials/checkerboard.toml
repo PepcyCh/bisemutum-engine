@@ -1,23 +1,24 @@
-surface_model = "lit"
-blend_mode = "opaque"
-
-material_function = '''
-int grid = int(floor(vertex.position_world.x))
+blend_mode = 'opaque'
+material_function = '''int grid = int(floor(vertex.position_world.x))
     ^ int(floor(vertex.position_world.y))
     ^ int(floor(vertex.position_world.z));
 surface.base_color = (grid & 1) == 1 ? base_color_0 : base_color_1;
 surface.roughness = (grid & 1) == 1 ? roughness_0 : roughness_1;
 '''
+surface_model = 'lit'
 
 [[params]]
-name = "base_color_0"
-value = [ 0.8, 0.8, 0.8 ]
+name = 'base_color_0'
+value = [ 0.80000001192092896, 0.80000001192092896, 0.80000001192092896 ]
+
 [[params]]
-name = "base_color_1"
-value = [ 0.2, 0.2, 0.2 ]
+name = 'base_color_1'
+value = [ 0.20000000298023224, 0.20000000298023224, 0.20000000298023224 ]
+
 [[params]]
-name = "roughness_0"
+name = 'roughness_0'
 value = 1.0
+
 [[params]]
-name = "roughness_1"
-value = 0.1
+name = 'roughness_1'
+value = 0.10000000149011612

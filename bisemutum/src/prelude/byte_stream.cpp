@@ -7,7 +7,7 @@ auto ReadByteStream::set_offset(size_t offset) -> void {
 }
 
 auto ReadByteStream::read_raw(std::byte* dst, size_t size) -> ReadByteStream& {
-    if (curr_offset_ + size < data_.size()) {
+    if (curr_offset_ + size <= data_.size()) {
         std::copy_n(data_.data() + curr_offset_, size, dst);
         curr_offset_ += size;
     }
@@ -41,6 +41,7 @@ auto WriteByteStream::set_offset(size_t offset) -> void {
 
 auto WriteByteStream::write_raw(std::byte const* src, size_t size) -> WriteByteStream& {
     std::copy_n(src, size, std::inserter(data_, data_.begin() + curr_offset_));
+    curr_offset_ += size;
     return *this;
 }
 

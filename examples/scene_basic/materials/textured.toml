@@ -1,14 +1,17 @@
-surface_model = "lit"
-blend_mode = "opaque"
-
-material_function = '''
-surface.base_color = base_color_tex.Sample(base_color_tex_sampler, vertex.texcoord0).xyz;
+blend_mode = 'opaque'
+material_function = '''surface.base_color = base_color_tex.Sample(base_color_tex_sampler, vertex.texcoord0).xyz;
 surface.normal_map_value = normal_map.Sample(normal_map_sampler, vertex.texcoord0).xyz;
 '''
+surface_model = 'lit'
 
 [[params]]
-name = "base_color_tex"
-value = { asset_id = 6 }
+name = 'base_color_tex'
+
+    [params.value]
+    asset_id = 6
+
 [[params]]
-name = "normal_map"
-value = { asset_id = 7 }
+name = 'normal_map'
+
+    [params.value]
+    asset_id = 7

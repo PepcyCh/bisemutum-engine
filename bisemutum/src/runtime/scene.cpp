@@ -134,11 +134,12 @@ auto Scene::save_to_value(serde::Value& value) const -> void {
     std::vector<std::pair<CRef<SceneObject>, size_t>> stack{};
     for_each_root_object([&objects_value, &stack](CRef<SceneObject> object) {
         serde::Value object_value{};
+        object_value["name"] = std::string{object->get_name()};
         auto& components_value = object_value["components"];
         object->for_each_component([&components_value](std::string_view component_type, void const* component_value) {
             auto serializer = g_engine->component_manager()->get_serializer(component_type);
             serde::Value value{};
-            serializer(value, component_value);
+            serializer(value["value"], component_value);
             value["type"] = serde::Value::String{component_type};
             components_value.push_back(std::move(value));
         });
@@ -150,12 +151,13 @@ auto Scene::save_to_value(serde::Value& value) const -> void {
         stack.pop_back();
         u->for_each_children([&objects_value, &stack, index](CRef<SceneObject> ch) {
             serde::Value object_value{};
+            object_value["name"] = std::string{ch->get_name()};
             object_value["parent"] = static_cast<serde::Value::Integer>(index);
             auto& components_value = object_value["components"];
             ch->for_each_component([&components_value](std::string_view component_type, void const* component_value) {
                 auto serializer = g_engine->component_manager()->get_serializer(component_type);
                 serde::Value value{};
-                serializer(value, component_value);
+                serializer(value["value"], component_value);
                 value["type"] = serde::Value::String{component_type};
                 components_value.push_back(std::move(value));
             });

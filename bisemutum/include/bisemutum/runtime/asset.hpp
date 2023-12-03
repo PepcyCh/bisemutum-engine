@@ -74,4 +74,15 @@ private:
     AssetPtr asset_ptr_;
 };
 
+auto check_if_binary_asset_valid(
+    std::string_view filename, uint32_t magic_number, std::string const& type_name, std::string_view expected_type_name
+) -> bool;
+
+template <TAsset Asset>
+auto check_if_binary_asset_valid(
+    std::string_view filename, uint32_t magic_number, std::string const& type_name
+) -> bool {
+    return check_if_binary_asset_valid(filename, magic_number, type_name, Asset::asset_type_name);
+}
+
 }
