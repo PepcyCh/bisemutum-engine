@@ -18,6 +18,7 @@ auto ResourceBindingContext::set_shader_params(
     ShaderParameter& params
 ) -> void {
     auto& metadata_list = params.metadata_list();
+    if (metadata_list.params.empty()) { return; }
 
     std::vector<rhi::DescriptorHandle> cpu_descriptors{};
     // Only `.type`, `.count`, '.binding_or_register', 'visibility' are needed

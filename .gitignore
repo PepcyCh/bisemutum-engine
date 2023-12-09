@@ -11,3 +11,4 @@ out/
 
 binaries
 imgui.ini
+_temp.*

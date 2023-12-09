@@ -10,7 +10,7 @@
 auto std::hash<bi::rhi::TextureViewKeyVulkan>::operator()(
     bi::rhi::TextureViewKeyVulkan const& v
 ) const noexcept -> size_t {
-    return bi::hash(v.base_level, v.num_levels, v.base_layer, v.num_layers, v.format, v.view_type);
+    return bi::hash(v.base_level, v.num_levels, v.base_layer, v.num_layers, v.format, v.view_type, v.aspect);
 }
 
 namespace bi::rhi {
@@ -202,15 +202,22 @@ auto TextureVulkan::raw_format() const -> VkFormat{
     return to_vk_format(desc_.format);
 }
 
-auto TextureVulkan::get_aspect() const -> VkImageAspectFlags {
-    return to_vk_image_aspect(desc_.format);
+auto TextureVulkan::get_aspect(bool single_aspect) const -> VkImageAspectFlags {
+    auto aspect = to_vk_image_aspect(desc_.format);
+    if (single_aspect && ((aspect & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)) {
+        aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+    return aspect;
 }
 
 auto TextureVulkan::get_view(
     uint32_t base_level, uint32_t num_levels, uint32_t base_layer, uint32_t num_layers,
-    VkFormat format, VkImageViewType view_type
+    VkFormat format, VkImageViewType view_type, bool single_aspect
 ) -> VkImageView {
-    auto [view_it, create] = views_.try_emplace({base_level, num_levels, base_layer, num_layers});
+    auto aspect = get_aspect(single_aspect);
+    auto [view_it, create] = views_.try_emplace({
+        base_level, num_levels, base_layer, num_layers, format, view_type, aspect
+    });
     if (create) {
         VkImageViewCreateInfo view_ci{
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -226,12 +233,12 @@ auto TextureVulkan::get_view(
                 .a = VK_COMPONENT_SWIZZLE_A,
             },
             .subresourceRange = {
-                .aspectMask = get_aspect(),
+                .aspectMask = aspect,
                 .baseMipLevel = base_level,
                 .levelCount = num_levels,
                 .baseArrayLayer = base_layer,
                 .layerCount = num_layers,
-            }
+            },
         };
         vkCreateImageView(device_->raw(), &view_ci, nullptr, &view_it->second);
     }

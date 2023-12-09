@@ -25,6 +25,10 @@ struct Camera final {
 
     auto shader_params() -> ShaderParameter&;
     auto shader_params_metadata() const -> ShaderParameterMetadataList const&;
+    auto update_shader_params() -> void;
+
+    // The value is updated after `update_shader_params()`.
+    auto matrix_proj_view() const -> float4x4 const& { return matrix_proj_view_; }
 
     float3 position = float3(0.0f, 0.0f, -1.0f);
     float3 front_dir = float3(0.0f, 0.0f, 1.0f);
@@ -38,7 +42,6 @@ struct Camera final {
 
 private:
     friend GraphicsManager;
-    auto update_shader_params() -> void;
 
     Texture target_texture_;
     bool target_texture_state_preinitialized_ = true;

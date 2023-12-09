@@ -11,6 +11,9 @@ BI_SHADER_PARAMETERS_BEGIN(ForwardPassParams)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<LightData>, dir_lights)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<LightData>, point_lights)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<LightData>, spot_lights)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, dir_lights_shadow_transform)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, dir_lights_shadow_map)
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, shadow_map_sampler)
 BI_SHADER_PARAMETERS_END(ForwardPassParams)
 
 ForwardPass::ForwardPass() {
@@ -30,9 +33,12 @@ auto ForwardPass::update_params(LightsContext& lights_ctx) -> void {
     params->dir_lights = {&lights_ctx.dir_lights_buffer, 0};
     params->point_lights = {&lights_ctx.point_lights_buffer, 0};
     params->spot_lights = {&lights_ctx.spot_lights_buffer, 0};
+    params->dir_lights_shadow_transform = {&lights_ctx.dir_lights_shadow_transform_buffer, 0};
+    params->dir_lights_shadow_map = {&lights_ctx.dir_lights_shadow_map};
+    params->shadow_map_sampler = {lights_ctx.shadow_map_sampler};
 }
 
-auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ref<PassData> {
+auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> Ref<PassData> {
     auto& camera_target = camera.target_texture();
 
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("Forward Pass");
@@ -59,6 +65,8 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ref
         gfx::GraphicsPassColorTargetBuilder{pass_data->output}.clear_color({0.2f, 0.3f, 0.5f, 1.0f})
     );
     builder.use_depth_stencil(gfx::GraphicsPassDepthStencilTargetBuilder{pass_data->depth}.clear_depth_stencil());
+
+    builder.read(input.dir_lighst_shadow_map);
 
     pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
         .camera = camera,

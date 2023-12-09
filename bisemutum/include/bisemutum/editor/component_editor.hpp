@@ -14,6 +14,8 @@ auto default_component_editor(Ref<rt::SceneObject> object, Component* value) -> 
         using MemberType = typename decltype(member)::FieldType;
         if constexpr (std::is_enum_v<MemberType>) {
             dirty = edit_enum(member.name, member(*value));
+        } else if constexpr (std::is_same_v<MemberType, bool>) {
+            dirty = edit_bool(member.name, member(*value));
         } else if constexpr (std::is_same_v<MemberType, float>) {
             dirty = edit_float(member.name, member(*value));
         } else if constexpr (std::is_same_v<MemberType, float2>) {

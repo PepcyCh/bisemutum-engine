@@ -23,6 +23,8 @@
 #include "shader.hpp"
 #include "pipeline.hpp"
 
+#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 0
+
 namespace bi::rhi {
 
 namespace {
@@ -264,9 +266,11 @@ auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME,
     };
+#if BI_VULKAN_USE_DESCRIPTOR_BUFFER
     support_descriptor_buffer_ = is_device_extension_supported(
         supported_device_extensions, VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
     );
+#endif
     if (support_descriptor_buffer_) {
         enabled_device_extensions.push_back(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
     }
@@ -551,6 +555,7 @@ auto DeviceVulkan::create_descriptor(BufferDescriptorDesc const& buffer_desc, De
 auto DeviceVulkan::create_descriptor(TextureDescriptorDesc const& texture_desc, DescriptorHandle handle) -> void {
     auto texture_vk = texture_desc.texture.cast_to<TextureVulkan>();
     auto format = texture_desc.format == ResourceFormat::undefined ? texture_vk->desc().format : texture_desc.format;
+    bool is_depth_stencil = is_depth_stencil_format(format);
     auto view_type = texture_desc.view_type == TextureViewType::automatic
         ? texture_vk->get_automatic_view_type()
         : texture_desc.view_type;
@@ -559,12 +564,14 @@ auto DeviceVulkan::create_descriptor(TextureDescriptorDesc const& texture_desc, 
         .imageView = texture_vk->get_view(
             texture_desc.base_level, texture_desc.num_levels,
             texture_desc.base_layer, texture_desc.num_layers,
-            to_vk_format(format), to_vk_image_view_type(view_type)
+            to_vk_format(format), to_vk_image_view_type(view_type), true
         ),
     };
     switch (texture_desc.type) {
         case DescriptorType::sampled_texture:
-            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_info.imageLayout = is_depth_stencil
+                ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             break;
         case DescriptorType::read_only_storage_texture:
         case DescriptorType::read_write_storage_texture:

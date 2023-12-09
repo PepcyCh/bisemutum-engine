@@ -19,6 +19,9 @@ struct LightComponent final {
     float range = 1e9f;
     float spot_inner_angle = 30.0f;
     float spot_outer_angle = 60.0f;
+
+    bool cast_shadow = false;
+    float shadow_strength = 1.0f;
 };
 BI_SREFL(
     type(LightComponent),
@@ -27,7 +30,9 @@ BI_SREFL(
     field(type),
     field(range),
     field(spot_inner_angle),
-    field(spot_outer_angle)
+    field(spot_outer_angle),
+    field(cast_shadow),
+    field(shadow_strength)
 )
 
 }

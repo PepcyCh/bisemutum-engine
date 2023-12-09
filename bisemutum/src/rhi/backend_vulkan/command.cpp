@@ -537,7 +537,7 @@ GraphicsCommandEncoderVulkan::GraphicsCommandEncoderVulkan(
             .imageView = texture_vk->get_view(
                 target.texture.mip_level, 1, target.texture.base_layer, target.texture.num_layers,
                 to_vk_format(texture_vk->desc().format),
-                target.texture.num_layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY
+                target.texture.num_layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY, false
             ),
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             // TODO - support resolve
@@ -569,7 +569,7 @@ GraphicsCommandEncoderVulkan::GraphicsCommandEncoderVulkan(
             .imageView = texture_vk->get_view(
                 depth_stencil.texture.mip_level, 1, depth_stencil.texture.base_layer, depth_stencil.texture.num_layers,
                 to_vk_format(texture_vk->desc().format),
-                depth_stencil.texture.num_layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY
+                depth_stencil.texture.num_layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY, false
             ),
             .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .resolveMode = VK_RESOLVE_MODE_NONE,

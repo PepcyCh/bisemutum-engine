@@ -1,4 +1,3 @@
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <bisemutum/graphics/camera.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -77,12 +76,17 @@ auto Camera::update_shader_params() -> void {
     uniform_data->frame.index = g_engine->window()->frame_count();
     uniform_data->frame.time_seconds = g_engine->frame_timer()->total_time();
 
-    auto aspect = static_cast<float>(target_texture_.desc().extent.width)
-        / target_texture_.desc().extent.height;
-    uniform_data->viewport.size = {
-        target_texture_.desc().extent.width,
-        target_texture_.desc().extent.height,
-    };
+    auto aspect = 1.0f;
+    if (target_texture_.has_value()) {
+        aspect = static_cast<float>(target_texture_.desc().extent.width)
+            / target_texture_.desc().extent.height;
+        uniform_data->viewport.size = {
+            target_texture_.desc().extent.width,
+            target_texture_.desc().extent.height,
+        };
+    } else {
+        uniform_data->viewport.size = {0u, 0u};
+    }
     uniform_data->viewport.offset = {0u, 0u};
 
     uniform_data->camera.matrix_view = math::lookAt(position, position + front_dir, up_dir);
@@ -91,7 +95,9 @@ auto Camera::update_shader_params() -> void {
     } else {
         auto ortho_height = std::tan(math::radians(yfov * 0.5f));
         auto ortho_width = ortho_height * aspect;
-        uniform_data->camera.matrix_proj = math::ortho(-ortho_width, ortho_width, -ortho_height, ortho_height);
+        uniform_data->camera.matrix_proj = math::ortho(
+            -ortho_width, ortho_width, -ortho_height, ortho_height, near_z, far_z
+        );
     }
     uniform_data->camera.matrix_inv_view = math::inverse(uniform_data->camera.matrix_view);
     uniform_data->camera.matrix_inv_proj = math::inverse(uniform_data->camera.matrix_proj);

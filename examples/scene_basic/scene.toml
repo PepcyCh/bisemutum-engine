@@ -41,6 +41,7 @@ name = 'Dir Light'
         spot_outer_angle = 60.0
         strength = 4.0
         type = 'directional'
+        cast_shadow = true
 
 [[objects]]
 name = 'Sphere'

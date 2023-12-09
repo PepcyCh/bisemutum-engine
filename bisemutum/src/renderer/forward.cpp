@@ -1,6 +1,7 @@
 #include <bisemutum/renderer/forward.hpp>
 
 #include "context/lights.hpp"
+#include "pass/shadow_mapping.hpp"
 #include "pass/forward.hpp"
 #include "pass/post_process.hpp"
 
@@ -15,7 +16,14 @@ struct ForwardRenderer::Impl final {
     auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {}
 
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
-        auto forward_pass_data = forward_pass.render(camera, rg);
+        auto dir_lighst_shadow_map = shadow_mapping_pass.render(camera, rg, {
+            .lights_ctx = lights_ctx,
+        });
+
+        auto forward_pass_data = forward_pass.render(camera, rg, {
+            .dir_lighst_shadow_map = dir_lighst_shadow_map,
+        });
+
         post_process_pass.render(camera, rg, {
             .color = forward_pass_data->output,
             .depth = forward_pass_data->depth,
@@ -24,6 +32,7 @@ struct ForwardRenderer::Impl final {
 
     LightsContext lights_ctx;
 
+    ShadowMappingPass shadow_mapping_pass;
     ForwardPass forward_pass;
     PostProcessPass post_process_pass;
 };

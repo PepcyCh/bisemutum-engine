@@ -2,19 +2,29 @@
 
 #include <bisemutum/math/math.hpp>
 #include <bisemutum/graphics/resource.hpp>
+#include <bisemutum/graphics/camera.hpp>
 
 namespace bi {
 
 struct LightData final {
-    float3 emission;
-    float range_sqr;
-    float3 position;
-    float cos_inner;
-    float3 direction;
-    float cos_outer;
+    float3 emission = float3(0.0f);
+    float range_sqr = 1.0f;
+    float3 position = float3(0.0f);
+    float cos_inner = 1.0f;
+    float3 direction = float3(0.0f, 0.0f, 1.0f);
+    float cos_outer = 0.0f;
+    int sm_index = -1;
+    float shadow_strength = 1.0f;
+    float2 _pad;
+};
+
+struct ShadowDirLight final {
+    gfx::Camera camera;
 };
 
 struct LightsContext final {
+    LightsContext();
+
     auto collect_all_lights() -> void;
 
     std::vector<LightData> dir_lights;
@@ -23,6 +33,13 @@ struct LightsContext final {
     gfx::Buffer point_lights_buffer;
     std::vector<LightData> spot_lights;
     gfx::Buffer spot_lights_buffer;
+
+    std::vector<ShadowDirLight> dir_lights_with_shadow;
+    gfx::Texture dir_lights_shadow_map;
+    std::vector<float4x4> dir_lights_shadow_transform;
+    gfx::Buffer dir_lights_shadow_transform_buffer;
+
+    Ptr<gfx::Sampler> shadow_map_sampler;
 };
 
 }

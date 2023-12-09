@@ -37,6 +37,7 @@ struct TextureViewKeyVulkan final {
     uint32_t num_layers;
     VkFormat format;
     VkImageViewType view_type;
+    VkImageAspectFlags aspect;
 
     auto operator==(TextureViewKeyVulkan const& rhs) const -> bool = default;
 };
@@ -60,11 +61,11 @@ struct TextureVulkan final : Texture {
 
     auto raw_format() const -> VkFormat;
 
-    auto get_aspect() const -> VkImageAspectFlags;
+    auto get_aspect(bool single_aspect = false) const -> VkImageAspectFlags;
 
     auto get_view(
         uint32_t base_level, uint32_t num_levels, uint32_t base_layer, uint32_t num_layers,
-        VkFormat format, VkImageViewType view_type
+        VkFormat format, VkImageViewType view_type, bool single_aspect
     ) -> VkImageView;
 
     auto get_depth_and_layer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers, uint32_t another = 1) const -> void;

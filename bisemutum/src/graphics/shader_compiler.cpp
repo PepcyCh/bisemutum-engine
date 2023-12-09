@@ -4,6 +4,7 @@
 #include <chrono>
 #include <locale>
 #include <codecvt>
+#include <fstream>
 
 #include <fmt/format.h>
 #include <cprep/cprep.hpp>
@@ -180,6 +181,10 @@ struct ShaderCompiler::Impl final {
         CComPtr<IDxcBlobUtf8> errors = nullptr;
         result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
         if (errors && errors->GetStringLength() > 0 && FAILED(result_status)) {
+#ifndef NDEBUG
+            std::ofstream fout("_temp.hlsl");
+            fout << shader_source;
+#endif
             return std::string{errors->GetStringPointer(), errors->GetStringLength()};
         }
 

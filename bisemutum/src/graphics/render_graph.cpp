@@ -380,12 +380,13 @@ struct RenderGraph::Impl final {
                 for (auto const& v : node->in_nodes) {
                     start = std::min(start, order_of[v->index]);
                 }
-                resources_to_create_[start].push_back(node->index);
-
                 size_t end = 0;
                 for (auto const& v : node->out_nodes) {
                     end = std::max(end, order_of[v->index]);
+                    start = std::min(start, order_of[v->index]);
                 }
+
+                resources_to_create_[start].push_back(node->index);
                 resources_to_destroy_[end].push_back(node->index);
             }
         }
