@@ -7,6 +7,7 @@
 #include <bisemutum/prelude/math.hpp>
 
 #include "descriptor_sets.hpp"
+#include "screen_triangle.hpp"
 
 namespace bi::gfx {
 
@@ -196,6 +197,27 @@ auto GraphicsPassContext::render_list(RenderedObjectListHandle handle, ShaderPar
             cmd_encoder->draw_indexed(drawable->mesh->num_indices());
         }
     }
+}
+
+auto GraphicsPassContext::render_full_screen(
+    CRef<Camera> camera, CRef<FragmentShader> fragmeng_shader, ShaderParameter& params
+) const -> void {
+    ScreenTriangle screen_triangle{};
+    Drawable drawable{
+        .mesh = &screen_triangle,
+    };
+    auto pipeline = g_engine->graphics_manager()->compile_pipeline_for_drawable(
+        this, camera, drawable, fragmeng_shader
+    );
+    cmd_encoder->set_pipeline(pipeline);
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, graphics_set_camera, graphics_set_visibility_camera, camera.remove_const()->shader_params()
+    );
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, graphics_set_fragment, graphics_set_visibility_fragment, params
+    );
+    resource_binding_ctx_->set_samplers(cmd_encoder, graphics_set_samplers);
+    cmd_encoder->draw_indexed(screen_triangle.num_indices());
 }
 
 }

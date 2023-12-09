@@ -303,15 +303,21 @@ struct GraphicsManager::Impl final {
     ) -> Ref<rhi::GraphicsPipeline> {
         ShaderCompilationEnvironment shader_env;
         drawable->mesh->modify_compiler_environment(shader_env);
-        drawable->material->modify_compiler_environment(shader_env);
+        if (drawable->material) {
+            drawable->material->modify_compiler_environment(shader_env);
+        } else {
+            shader_env.set_replace_arg("MATERIAL_FUNCTION", "");
+        }
         fs->modify_compiler_environment(shader_env);
         auto shader_env_id = shader_env.get_config_identifier();
 
         auto mesh_shaders_id = fmt::format("MESH {} {} ", drawable->mesh->mesh_type_name(), shader_env_id);
         auto fs_id = fmt::format(
             "FS '{}' {} {} {}",
-            fs->source_path, fs->source_entry,
-            drawable->material->get_shader_identifier(), shader_env_id
+            fs->source_path,
+            fs->source_entry,
+            drawable->material ? drawable->material->get_shader_identifier() : "X",
+            shader_env_id
         );
         std::string format_id = "FORMAT";
         for (auto format : graphics_context->color_targets_format) {
@@ -327,15 +333,10 @@ struct GraphicsManager::Impl final {
         }
 
         auto& mesh_shader_params = drawable->mesh->shader_params_metadata();
-        auto& mat_shader_params = drawable->material->shader_params_metadata();
         auto& camera_shader_params = camera->shader_params_metadata();
         shader_env.set_replace_arg(
             "GRAPHICS_MESH_SHADER_PARAMS",
             mesh_shader_params.generated_shader_definition(graphics_set_mesh, graphics_set_samplers)
-        );
-        shader_env.set_replace_arg(
-            "GRAPHICS_MATERIAL_SHADER_PARAMS",
-            mat_shader_params.generated_shader_definition(graphics_set_material, graphics_set_samplers)
         );
         shader_env.set_replace_arg(
             "GRAPHICS_FRAGMENT_SHADER_PARAMS",
@@ -344,6 +345,14 @@ struct GraphicsManager::Impl final {
         shader_env.set_replace_arg(
             "GRAPHICS_CAMERA_SHADER_PARAMS",
             camera_shader_params.generated_shader_definition(graphics_set_camera, graphics_set_samplers)
+        );
+        shader_env.set_replace_arg(
+            "GRAPHICS_MATERIAL_SHADER_PARAMS",
+            drawable->material
+                ? drawable->material->shader_params_metadata().generated_shader_definition(
+                    graphics_set_material, graphics_set_samplers
+                )
+                : ""
         );
 
         auto vs_id = mesh_shaders_id + "vs";
@@ -432,9 +441,12 @@ struct GraphicsManager::Impl final {
             },
         };
         if (
-            drawable->material->blend_mode == BlendMode::translucent
-            || drawable->material->blend_mode == BlendMode::additive
-            || drawable->material->blend_mode == BlendMode::modulate
+            drawable->material
+            && (
+                drawable->material->blend_mode == BlendMode::translucent
+                || drawable->material->blend_mode == BlendMode::additive
+                || drawable->material->blend_mode == BlendMode::modulate
+            )
         ) {
             pipeline_desc.depth_stencil_state.depth_write = false;
         }
@@ -443,42 +455,51 @@ struct GraphicsManager::Impl final {
         for (size_t index = 0; auto& color_format : graphics_context->color_targets_format) {
             auto& color_attachment = pipeline_desc.color_target_state.attachments[index];
             color_attachment.format = color_format;
-            switch (drawable->material->blend_mode) {
-                case BlendMode::opaque:
-                    break;
-                case BlendMode::alpha_test:
-                    break;
-                case BlendMode::translucent:
-                    color_attachment.blend_enable = true;
-                    color_attachment.src_blend_factor = rhi::BlendFactor::src_alpha;
-                    color_attachment.dst_blend_factor = rhi::BlendFactor::one_minus_src_alpha;
-                    color_attachment.src_alpha_blend_factor = rhi::BlendFactor::src_alpha;
-                    color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one_minus_src_alpha;
-                    break;
-                case BlendMode::additive:
-                    color_attachment.blend_enable = true;
-                    color_attachment.src_blend_factor = rhi::BlendFactor::one;
-                    color_attachment.dst_blend_factor = rhi::BlendFactor::one;
-                    color_attachment.src_alpha_blend_factor = rhi::BlendFactor::zero;
-                    color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one;
-                    break;
-                case BlendMode::modulate:
-                    color_attachment.blend_enable = true;
-                    color_attachment.src_blend_factor = rhi::BlendFactor::dst;
-                    color_attachment.dst_blend_factor = rhi::BlendFactor::zero;
-                    color_attachment.src_alpha_blend_factor = rhi::BlendFactor::zero;
-                    color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one;
-                    break;
+            if (drawable->material) {
+                switch (drawable->material->blend_mode) {
+                    case BlendMode::opaque:
+                        break;
+                    case BlendMode::alpha_test:
+                        break;
+                    case BlendMode::translucent:
+                        color_attachment.blend_enable = true;
+                        color_attachment.src_blend_factor = rhi::BlendFactor::src_alpha;
+                        color_attachment.dst_blend_factor = rhi::BlendFactor::one_minus_src_alpha;
+                        color_attachment.src_alpha_blend_factor = rhi::BlendFactor::src_alpha;
+                        color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one_minus_src_alpha;
+                        break;
+                    case BlendMode::additive:
+                        color_attachment.blend_enable = true;
+                        color_attachment.src_blend_factor = rhi::BlendFactor::one;
+                        color_attachment.dst_blend_factor = rhi::BlendFactor::one;
+                        color_attachment.src_alpha_blend_factor = rhi::BlendFactor::zero;
+                        color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one;
+                        break;
+                    case BlendMode::modulate:
+                        color_attachment.blend_enable = true;
+                        color_attachment.src_blend_factor = rhi::BlendFactor::dst;
+                        color_attachment.dst_blend_factor = rhi::BlendFactor::zero;
+                        color_attachment.src_alpha_blend_factor = rhi::BlendFactor::zero;
+                        color_attachment.dst_alpha_blend_factor = rhi::BlendFactor::one;
+                        break;
+                }
             }
             ++index;
         }
 
+        // This must be in order of set
         pipeline_desc.bind_groups_layout.push_back(
             mesh_shader_params.bind_group_layout(graphics_set_mesh, graphics_set_visibility_mesh)
         );
-        pipeline_desc.bind_groups_layout.push_back(
-            mat_shader_params.bind_group_layout(graphics_set_material, graphics_set_visibility_material)
-        );
+        if (drawable->material) {
+            pipeline_desc.bind_groups_layout.push_back(
+                drawable->material->shader_params_metadata().bind_group_layout(
+                    graphics_set_material, graphics_set_visibility_material
+                )
+            );
+        } else {
+            pipeline_desc.bind_groups_layout.emplace_back();
+        }
         pipeline_desc.bind_groups_layout.push_back(
             fs->shader_params_metadata.bind_group_layout(graphics_set_fragment, graphics_set_visibility_fragment)
         );
@@ -581,8 +602,6 @@ struct GraphicsManager::Impl final {
     Ptr<rhi::CommandEncoder> curr_cmd_encoder;
 
     RenderGraph render_graph;
-    // SlotMap<Camera, CameraHandle> cameras;
-    // SlotMap<Drawable, DrawableHandle> drawables;
     std::unordered_map<rhi::SamplerDesc, Sampler> samplers;
 
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;

@@ -37,22 +37,21 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ref
 
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("Forward Pass");
 
-    // pass_data->output = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
-    //     builder
-    //         .dim_2d(
-    //             rhi::ResourceFormat::rgba8_unorm,
-    //             camera_target.desc().extent.width, camera_target.desc().extent.height
-    //         )
-    //         .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
-    // });
-    pass_data->output = rg.import_back_buffer();
+    pass_data->output = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(
+                rhi::ResourceFormat::rgba16_sfloat,
+                camera_target.desc().extent.width, camera_target.desc().extent.height
+            )
+            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+    });
     pass_data->depth = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(
                 rhi::ResourceFormat::d24_unorm_s8_uint,
                 camera_target.desc().extent.width, camera_target.desc().extent.height
             )
-            .usage(rhi::TextureUsage::depth_stencil_attachment);
+            .usage({rhi::TextureUsage::depth_stencil_attachment, rhi::TextureUsage::sampled});
     });
 
     builder.use_color(

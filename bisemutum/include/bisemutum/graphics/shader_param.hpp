@@ -8,7 +8,6 @@
 #include "resource.hpp"
 #include "sampler.hpp"
 #include "../math/math.hpp"
-#include "../prelude/option.hpp"
 #include "../prelude/template_utils.hpp"
 #include "../rhi/descriptor.hpp"
 
@@ -211,6 +210,14 @@ RWTEXTURE_SHADER_PARAM_METADATA(RWTexture1DArray, d1_array)
 RWTEXTURE_SHADER_PARAM_METADATA(RWTexture2DArray, d2_array)
 #undef RWTEXTURE_SHADER_PARAM_METADATA
 
+template <ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize>
+struct TShaderParameterMetadata<SamplerState, TypeName, Name, ArraySize, false, rhi::ResourceFormat::undefined> final {
+    static constexpr ConstexprStringLit type_name{TypeName.value};
+    static constexpr size_t size = sizeof(SamplerState);
+    static constexpr size_t alignment = 8;
+    static constexpr size_t cpu_alignment = alignof(SamplerState);
+    static constexpr rhi::DescriptorType descriptor_type = rhi::DescriptorType::sampler;
+};
 
 struct ShaderParameterMetadata final {
     rhi::DescriptorType descriptor_type = rhi::DescriptorType::none;
@@ -262,19 +269,23 @@ struct ShaderParameterMetadataListHelper;
 template <typename... Ts>
 struct ShaderParameterMetadataListHelper<TypeList<Ts...>> final {
     static auto get_params() -> std::vector<ShaderParameterMetadata> {
-        auto params_2d = std::vector{shader_parameter_metadata_of(Ts{})...};
-        size_t count = 0;
-        for (auto const& inner_vec : params_2d) {
-            count += inner_vec.size();
-        }
-        std::vector<ShaderParameterMetadata> params(count);
-        size_t index = 0;
-        for (auto& inner_vec : params_2d) {
-            for (auto& param : inner_vec) {
-                params[index++] = std::move(param);
+        if constexpr (sizeof...(Ts) == 0) {
+            return {};
+        } else {
+            auto params_2d = std::vector{shader_parameter_metadata_of(Ts{})...};
+            size_t count = 0;
+            for (auto const& inner_vec : params_2d) {
+                count += inner_vec.size();
             }
+            std::vector<ShaderParameterMetadata> params(count);
+            size_t index = 0;
+            for (auto& inner_vec : params_2d) {
+                for (auto& param : inner_vec) {
+                    params[index++] = std::move(param);
+                }
+            }
+            return params;
         }
-        return params;
     };
 };
 
@@ -423,6 +434,13 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype( \
             ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, #arr, false, format>>(XParamsTuple<__LINE__ - 1>::type{}) \
+        ); \
+    };
+
+#define BI_SHADER_PARAMETER_SAMPLER(ty, name) ::bi::gfx::ty name; \
+    template <> struct XParamsTuple<__LINE__> { \
+        using type = decltype( \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
 

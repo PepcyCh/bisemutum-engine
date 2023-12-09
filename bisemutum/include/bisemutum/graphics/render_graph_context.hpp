@@ -1,13 +1,14 @@
 #pragma once
 
 #include "shader_param.hpp"
-#include "mipmap_mode.hpp"
 #include "handles.hpp"
 #include "../rhi/command.hpp"
 
 namespace bi::gfx {
 
 struct RenderGraph;
+struct Camera;
+struct FragmentShader;
 
 struct ResourceBindingContext final {
     ResourceBindingContext();
@@ -34,6 +35,10 @@ struct GraphicsPassContext final {
     );
 
     auto render_list(RenderedObjectListHandle list, ShaderParameter& params) const -> void;
+
+    auto render_full_screen(
+        CRef<Camera> camera, CRef<FragmentShader> fragmeng_shader, ShaderParameter& params
+    ) const -> void;
 
     CRef<RenderGraph> rg;
     Ref<rhi::GraphicsCommandEncoder> cmd_encoder;

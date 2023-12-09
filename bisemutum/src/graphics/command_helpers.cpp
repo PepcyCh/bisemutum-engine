@@ -4,8 +4,6 @@
 #include <bisemutum/graphics/shader_param.hpp>
 #include <bisemutum/runtime/logger.hpp>
 
-#include "descriptor_sets.hpp"
-
 namespace bi::gfx {
 
 auto CommandHelpers::initialize(Ref<rhi::Device> device, ShaderCompiler& shader_compiler) -> void {

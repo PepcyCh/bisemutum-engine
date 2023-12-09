@@ -2,6 +2,7 @@
 
 #include "context/lights.hpp"
 #include "pass/forward.hpp"
+#include "pass/post_process.hpp"
 
 namespace bi {
 
@@ -14,12 +15,17 @@ struct ForwardRenderer::Impl final {
     auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {}
 
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
-        forward_pass.render(camera, rg);
+        auto forward_pass_data = forward_pass.render(camera, rg);
+        post_process_pass.render(camera, rg, {
+            .color = forward_pass_data->output,
+            .depth = forward_pass_data->depth,
+        });
     }
 
     LightsContext lights_ctx;
 
     ForwardPass forward_pass;
+    PostProcessPass post_process_pass;
 };
 
 ForwardRenderer::ForwardRenderer() = default;

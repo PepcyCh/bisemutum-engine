@@ -3,7 +3,6 @@
 #include "shader.hpp"
 #include "camera.hpp"
 #include "drawable.hpp"
-#include "../rhi/pipeline.hpp"
 
 namespace bi::gfx {
 

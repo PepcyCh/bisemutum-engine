@@ -5,6 +5,7 @@
 
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/system_manager.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/render_graph_pass.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/gpu_scene_system.hpp>
@@ -392,7 +393,7 @@ struct RenderGraph::Impl final {
         // check
         for (auto const& node : graph_nodes_) {
             if (used[node->index] && in_degs[node->index] > 0) {
-                // BI_WARN(ModuleManager::Get<GraphicsModule>()->Lgr(), "Cycle has been found in render graph.");
+                log::warn("general", "Found cycle in render graph.");
                 graph_is_invalid = true;
                 break;
             }

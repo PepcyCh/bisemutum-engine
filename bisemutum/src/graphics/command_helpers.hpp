@@ -3,6 +3,7 @@
 #include <bisemutum/graphics/shader_compiler.hpp>
 #include <bisemutum/graphics/resource.hpp>
 #include <bisemutum/graphics/render_graph_context.hpp>
+#include <bisemutum/graphics/mipmap_mode.hpp>
 #include <bisemutum/rhi/command.hpp>
 #include <bisemutum/rhi/device.hpp>
 #include <bisemutum/prelude/hash.hpp>

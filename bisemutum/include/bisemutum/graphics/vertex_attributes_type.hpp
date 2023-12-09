@@ -5,8 +5,10 @@
 namespace bi::gfx {
 
 enum class VertexAttributesType : uint8_t {
-    full,
+    none,
     position_only,
+    position_texcoord,
+    full,
 };
 
 }
