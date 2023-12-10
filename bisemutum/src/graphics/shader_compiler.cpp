@@ -237,7 +237,7 @@ struct ShaderCompiler::Impl final {
             return "";
         }
 
-        for (const auto &[key, content] : environment.replace_args) {
+        for (auto const& [key, content] : environment.replace_args) {
             for (
                 size_t pos = 0;
                 (pos = result.parsed_result.find(key.c_str(), pos, key.size())) != std::string::npos;

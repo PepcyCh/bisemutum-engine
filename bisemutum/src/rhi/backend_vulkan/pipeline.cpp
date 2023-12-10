@@ -224,13 +224,13 @@ GraphicsPipelineVulkan::GraphicsPipelineVulkan(Ref<DeviceVulkan> device, Graphic
     std::vector<VkVertexInputAttributeDescription> vertex_input_attribute_descs{};
     std::vector<VkVertexInputBindingDescription> vertex_input_binding_descs(desc_.vertex_input_buffers.size());
     for (size_t i = 0; i < desc_.vertex_input_buffers.size(); i++) {
-        const auto &input_buffer = desc_.vertex_input_buffers[i];
+        auto const& input_buffer = desc_.vertex_input_buffers[i];
         vertex_input_binding_descs[i] = VkVertexInputBindingDescription{
             .binding = static_cast<uint32_t>(i),
             .stride = input_buffer.stride,
             .inputRate = input_buffer.per_instance ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX,
         };
-        for (const auto &attribute : input_buffer.attributes) {
+        for (auto const& attribute : input_buffer.attributes) {
             uint32_t location = static_cast<uint32_t>(attribute.semantics);
             vertex_input_attribute_descs.push_back(VkVertexInputAttributeDescription{
                 .location = location,

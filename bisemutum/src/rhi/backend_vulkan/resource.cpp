@@ -171,6 +171,7 @@ TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, TextureDesc const& desc) 
         .pQueueFamilyIndices = nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
+    current_layout_ = image_ci.initialLayout;
 
     VmaAllocationCreateInfo allocation_ci{
         .flags = 0,

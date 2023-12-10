@@ -22,7 +22,7 @@ auto normalize_path(std::string_view path) -> std::string {
     std::vector<size_t> selected_parts{};
     selected_parts.reserve(parts.size());
     for (size_t i = 0; i < parts.size(); i++) {
-        const auto &s = parts[i];
+        auto const& s = parts[i];
         if (s == "..") {
             if (!selected_parts.empty() && parts[selected_parts.back()] != "..") {
                 selected_parts.pop_back();

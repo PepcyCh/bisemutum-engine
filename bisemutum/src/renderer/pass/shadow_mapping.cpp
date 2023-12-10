@@ -20,9 +20,7 @@ ShadowMappingPass::ShadowMappingPass() {
 auto ShadowMappingPass::render(
     gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input
 ) -> gfx::TextureHandle {
-    auto dir_lights_shadow_map = rg.import_texture(
-        input.lights_ctx.dir_lights_shadow_map, rhi::ResourceAccessType::sampled_texture_read
-    );
+    auto dir_lights_shadow_map = rg.import_texture(input.lights_ctx.dir_lights_shadow_map);
 
     for (size_t index = 0; auto& dir_light : input.lights_ctx.dir_lights_with_shadow) {
         auto [builder, pass_data] = rg.add_graphics_pass<PassData>(

@@ -27,7 +27,9 @@ struct RenderGraph final : PImpl<RenderGraph> {
     auto add_buffer(std::function<auto(BufferBuilder&) -> void> setup_func) -> BufferHandle;
     auto import_buffer(Ref<Buffer> buffer) -> BufferHandle;
     auto add_texture(std::function<auto(TextureBuilder&) -> void> setup_func) -> TextureHandle;
-    auto import_texture(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> TextureHandle;
+    auto import_texture(
+        Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access = rhi::ResourceAccessType::none
+    ) -> TextureHandle;
     auto import_back_buffer() const -> TextureHandle;
 
     template <typename PassData>

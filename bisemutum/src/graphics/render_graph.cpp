@@ -332,7 +332,7 @@ struct RenderGraph::Impl final {
             }
             for (size_t i = 0; i < graph_nodes_.size(); i++) {
                 if (used[i] && !graph_nodes_[i]->is_resource()) {
-                    for (const auto &v : graph_nodes_[i]->out_nodes) {
+                    for (auto const& v : graph_nodes_[i]->out_nodes) {
                         used[v->index] = true;
                     }
                 }
@@ -376,14 +376,18 @@ struct RenderGraph::Impl final {
 
         for (auto const& node : graph_nodes_) {
             if (node->is_resource()) {
+                if (node->in_nodes.empty() && node->out_nodes.empty()) {
+                    continue;
+                }
                 size_t start = graph_nodes_.size();
+                size_t end = 0;
                 for (auto const& v : node->in_nodes) {
                     start = std::min(start, order_of[v->index]);
-                }
-                size_t end = 0;
-                for (auto const& v : node->out_nodes) {
                     end = std::max(end, order_of[v->index]);
+                }
+                for (auto const& v : node->out_nodes) {
                     start = std::min(start, order_of[v->index]);
+                    end = std::max(end, order_of[v->index]);
                 }
 
                 resources_to_create_[start].push_back(node->index);

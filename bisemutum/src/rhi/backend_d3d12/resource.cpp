@@ -91,6 +91,7 @@ BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : devi
     device_->allocator()->CreateResource(
         &allocation_desc, &resource_desc, initial_state, nullptr, &allocation_, IID_PPV_ARGS(&resource_)
     );
+    current_state_ = initial_state;
 
     if (desc_.persistently_mapped) {
         resource_->Map(0, nullptr, &mapped_ptr_);
@@ -140,6 +141,7 @@ TextureD3D12::TextureD3D12(Ref<DeviceD3D12> device, TextureDesc const& desc) : d
     device_->allocator()->CreateResource(
         &allocation_desc, &resource_desc, initial_state, nullptr, &allocation_, IID_PPV_ARGS(&resource_)
     );
+    current_state_ = initial_state;
 }
 
 TextureD3D12::TextureD3D12(

@@ -218,7 +218,7 @@ auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
     uint32_t transfer_queue_family = ~0u;
     uint32_t compute_queue_family = ~0u;
     for (uint32_t i = 0; i < num_queue_family; i++) {
-        const auto &props = queue_family_props[i];
+        auto const& props = queue_family_props[i];
         if (graphics_queue_family == ~0u && (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
             graphics_queue_family = i;
         } else if (transfer_queue_family == ~0u && (props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0) {

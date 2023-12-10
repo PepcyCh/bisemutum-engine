@@ -47,15 +47,44 @@ Buffer::~Buffer() {
     reset();
 }
 
+Buffer::Buffer(Buffer&& rhs) noexcept
+    : buffer_(std::move(rhs.buffer_))
+    , staging_buffers_(std::move(rhs.staging_buffers_))
+    , desired_size_(rhs.desired_size_)
+    , staging_buffer_start_index_(rhs.staging_buffer_start_index_)
+    , with_staging_buffer_(rhs.with_staging_buffer_)
+    , cpu_descriptors_(std::move(rhs.cpu_descriptors_))
+{}
+
+auto Buffer::operator=(Buffer&& rhs) noexcept -> Buffer& {
+    reset();
+    buffer_ = std::move(rhs.buffer_);
+    staging_buffers_ = std::move(rhs.staging_buffers_);
+    desired_size_ = rhs.desired_size_;
+    staging_buffer_start_index_ = rhs.staging_buffer_start_index_;
+    with_staging_buffer_ = rhs.with_staging_buffer_;
+    cpu_descriptors_ = std::move(rhs.cpu_descriptors_);
+    return *this;
+}
+
 auto Buffer::has_value() const -> bool {
     return buffer_ || !staging_buffers_.empty();
 }
 
 auto Buffer::reset() -> void {
-    buffer_.reset();
-    staging_buffers_.clear();
-
-    free_all_cpu_descriptors();
+    if (has_value()) {
+        g_engine->graphics_manager()->add_delayed_destroy(
+            [
+                buffer = std::move(buffer_),
+                staging_buffers = std::move(staging_buffers_),
+                cpu_descriptors = std::move(cpu_descriptors_)
+            ]() {
+                for (auto& [_, desc] : cpu_descriptors) {
+                    g_engine->graphics_manager()->free_cpu_resource_descriptor(desc);
+                }
+            }
+        );
+    }
 }
 
 auto Buffer::rhi_buffer() -> Ref<rhi::Buffer> {
@@ -70,33 +99,6 @@ auto Buffer::rhi_staging_buffer() -> Ref<rhi::Buffer> {
 }
 auto Buffer::rhi_staging_buffer() const -> CRef<rhi::Buffer> {
     return staging_buffers_[g_engine->graphics_manager()->curr_frame_index()].ref();
-}
-
-auto Buffer::resize(uint64_t size) -> void {
-    if (size == desc().size || size == 0) { return; }
-
-    desired_size_ = size;
-
-    auto desc = this->desc();
-    desc.size = size;
-    if (buffer_) {
-        free_all_cpu_descriptors();
-        buffer_ = g_engine->graphics_manager()->device()->create_buffer(desc);
-        if (!with_staging_buffer_) {
-            return;
-        }
-    }
-
-    staging_buffer_start_index_ = g_engine->graphics_manager()->curr_frame_index();
-    auto& staging_buffer = staging_buffers_[staging_buffer_start_index_];
-    if (buffer_) {
-        desc.usages = {};
-        desc.memory_property = rhi::BufferMemoryProperty::cpu_to_gpu;
-        desc.persistently_mapped = true;
-    } else {
-        free_cpu_descriptors_at_frame(staging_buffer_start_index_);
-    }
-    staging_buffer = g_engine->graphics_manager()->device()->create_buffer(desc);
 }
 
 auto Buffer::update_staging_buffer_size() -> void {
@@ -270,18 +272,39 @@ Texture::~Texture() {
     reset();
 }
 
+Texture::Texture(Texture&& rhs) noexcept
+    : texture_(std::move(rhs.texture_))
+    , imported_texture_(rhs.imported_texture_)
+    , cpu_descriptors_(std::move(rhs.cpu_descriptors_))
+{}
+
+auto Texture::operator=(Texture&& rhs) noexcept -> Texture& {
+    reset();
+    texture_ = std::move(rhs.texture_);
+    imported_texture_ = rhs.imported_texture_;
+    cpu_descriptors_ = std::move(rhs.cpu_descriptors_);
+    return *this;
+}
+
 auto Texture::has_value() const -> bool {
     return texture_ || imported_texture_;
 }
 
 auto Texture::reset() -> void {
-    texture_.reset();
     imported_texture_ = nullptr;
 
-    for (auto& [_, desc] : cpu_descriptors_) {
-        g_engine->graphics_manager()->free_cpu_resource_descriptor(desc);
+    if (texture_) {
+        g_engine->graphics_manager()->add_delayed_destroy(
+            [
+                texture = std::move(texture_),
+                cpu_descriptors = std::move(cpu_descriptors_)
+            ]() {
+                for (auto& [_, desc] : cpu_descriptors) {
+                    g_engine->graphics_manager()->free_cpu_resource_descriptor(desc);
+                }
+            }
+        );
     }
-    cpu_descriptors_.clear();
 }
 
 auto Texture::rhi_texture() -> Ref<rhi::Texture> {

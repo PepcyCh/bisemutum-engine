@@ -359,7 +359,7 @@ auto CommandEncoderVulkan::resource_barriers(
 ) -> void {
     std::vector<VkBufferMemoryBarrier2> buffer_barriers_vk(buffer_barriers.size());
     for (size_t i = 0; i < buffer_barriers.size(); i++) {
-        const auto &barrier = buffer_barriers[i];
+        auto const& barrier = buffer_barriers[i];
         buffer_barriers_vk[i] = VkBufferMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
             .pNext = nullptr,
@@ -382,8 +382,8 @@ auto CommandEncoderVulkan::resource_barriers(
     }
     std::vector<VkImageMemoryBarrier2> texture_barriers_vk(texture_barriers.size());
     for (size_t i = 0; i < texture_barriers.size(); i++) {
-        const auto &barrier = texture_barriers[i];
-        const auto texture_vk = barrier.texture.cast_to<TextureVulkan>();
+        auto const& barrier = texture_barriers[i];
+        auto texture_vk = barrier.texture.cast_to<TextureVulkan>();
         texture_barriers_vk[i] = VkImageMemoryBarrier2{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .pNext = nullptr,
@@ -409,12 +409,16 @@ auto CommandEncoderVulkan::resource_barriers(
             texture_barriers_vk[i].srcStageMask,
             texture_barriers_vk[i].oldLayout
         );
+        if (barrier.src_access_type == ResourceAccessType::none) {
+            texture_barriers_vk[i].oldLayout = texture_vk->get_current_layout();
+        }
         to_vk_image_access_type(
             barrier.dst_access_type, is_depth_stencil, 
             texture_barriers_vk[i].dstAccessMask,
             texture_barriers_vk[i].dstStageMask,
             texture_barriers_vk[i].newLayout
         );
+        texture_vk->set_current_layout(texture_barriers_vk[i].newLayout);
     }
 
     VkDependencyInfo dep_info{

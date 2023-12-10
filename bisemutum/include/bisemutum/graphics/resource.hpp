@@ -51,8 +51,8 @@ struct Buffer final {
     Buffer(rhi::BufferDesc const& desc, bool with_staging_buffer = true);
     ~Buffer();
 
-    Buffer(Buffer&& rhs) noexcept = default;
-    auto operator=(Buffer&& rhs) noexcept -> Buffer& = default;
+    Buffer(Buffer&& rhs) noexcept;
+    auto operator=(Buffer&& rhs) noexcept -> Buffer&;
 
     auto has_value() const -> bool;
     auto reset() -> void;
@@ -62,7 +62,6 @@ struct Buffer final {
     auto rhi_buffer() -> Ref<rhi::Buffer>;
     auto rhi_buffer() const -> CRef<rhi::Buffer>;
 
-    auto resize(uint64_t size) -> void;
     auto update_staging_buffer_size() -> void;
 
     template <typename T>
@@ -107,8 +106,8 @@ struct Texture final {
     Texture(rhi::TextureDesc const& desc);
     ~Texture();
 
-    Texture(Texture&& rhs) noexcept = default;
-    auto operator=(Texture&& rhs) noexcept -> Texture& = default;
+    Texture(Texture&& rhs) noexcept;
+    auto operator=(Texture&& rhs) noexcept -> Texture&;
 
     auto has_value() const -> bool;
     auto reset() -> void;

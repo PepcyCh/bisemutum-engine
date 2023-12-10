@@ -55,7 +55,6 @@ auto Camera::recreate_target_texture(uint32_t width, uint32_t height, rhi::Resou
 auto Camera::recreate_target_texture(rhi::TextureDesc const& desc) -> void {
     if (!target_texture_.has_value() || desc != target_texture_.desc()) {
         target_texture_ = Texture(desc);
-        target_texture_state_preinitialized_ = true;
     }
 }
 

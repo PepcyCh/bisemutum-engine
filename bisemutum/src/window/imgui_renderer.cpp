@@ -256,7 +256,7 @@ struct ImGuiRenderer::Impl final {
 
         if (draw_data->TotalVtxCount > 0) {
             auto vertex_size = draw_data->TotalVtxCount * sizeof(ImDrawVert);
-            if (!vertex_buffer.has_value()) {
+            if (!vertex_buffer.has_value() || vertex_buffer.desc().size < vertex_size) {
                 vertex_buffer = gfx::Buffer{
                     rhi::BufferDesc{
                         .size = vertex_size,
@@ -264,13 +264,11 @@ struct ImGuiRenderer::Impl final {
                         .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
                     }
                 };
-            } else if (vertex_buffer.desc().size < vertex_size) {
-                vertex_buffer.resize(vertex_size);
             }
             uint64_t vertex_offset = 0;
 
             auto index_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
-            if (!index_buffer.has_value()) {
+            if (!index_buffer.has_value() || index_buffer.desc().size < index_size) {
                 index_buffer = gfx::Buffer{
                     rhi::BufferDesc{
                         .size = index_size,
@@ -278,8 +276,6 @@ struct ImGuiRenderer::Impl final {
                         .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
                     }
                 };
-            } else if (index_buffer.desc().size < index_size) {
-                index_buffer.resize(index_size);
             }
             uint64_t index_offset = 0;
 

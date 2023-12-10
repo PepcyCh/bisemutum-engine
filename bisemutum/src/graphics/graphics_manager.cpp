@@ -43,6 +43,9 @@ constexpr uint32_t gpu_sampler_desc_heap_chunk_size = 512;
 struct GraphicsManager::Impl final {
     ~Impl() {
         wait_idle();
+
+        // It is needed to manually reset renderer since it may add delayed destroys.
+        renderer.reset();
     }
 
     auto initialize(GraphicsSettings const& settings) -> void {
@@ -92,6 +95,7 @@ struct GraphicsManager::Impl final {
         rhi::CommandPoolDesc cmd_pool_desc{
             .queue = graphics_queue.value(),
         };
+        delayed_destroys.resize(settings.num_swapchain_textures);
         frame_data.resize(settings.num_swapchain_textures);
         for (auto& fd : frame_data) {
             fd.acquire_semaphore = device->create_semaphore();
@@ -107,6 +111,13 @@ struct GraphicsManager::Impl final {
     auto wait_idle() -> void {
         graphics_queue->wait_idle();
         compute_queue->wait_idle();
+
+        for (auto& destroys : delayed_destroys) {
+            for (auto& destroy : destroys) {
+                destroy();
+            }
+            destroys.clear();
+        }
     }
 
     auto register_renderer(std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box>&& creator) -> void {
@@ -141,6 +152,11 @@ struct GraphicsManager::Impl final {
         fd.cached_descriptors.clear();
         gpu_resource_descriptor_allocator->reset(curr_frame_index());
         gpu_sampler_descriptor_allocator->reset(curr_frame_index());
+
+        for (auto& destroy : delayed_destroys[curr_frame_index()]) {
+            destroy();
+        }
+        delayed_destroys[curr_frame_index()].clear();
     }
 
     auto render_frame() -> void {
@@ -180,13 +196,7 @@ struct GraphicsManager::Impl final {
             set_descriptor_heaps(cmd_encoder);
             curr_cmd_encoder = cmd_encoder.ref();
             render_graph.set_command_encoder(cmd_encoder.ref());
-
-            auto camera_access = camera.target_texture_state_preinitialized_
-                ? rhi::ResourceAccessType::none
-                : rhi::ResourceAccessType::sampled_texture_read;
-            camera.target_texture_state_preinitialized_ = false;
-            render_graph.set_back_buffer(camera.target_texture(), camera_access);
-
+            render_graph.set_back_buffer(camera.target_texture(), rhi::ResourceAccessType::none);
             renderer.prepare_renderer_per_camera_data(camera);
             renderer.render_camera(camera, render_graph);
             render_graph.execute();
@@ -559,6 +569,10 @@ struct GraphicsManager::Impl final {
         return handle;
     }
 
+    auto add_delayed_destroy(MoveOnlyFunction<auto() -> void>&& destroy) -> void {
+        delayed_destroys[curr_frame_index()].push_back(std::move(destroy));
+    }
+
     auto curr_frame_index() const -> uint32_t {
         return frame_index;
     }
@@ -600,6 +614,8 @@ struct GraphicsManager::Impl final {
     std::vector<FrameData> frame_data;
     Box<rhi::Fence> immediate_execution_fence;
     Ptr<rhi::CommandEncoder> curr_cmd_encoder;
+
+    std::vector<std::vector<MoveOnlyFunction<auto() -> void>>> delayed_destroys;
 
     RenderGraph render_graph;
     std::unordered_map<rhi::SamplerDesc, Sampler> samplers;
@@ -712,6 +728,10 @@ auto GraphicsManager::get_gpu_descriptor_for(
     rhi::BindGroupLayout const& layout
 ) -> rhi::DescriptorHandle {
     return impl()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
+}
+
+auto GraphicsManager::add_delayed_destroy(MoveOnlyFunction<auto() -> void> destroy) -> void {
+    impl()->add_delayed_destroy(std::move(destroy));
 }
 
 }

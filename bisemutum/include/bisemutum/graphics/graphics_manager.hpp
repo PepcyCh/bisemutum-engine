@@ -6,6 +6,7 @@
 #include "displayer.hpp"
 #include "mipmap_mode.hpp"
 #include "../prelude/idiom.hpp"
+#include "../prelude/move_only_function.hpp"
 #include "../rhi/pipeline.hpp"
 #include "../utils/srefl.hpp"
 
@@ -107,6 +108,8 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
         std::vector<rhi::DescriptorHandle> cpu_descriptors,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle;
+
+    auto add_delayed_destroy(MoveOnlyFunction<auto() -> void> destroy) -> void;
 
 private:
     auto register_renderer(std::string&& name, std::function<auto() -> Dyn<IRenderer>::Box> creator) -> void;

@@ -302,7 +302,11 @@ auto CommandEncoderD3D12::resource_barriers(
             continue;
         }
         auto src_states = to_dx_buffer_state(barrier.src_access_type);
+        if (barrier.src_access_type == ResourceAccessType::none) {
+            src_states = buffer_dx->get_current_state();
+        }
         auto dst_states = to_dx_buffer_state(barrier.dst_access_type);
+        buffer_dx->set_current_state(dst_states);
         if (src_states != dst_states) {
             barriers_dx.push_back(D3D12_RESOURCE_BARRIER{
                 .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -327,7 +331,11 @@ auto CommandEncoderD3D12::resource_barriers(
     for (auto const& barrier : texture_barriers) {
         auto texture_dx = barrier.texture.cast_to<TextureD3D12>();
         auto src_states = to_dx_texture_state(barrier.src_access_type);
+        if (barrier.src_access_type == ResourceAccessType::none) {
+            src_states = texture_dx->get_current_state();
+        }
         auto dst_states = to_dx_texture_state(barrier.dst_access_type);
+        texture_dx->set_current_state(dst_states);
         uint32_t subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         if (barrier.num_levels == 1 || barrier.base_layer == 1) {
             subresource = texture_dx->subresource_index(barrier.base_level, barrier.base_layer);

@@ -70,10 +70,15 @@ struct TextureVulkan final : Texture {
 
     auto get_depth_and_layer(uint32_t depth_or_layers, uint32_t &depth, uint32_t &layers, uint32_t another = 1) const -> void;
 
+    auto get_current_layout() const -> VkImageLayout { return current_layout_; }
+    auto set_current_layout(VkImageLayout layout) -> void { current_layout_ = layout; }
+
 private:
     Ref<DeviceVulkan> device_;
     VkImage image_ = VK_NULL_HANDLE;
     VmaAllocation allocation_ = VK_NULL_HANDLE;
+
+    VkImageLayout current_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
 
     std::unordered_map<TextureViewKeyVulkan, VkImageView> views_;
 };
