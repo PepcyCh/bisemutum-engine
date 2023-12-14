@@ -13,7 +13,9 @@ struct ForwardRenderer::Impl final {
         forward_pass.update_params(lights_ctx);
     }
 
-    auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {}
+    auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {
+        lights_ctx.prepare_dir_lights_per_camera(camera);
+    }
 
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto dir_lighst_shadow_map = shadow_mapping_pass.render(camera, rg, {

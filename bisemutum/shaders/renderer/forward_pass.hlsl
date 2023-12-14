@@ -1,4 +1,5 @@
 #include "../core/vertex_attributes.hlsl"
+
 #include "lights.hlsl"
 
 #include "../core/shader_params/camera.hlsl"
@@ -20,11 +21,12 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
 
     int i;
     for (i = 0; i < num_dir_lights; i++) {
-        LightData light = dir_lights[i];
+        DirLightData light = dir_lights[i];
         float3 le = dir_light_eval(light, fin.position_world, light_dir);
         float shadow_factor = dir_light_shadow_factor(
-            light, fin.position_world, dir_lights_shadow_transform[light.sm_index],
-            dir_lights_shadow_map, shadow_map_sampler
+            light, fin.position_world, N,
+            camera_position_world(),
+            dir_lights_shadow_transform, dir_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface);
     }

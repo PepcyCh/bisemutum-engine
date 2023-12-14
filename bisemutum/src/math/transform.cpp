@@ -2,7 +2,6 @@
 
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
-#include <bisemutum/math/math_serde.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
 #include <bisemutum/editor/basic.hpp>
 

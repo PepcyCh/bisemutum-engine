@@ -32,15 +32,11 @@ name = 'Dir Light'
         translation = [ 0.0, 0.0, 0.0 ]
 
     [[objects.components]]
-    type = 'LightComponent'
+    type = 'DirectionalLightComponent'
 
         [objects.components.value]
         color = [ 1.0, 0.89999997615814209, 0.80000001192092896 ]
-        range = 1000000000.0
-        spot_inner_angle = 30.0
-        spot_outer_angle = 60.0
         strength = 4.0
-        type = 'directional'
         cast_shadow = true
 
 [[objects]]

@@ -1,7 +1,7 @@
 #include <bisemutum/scene_basic/material.hpp>
 
 #include <bisemutum/scene_basic/texture.hpp>
-#include <bisemutum/math/math_serde.hpp>
+#include <bisemutum/math/math.hpp>
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/prelude/misc.hpp>
 
