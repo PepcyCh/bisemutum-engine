@@ -15,7 +15,7 @@ namespace {
 template <typename Container>
 auto update_buffer(gfx::Buffer& buffer, Container const& container) -> void {
     auto need_buffer_size = std::max<size_t>(container.size(), 1) * sizeof(container[0]);
-    if (!buffer.has_value() || need_buffer_size < buffer.desc().size) {
+    if (!buffer.has_value() || buffer.desc().size < need_buffer_size) {
         buffer = gfx::Buffer(
             gfx::BufferBuilder()
                 .size(need_buffer_size)
@@ -58,11 +58,11 @@ auto LightsContext::collect_all_lights() -> void {
         DirLightData data{};
         data.emission = light.color * light.strength;
         data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
-        if (light.cast_shadow && light.shadow_strength > 0.0f) {
+        if (light.cast_shadow && light.shadow_strength > 0.0f && light.shadow_range > 0.0f) {
             light.cascade_shadow_ratio.z = std::min(light.cascade_shadow_ratio.z, 1.0f);
             light.cascade_shadow_ratio.y = std::min(light.cascade_shadow_ratio.y, light.cascade_shadow_ratio.z);
             light.cascade_shadow_ratio.x = std::min(light.cascade_shadow_ratio.x, light.cascade_shadow_ratio.y);
-            data.cascade_shadow_radius_sqr = float4{light.cascade_shadow_ratio, 1.0f} * 20.0f;
+            data.cascade_shadow_radius_sqr = float4{light.cascade_shadow_ratio, 1.0f} * light.shadow_range;
             data.shadow_bias_factor = light.shadow_bias_factor;
 
             auto up_dir = float3{0.0f, 1.0f, 0.0f};

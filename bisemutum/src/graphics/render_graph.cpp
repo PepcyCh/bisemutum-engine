@@ -71,6 +71,7 @@ struct TexturePool final {
 };
 
 auto need_barrier(BitFlags<rhi::ResourceAccessType> from, BitFlags<rhi::ResourceAccessType> to) -> bool {
+    BI_ASSERT(to != rhi::ResourceAccessType::none);
     return from != to
         || (
             from.contains_any(rhi::ResourceAccessType::storage_resource_write)
@@ -691,7 +692,7 @@ auto RenderGraph::Impl::GraphicsPassNode::set_barriers(
 
         auto const& target = target_opt.value();
         auto& texture = rg.pool_texture(target.handle);
-        if (need_barrier(target_access, texture.access)) {
+        if (need_barrier(texture.access, target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = texture.texture->rhi_texture(),
                 .src_access_type = texture.access,
@@ -704,7 +705,7 @@ auto RenderGraph::Impl::GraphicsPassNode::set_barriers(
         target_access = rhi::ResourceAccessType::depth_stencil_attachment_write;
         auto const& target = builder.depth_stencil_target_.value();
         auto& texture = rg.pool_texture(target.handle);
-        if (need_barrier(target_access, texture.access)) {
+        if (need_barrier(texture.access, target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = texture.texture->rhi_texture(),
                 .src_access_type = texture.access,

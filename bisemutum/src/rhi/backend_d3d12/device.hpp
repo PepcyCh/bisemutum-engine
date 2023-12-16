@@ -8,7 +8,12 @@
 #include <D3D12MemAlloc.h>
 #include <wrl.h>
 
+#ifdef interface
+#undef interface
+#endif
+
 #include "descriptor.hpp"
+#include "pipeline_cache.hpp"
 
 namespace bi::rhi {
 
@@ -60,7 +65,7 @@ struct DeviceD3D12 final : Device {
 
     auto raw_factory() const -> IDXGIFactory6* { return factory_.Get(); }
 
-    auto pipeline_library() const -> ID3D12PipelineLibrary1* { return pipeline_library_.Get(); }
+    auto pipeline_cache() -> PipelineStateCacheD3D12& { return pipeline_cahce_; }
 
     auto allocator() const -> D3D12MA::Allocator* { return allocator_; }
 
@@ -82,7 +87,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Device2> device_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12InfoQueue> info_queue_ = nullptr;
 
-    Microsoft::WRL::ComPtr<ID3D12PipelineLibrary1> pipeline_library_ = nullptr;
+    PipelineStateCacheD3D12 pipeline_cahce_;
     std::string pso_cache_file_path_;
 
     std::array<Box<struct QueueD3D12>, 3> queues_;

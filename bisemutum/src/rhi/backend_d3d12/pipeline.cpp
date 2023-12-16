@@ -3,8 +3,6 @@
 #include <algorithm>
 
 #include <bisemutum/prelude/misc.hpp>
-#include <bisemutum/utils/crypto.hpp>
-#include <fmt/format.h>
 
 #include "device.hpp"
 #include "shader.hpp"
@@ -269,64 +267,6 @@ auto to_dx_primitive_topology(PrimitiveTopology topo) -> D3D12_PRIMITIVE_TOPOLOG
     }
 }
 
-auto hash_graphics_pipeline_desc(D3D12_GRAPHICS_PIPELINE_STATE_DESC const& desc) -> std::string {
-    auto config_hash = hash(
-        ByteHash<D3D12_RASTERIZER_DESC>{}(desc.RasterizerState),
-        ByteHash<D3D12_DEPTH_STENCIL_DESC>{}(desc.DepthStencilState),
-        ByteHash<D3D12_BLEND_DESC>{}(desc.BlendState),
-        ByteHash<DXGI_SAMPLE_DESC>{}(desc.SampleDesc),
-        desc.NumRenderTargets,
-        desc.DSVFormat,
-        desc.PrimitiveTopologyType,
-        desc.InputLayout.NumElements,
-        desc.Flags
-    );
-    for (uint32_t i = 0; i < desc.NumRenderTargets; i++) {
-        config_hash = hash_combine(config_hash, desc.RTVFormats[i]);
-    }
-    for (uint32_t i = 0; i < desc.InputLayout.NumElements; i++) {
-        auto const& v = desc.InputLayout.pInputElementDescs[i];
-        config_hash = hash_combine(
-            config_hash,
-            hash(
-                v.SemanticName, v.SemanticIndex, v.Format, v.InputSlot, v.InputSlotClass,
-                v.AlignedByteOffset, v.InstanceDataStepRate
-            )
-        );
-    }
-
-    auto vs_md5 = crypto::md5({reinterpret_cast<std::byte const*>(desc.VS.pShaderBytecode), desc.VS.BytecodeLength});
-    auto hs_md5 = crypto::md5({reinterpret_cast<std::byte const*>(desc.HS.pShaderBytecode), desc.HS.BytecodeLength});
-    auto ds_md5 = crypto::md5({reinterpret_cast<std::byte const*>(desc.DS.pShaderBytecode), desc.DS.BytecodeLength});
-    auto gs_md5 = crypto::md5({reinterpret_cast<std::byte const*>(desc.GS.pShaderBytecode), desc.GS.BytecodeLength});
-    auto ps_md5 = crypto::md5({reinterpret_cast<std::byte const*>(desc.PS.pShaderBytecode), desc.PS.BytecodeLength});
-
-    return fmt::format(
-        "GRAPHICS-{:x}-{}-{}-{}-{}-{}",
-        config_hash, vs_md5.as_string(), hs_md5.as_string(), ds_md5.as_string(), gs_md5.as_string(), ps_md5.as_string()
-    );
-}
-
-auto hash_compute_pipeline_desc(D3D12_COMPUTE_PIPELINE_STATE_DESC const& desc) -> std::string {
-    auto config_hash = hash(desc.Flags);
-
-    auto cs_md5 = crypto::md5({reinterpret_cast<std::byte const*>(desc.CS.pShaderBytecode), desc.CS.BytecodeLength});
-
-    return fmt::format(
-        "COMPUTE-{:x}-{}",
-        config_hash, cs_md5.as_string()
-    );
-}
-
-auto chars_to_wstring(char const* chars, size_t length) -> std::wstring {
-    auto size = MultiByteToWideChar(CP_UTF8, 0, chars, length, nullptr, 0);
-    auto temp  = new wchar_t[size];
-    MultiByteToWideChar(CP_UTF8, 0, chars, length, temp, size);
-    std::wstring str(temp, temp + size - 1);
-    delete[] temp;
-    return str;
-}
-
 } // namespace
 
 GraphicsPipelineD3D12::GraphicsPipelineD3D12(Ref<DeviceD3D12> device, GraphicsPipelineDesc const& desc)
@@ -454,19 +394,7 @@ GraphicsPipelineD3D12::GraphicsPipelineD3D12(Ref<DeviceD3D12> device, GraphicsPi
 
     pipeline_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
-    if (device_->pipeline_library()) {
-        auto pipeline_str = hash_graphics_pipeline_desc(pipeline_desc);
-        auto pipeline_wstr = chars_to_wstring(pipeline_str.c_str(), pipeline_str.size());
-        auto load_ret = device_->pipeline_library()->LoadGraphicsPipeline(
-            pipeline_wstr.c_str(), &pipeline_desc, IID_PPV_ARGS(&pipeline_)
-        );
-        if (!SUCCEEDED(load_ret)) {
-            device_->raw()->CreateGraphicsPipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_));
-            device_->pipeline_library()->StorePipeline(pipeline_wstr.c_str(), pipeline_.Get());
-        }
-    } else {
-        device_->raw()->CreateGraphicsPipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_));
-    }
+    device_->pipeline_cache().create_graphics_pipeline(desc_, pipeline_desc, pipeline_);
 }
 
 
@@ -489,19 +417,7 @@ ComputePipelineD3D12::ComputePipelineD3D12(Ref<DeviceD3D12> device, ComputePipel
         .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
     };
 
-    if (device_->pipeline_library()) {
-        auto pipeline_str = hash_compute_pipeline_desc(pipeline_desc);
-        auto pipeline_wstr = chars_to_wstring(pipeline_str.c_str(), pipeline_str.size());
-        auto load_ret = device_->pipeline_library()->LoadComputePipeline(
-            pipeline_wstr.c_str(), &pipeline_desc, IID_PPV_ARGS(&pipeline_)
-        );
-        if (!SUCCEEDED(load_ret)) {
-            device->raw()->CreateComputePipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_));
-            device_->pipeline_library()->StorePipeline(pipeline_wstr.c_str(), pipeline_.Get());
-        }
-    } else {
-        device->raw()->CreateComputePipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_));
-    }
+    device_->pipeline_cache().create_compute_pipeline(desc_, pipeline_desc, pipeline_);
 }
 
 }

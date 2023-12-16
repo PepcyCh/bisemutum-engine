@@ -3,7 +3,6 @@
 #include "resource.hpp"
 #include "shader_param.hpp"
 #include "../math/math.hpp"
-#include "../utils/serde.hpp"
 
 namespace bi::gfx {
 
@@ -30,9 +29,9 @@ struct Camera final {
     // The value is updated after `update_shader_params()`.
     auto matrix_proj_view() const -> float4x4 const& { return matrix_proj_view_; }
 
-    float3 position = float3(0.0f, 0.0f, -1.0f);
-    float3 front_dir = float3(0.0f, 0.0f, 1.0f);
-    float3 up_dir = float3(0.0f, 1.0f, 0.0f);
+    float3 position = float3{0.0f, 0.0f, -1.0f};
+    float3 front_dir = float3{0.0f, 0.0f, 1.0f};
+    float3 up_dir = float3{0.0f, 1.0f, 0.0f};
     float yfov = 30.0f;
     float near_z = 0.001f;
     float far_z = 100000.0f;

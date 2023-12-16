@@ -7,20 +7,16 @@
 
 namespace bi {
 
-inline auto hash_combine(size_t seed, size_t v) -> size_t {
-    seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    return seed;
-}
 template <typename T>
 auto hash_combine(size_t seed, T const& v) -> size_t {
-    std::hash<T> hasher;
-    return hash_combine(seed, hasher(v));
+    auto hashed_v = std::hash<T>{}(v);
+    seed ^= hashed_v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
 }
 
 template <typename T>
 auto hash(T const& v) -> size_t {
-    std::hash<T> hasher;
-    return hasher(v);
+    return std::hash<T>{}(v);
 }
 
 template <typename T, typename... Args>
@@ -32,7 +28,7 @@ auto hash(T const& first, Args &&... last) -> size_t {
 template <typename T>
 struct ByteHash final {
     auto operator()(T const& v) const noexcept -> size_t {
-        auto p = reinterpret_cast<uint8_t const*>(&v);
+        auto p = reinterpret_cast<std::byte const*>(&v);
         size_t hash = 0;
         for (size_t i = 0; i < sizeof(T); i++) {
             hash = hash_combine(hash, p[i]);
@@ -40,6 +36,25 @@ struct ByteHash final {
         return hash;
     }
 };
+template <typename T>
+auto hash_by_byte(T const& v) -> size_t {
+    return ByteHash<T>{}(v);
+}
+
+template <typename T>
+struct LinearContainerHash final {
+    auto operator()(T const& v) const noexcept -> size_t {
+        size_t hash = v.size();
+        for (auto const& elem : v) {
+            hash = hash_combine(hash, elem);
+        }
+        return hash;
+    }
+};
+template <typename T>
+auto hash_linear_container(T const& v) -> size_t {
+    return LinearContainerHash<T>{}(v);
+}
 
 struct StringHash final {
     using is_transparent = void;

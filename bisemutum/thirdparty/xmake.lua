@@ -14,11 +14,11 @@ target("winpix")
         add_links("WinPixEventRuntime", {public = true})
         if is_arch("arm.*") then
             after_build(function (target)
-                os.cp("bisemutum/thirdparty/WinPixEventRuntime/bin/ARM64/WinPixEventRuntime.dll", target:targetdir())
+                os.cp(path.join(os.scriptdir(), "WinPixEventRuntime/bin/ARM64/WinPixEventRuntime.dll"), target:targetdir())
             end)
         else
             after_build(function (target)
-                os.cp("bisemutum/thirdparty/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll", target:targetdir())
+                os.cp(path.join(os.scriptdir(), "WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll"), target:targetdir())
             end)
         end
     end

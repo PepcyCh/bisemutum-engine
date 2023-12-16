@@ -55,7 +55,7 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     GraphicsManager();
     ~GraphicsManager();
 
-    auto initialize(GraphicsSettings const& settings) -> void;
+    auto initialize(GraphicsSettings const& settings, std::string_view pipeline_cache_file) -> void;
 
     auto wait_idle() -> void;
 

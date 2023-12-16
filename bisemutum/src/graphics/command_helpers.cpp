@@ -192,8 +192,8 @@ auto CommandHelpers::generate_mipmaps_2d(
                 .dst_access_type = write_access,
             },
         });
-        width /= 2;
-        height /= 2;
+        width = std::max(width / 2, 1u);
+        height = std::max(height / 2, 1u);
         execute_func(level);
     }
     if (num_levels > 1) {

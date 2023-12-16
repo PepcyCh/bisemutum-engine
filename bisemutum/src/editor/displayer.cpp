@@ -91,6 +91,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
 
     auto wm = g_engine->window_manager();
 
+    auto display_scene_camera_this_frame = display_scene_camera_;
     wm->imgui_window("Viewport Top Bar", [this, &io](ImGuiWindowArgs const& args) {
         int use_scene_camera = display_scene_camera_;
         ImGui::Text("%.3f ms | %.1f FPS", 1000.0f / io.Framerate, io.Framerate);
@@ -106,9 +107,9 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     auto editor_camera = gpu_scene->get_camera(editor_camera_);
     scene_camera->enabled = display_scene_camera_;
     editor_camera->enabled = !display_scene_camera_;
-    auto displayed_camera = display_scene_camera_ ? scene_camera : editor_camera;
+    auto displayed_camera = display_scene_camera_this_frame ? scene_camera : editor_camera;
 
-    if (!display_scene_camera_) {
+    if (!display_scene_camera_this_frame) {
         move_editor_camera(editor_camera, io.DeltaTime);
     }
 

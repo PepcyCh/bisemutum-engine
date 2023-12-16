@@ -5,6 +5,7 @@
 #endif
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/vfs.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/prelude/misc.hpp>
 
 #include "command.hpp"
@@ -120,7 +121,7 @@ DeviceD3D12::DeviceD3D12(DeviceDesc const& desc) {
 }
 
 DeviceD3D12::~DeviceD3D12() {
-    for (size_t i = 0; i < 3; i++) {
+    for (size_t i = 0; i < queues_.size(); i++) {
         queues_[i]->wait_idle();
     }
     save_pso_cache();
@@ -153,11 +154,20 @@ auto DeviceD3D12::create_cpu_descriptor_heaps() -> void {
     dsv_heap_ = Box<RenderTargetDescriptorHeapD3D12>::make(ref_this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 }
 
+auto DeviceD3D12::initialize_pipeline_cache_from(std::string_view cache_file_path) -> void {
+    pipeline_cahce_.init(adapter_, device_.Get());
+
+    pso_cache_file_path_ = cache_file_path;
+    auto cache_file_opt = g_engine->file_system()->get_file(cache_file_path);
+    if (cache_file_opt) {
+        pipeline_cahce_.read_from(*&cache_file_opt.value());
+    }
+}
+
 auto DeviceD3D12::save_pso_cache() -> void {
-    if (pipeline_library_ && !pso_cache_file_path_.empty()) {
-        std::vector<std::byte> pso_cache_data(pipeline_library_->GetSerializedSize(), {});
-        pipeline_library_->Serialize(pso_cache_data.data(), pso_cache_data.size());
-        g_engine->file_system()->create_file(pso_cache_file_path_).value().write_binary_data(pso_cache_data);
+    if (!pso_cache_file_path_.empty()) {
+        auto cache_file = g_engine->file_system()->create_file(pso_cache_file_path_).value();
+        pipeline_cahce_.write_to(*&cache_file);
     }
 }
 
@@ -272,6 +282,25 @@ auto DeviceD3D12::create_descriptor(TextureDescriptorDesc const& texture_desc, D
                 .Format = to_dx_format(format),
                 .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             };
+            if (is_depth_stencil_format(format)) {
+                switch (format) {
+                    case ResourceFormat::d16_unorm:
+                        src_desc.Format = DXGI_FORMAT_R16_UNORM;
+                        break;
+                    case ResourceFormat::d24_unorm_s8_uint:
+                        src_desc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+                        break;
+                    case ResourceFormat::d32_sfloat:
+                        src_desc.Format = DXGI_FORMAT_R32_FLOAT;
+                        break;
+                    case ResourceFormat::d32_sfloat_s8_uint:
+                        src_desc.Format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                        break;
+                    default:
+                        log::warn("general", "D3D12 unexpected SRV format for depth texture");
+                        break;
+                }
+            }
             switch (view_type) {
                 case TextureViewType::d1:
                     src_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
@@ -391,18 +420,6 @@ auto DeviceD3D12::copy_descriptors(
     for (size_t i = 0; i < src_descriptors.size(); i++) {
         device_->CopyDescriptorsSimple(1, {dst_desciptor.cpu + stride * i}, {src_descriptors[i].cpu}, heap_type);
     }
-}
-
-auto DeviceD3D12::initialize_pipeline_cache_from(std::string_view cache_file_path) -> void {
-    std::vector<std::byte> pso_cache_data{};
-
-    pso_cache_file_path_ = cache_file_path;
-    auto cache_file_opt = g_engine->file_system()->get_file(cache_file_path);
-    if (cache_file_opt) {
-        pso_cache_data = cache_file_opt.value().read_binary_data();
-    }
-
-    device_->CreatePipelineLibrary(pso_cache_data.data(), pso_cache_data.size(), IID_PPV_ARGS(&pipeline_library_));
 }
 
 }

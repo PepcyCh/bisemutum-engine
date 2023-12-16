@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include <bisemutum/rhi/defines.hpp>
 #include <bisemutum/prelude/misc.hpp>
 

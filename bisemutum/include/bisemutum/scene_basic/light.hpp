@@ -43,7 +43,8 @@ struct DirectionalLightComponent final {
 
     bool cast_shadow = false;
     float shadow_strength = 1.0f;
-    float shadow_bias_factor = 0.001f;
+    float shadow_range = 20.0f;
+    float shadow_bias_factor = 0.0015f;
     float3 cascade_shadow_ratio = float3{0.1f, 0.25f, 0.5f};
 };
 BI_SREFL(
@@ -52,6 +53,7 @@ BI_SREFL(
     field(strength),
     field(cast_shadow),
     field(shadow_strength),
+    field(shadow_range),
     field(shadow_bias_factor),
     field(cascade_shadow_ratio)
 )

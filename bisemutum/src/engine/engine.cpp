@@ -111,10 +111,8 @@ struct Engine::Impl final {
         }
 
         auto graphics_backend_str = magic_enum::enum_name(project_info.settings.graphics.backend);
-        graphics_manager.initialize(project_info.settings.graphics);
-        graphics_manager.device()->initialize_pipeline_cache_from(
-            fmt::format("/project/binaries/gfx-{}/pipeline_cache", graphics_backend_str)
-        );
+        auto pipeline_cahce_file = fmt::format("/project/binaries/gfx-{}/pipeline_cache", graphics_backend_str);
+        graphics_manager.initialize(project_info.settings.graphics, pipeline_cahce_file);
         graphics_manager.set_renderer(project_info.renderer);
 
         imgui_renderer.initialize(window, graphics_manager);

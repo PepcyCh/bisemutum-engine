@@ -42,7 +42,7 @@ struct ReadByteStream final {
         vector.resize(length);
         if constexpr (
             can_be_used_for_byte_stream<T>
-            || (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t))
+            && (!std::is_same_v<T, size_t> || sizeof(size_t) == sizeof(uint64_t))
         ) {
             read_raw(reinterpret_cast<std::byte*>(vector.data()), length * sizeof(T));
         } else {
@@ -86,7 +86,7 @@ struct WriteByteStream final {
         write(vector.size());
         if constexpr (
             can_be_used_for_byte_stream<T>
-            || (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t))
+            && (!std::is_same_v<T, size_t> || sizeof(size_t) == sizeof(uint64_t))
         ) {
             write_raw(reinterpret_cast<std::byte const*>(vector.data()), vector.size() * sizeof(T));
         } else {

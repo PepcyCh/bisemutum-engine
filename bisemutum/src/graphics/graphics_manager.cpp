@@ -48,11 +48,13 @@ struct GraphicsManager::Impl final {
         renderer.reset();
     }
 
-    auto initialize(GraphicsSettings const& settings) -> void {
+    auto initialize(GraphicsSettings const& settings, std::string_view pipeline_cache_file) -> void {
         device = rhi::Device::create(rhi::DeviceDesc{
             .backend = settings.backend,
             .enable_validation = settings.enable_validation,
         });
+        device->initialize_pipeline_cache_from(pipeline_cache_file);
+
         graphics_queue = device->get_queue(rhi::QueueType::graphics);
         compute_queue = device->get_queue(rhi::QueueType::compute);
 
@@ -627,8 +629,8 @@ struct GraphicsManager::Impl final {
 GraphicsManager::GraphicsManager() = default;
 GraphicsManager::~GraphicsManager() = default;
 
-auto GraphicsManager::initialize(GraphicsSettings const& settings) -> void {
-    impl()->initialize(settings);
+auto GraphicsManager::initialize(GraphicsSettings const& settings, std::string_view pipeline_cache_file) -> void {
+    impl()->initialize(settings, pipeline_cache_file);
 }
 
 auto GraphicsManager::wait_idle() -> void {
