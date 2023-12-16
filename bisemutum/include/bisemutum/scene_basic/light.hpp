@@ -49,13 +49,13 @@ struct DirectionalLightComponent final {
 };
 BI_SREFL(
     type(DirectionalLightComponent),
-    field(color),
-    field(strength),
+    field(color, Color{}),
+    field(strength, RangeF{}),
     field(cast_shadow),
-    field(shadow_strength),
-    field(shadow_range),
-    field(shadow_bias_factor),
-    field(cascade_shadow_ratio)
+    field(shadow_strength, RangeF{0.0f, 1.0f}),
+    field(shadow_range, RangeF{}),
+    field(shadow_bias_factor, RangeF{0.0f, 1.0f}),
+    field(cascade_shadow_ratio, RangeF{0.0f, 1.0f})
 )
 
 struct PointLightComponent final {

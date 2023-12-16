@@ -1,15 +1,96 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 #include <tuple>
-#include <utility>
+#include <limits>
 
 #include <magic_enum.hpp>
 
 #include "../macros/function.hpp"
 #include "../macros/utils.hpp"
 
+// Some basic attributes
+namespace bi {
+
+struct RangeF final {
+    float min = 0.0f;
+    float max = std::numeric_limits<float>::max();
+    float step = 0.01f;
+};
+struct RangeI final {
+    int min = 0;
+    int max = std::numeric_limits<int>::max();
+    int step = 1;
+};
+
+// Mark a `float3` variable that represents color.
+struct Color final {};
+// Mark a `float3` variable that represents Euler angle.
+struct Rotation final {};
+
+}
+
 namespace bi::srefl {
+
+namespace details {
+
+template <size_t I, typename AttribT, typename... AttribTs>
+constexpr auto has_attribute_helper(std::tuple<AttribTs...> const& attributes) -> bool {
+    if constexpr (I < sizeof...(AttribTs)) {
+        if constexpr (std::is_same_v<std::tuple_element_t<I, std::tuple<AttribTs...>>, AttribT>) {
+            return true;
+        } else {
+            return has_attribute_helper<I + 1, AttribT, AttribTs...>(attributes);
+        }
+    } else {
+        return false;
+    }
+}
+
+template <size_t I, typename AttribT, typename... AttribTs>
+constexpr auto get_attribute_helper(
+    std::tuple<AttribTs...> const& attributes, AttribT const& fallback
+) -> AttribT const& {
+    if constexpr (I < sizeof...(AttribTs)) {
+        if constexpr (std::is_same_v<std::tuple_element_t<I, std::tuple<AttribTs...>>, AttribT>) {
+            return std::get<I>(attributes);
+        } else {
+            return get_attribute_from<I + 1, AttribT, AttribTs...>(attributes);
+        }
+    } else {
+        return fallback;
+    }
+}
+
+} // namespace details
+
+template <typename TypeT, typename FieldT, typename... AttribTs>
+struct FieldInfo final {
+    using FieldType = FieldT;
+    using TypeType = TypeT;
+
+    std::string_view name;
+    FieldT TypeT::* ptr;
+    std::tuple<AttribTs...> attributes;
+    static constexpr bool is_const = std::is_const_v<FieldT>;
+
+    consteval FieldInfo(
+        std::string_view name, FieldT TypeT::* ptr, AttribTs... attribs
+    ) : name(name), ptr(ptr), attributes(std::make_tuple(attribs...)) {}
+
+    constexpr auto operator()(TypeT& o) -> FieldT& { return o.*ptr; }
+    constexpr auto operator()(TypeT const& o) const -> FieldT const& { return o.*ptr; }
+
+    template <typename AttribT>
+    constexpr auto has_attribute() const -> bool {
+        return details::has_attribute_helper<0, AttribT, AttribTs...>(attributes);
+    }
+
+    template <typename AttribT>
+    constexpr auto get_attribute(AttribT const& fallback = AttribT{}) const -> AttribT const& {
+        return details::get_attribute_helper<0, AttribT, AttribTs...>(attributes, fallback);
+    }
+};
 
 #define BI_SREFL_CURRENT_NAMESPACE \
     ([]() { \
@@ -21,33 +102,16 @@ namespace bi::srefl {
         return s.substr(0, ns_end == std::string_view::npos ? 0 : ns_end); \
     }())
 
-template <typename TypeT, typename FieldT>
-struct FieldInfo final {
-    using FieldType = FieldT;
-    using TypeType = TypeT;
-
-    std::string_view name;
-    FieldT TypeT::* ptr;
-    static constexpr bool is_const = std::is_const_v<FieldT>;
-
-    consteval FieldInfo(std::string_view name, FieldT TypeT::* ptr) : name(name), ptr(ptr) {}
-
-    constexpr auto operator()(TypeT& o) -> FieldT& { return o.*ptr; }
-    constexpr auto operator()(TypeT const& o) const -> FieldT const& { return o.*ptr; }
-    constexpr auto get(TypeT& o) -> FieldT& { return o.*ptr; }
-    constexpr auto get(TypeT const& o) const -> FieldT const& { return o.*ptr; }
-};
-
 template <typename TypeT, typename... FieldTs>
 struct TypeInfo final {
     using value_type = TypeT;
     std::string_view namespace_name = BI_SREFL_CURRENT_NAMESPACE;
     std::string_view type_name;
-    std::tuple<FieldInfo<TypeT, FieldTs>...> members;
+    std::tuple<FieldTs...> members;
 };
 
 template <typename TypeT, typename... FieldTs, typename FieldT>
-consteval auto operator+(TypeInfo<TypeT, FieldTs...> lhs, FieldInfo<TypeT, FieldT> rhs) -> TypeInfo<TypeT, FieldTs..., FieldT> {
+consteval auto operator+(TypeInfo<TypeT, FieldTs...> lhs, FieldT rhs) -> TypeInfo<TypeT, FieldTs..., FieldT> {
     return TypeInfo<TypeT, FieldTs..., FieldT>{
         .namespace_name = lhs.namespace_name,
         .type_name = lhs.type_name,
@@ -93,6 +157,6 @@ constexpr auto for_each(std::tuple<Ts...> const& members, Func func) -> void {
 
 #define BI_SREFL_LIST_field(...) __VA_ARGS__
 #define BI_SREFL_NAME_field(...) BI_SREFL_field
-#define BI_SREFL_field(ty, nm, ...) + ::bi::srefl::FieldInfo(#nm, &ty::nm)
+#define BI_SREFL_field(ty, nm, ...) + ::bi::srefl::FieldInfo(#nm, &ty::nm __VA_OPT__(,) __VA_ARGS__)
 
 }

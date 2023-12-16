@@ -156,10 +156,11 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
             ImGui::Text("%s", selected_object_->get_name_cstr());
             bool edited = false;
             selected_object_->for_each_component([this, &edited](std::string_view component_type_name, void* value) {
-                if (ImGui::TreeNode(component_type_name.data())) {
+                // if (ImGui::TreeNode(component_type_name.data())) {
+                if (ImGui::CollapsingHeader(component_type_name.data())) {
                     auto& editor_func = g_engine->component_manager()->get_editor(component_type_name);
                     edited = editor_func(selected_object_.value(), value);
-                    ImGui::TreePop();
+                    // ImGui::TreePop();
                 }
             });
         }
