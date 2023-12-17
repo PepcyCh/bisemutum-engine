@@ -126,11 +126,16 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         }
     );
 
-    wm->imgui_window("Hierarchy", [this](ImGuiWindowArgs const& args) {
+    enum struct SceneObjectAction {
+        none,
+        remove,
+        duplicate,
+    } scene_object_action = SceneObjectAction::none;
+    wm->imgui_window("Hierarchy", [this, &scene_object_action](ImGuiWindowArgs const& args) {
         auto scene = g_engine->world()->current_scene();
         if (!scene) { return; }
         std::function<auto(Ref<rt::SceneObject>) -> void> object_visitor =
-            [this, &object_visitor](Ref<rt::SceneObject> object) {
+            [this, &object_visitor, &scene_object_action](Ref<rt::SceneObject> object) {
                 auto id = object->get_id();
                 auto is_selected = selected_object_ == object;
                 auto tree_flags = ImGuiTreeNodeFlags_SpanAvailWidth
@@ -141,6 +146,15 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
                 if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
                     selected_object_ = object;
                 }
+                if (selected_object_ == object && ImGui::BeginPopupContextItem()) {
+                    if (ImGui::Selectable("Remove")) {
+                        scene_object_action = SceneObjectAction::remove;
+                    }
+                    if (ImGui::Selectable("Duplicate")) {
+                        scene_object_action = SceneObjectAction::duplicate;
+                    }
+                    ImGui::EndPopup();
+                }
                 if (tree_open) {
                     object->for_each_children(object_visitor);
                     ImGui::TreePop();
@@ -148,6 +162,19 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
             };
         scene->for_each_root_object(object_visitor);
     });
+    if (selected_object_) {
+        switch (scene_object_action) {
+            case SceneObjectAction::remove:
+                g_engine->world()->current_scene()->destroy_scene_object(selected_object_.value());
+                selected_object_ = nullptr;
+                break;
+            case SceneObjectAction::duplicate:
+                selected_object_ = selected_object_->clone();
+                selected_object_->set_name(fmt::format("{} Cloned", selected_object_->get_name()));
+                break;
+            default: break;
+        }
+    }
 
     wm->imgui_window("Properties", [this](ImGuiWindowArgs const& args) {
         if (!selected_object_) {
@@ -156,11 +183,9 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
             ImGui::Text("%s", selected_object_->get_name_cstr());
             bool edited = false;
             selected_object_->for_each_component([this, &edited](std::string_view component_type_name, void* value) {
-                // if (ImGui::TreeNode(component_type_name.data())) {
                 if (ImGui::CollapsingHeader(component_type_name.data())) {
                     auto& editor_func = g_engine->component_manager()->get_editor(component_type_name);
                     edited = editor_func(selected_object_.value(), value);
-                    // ImGui::TreePop();
                 }
             });
         }

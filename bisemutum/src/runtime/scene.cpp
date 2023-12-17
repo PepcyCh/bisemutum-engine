@@ -38,14 +38,6 @@ auto Scene::detach_as_root_object(Ref<SceneObject> object) -> void {
 auto Scene::attach_as_child_object(Ref<SceneObject> object, Ref<SceneObject> parent) -> void {
     parent->add_child(object);
 }
-auto Scene::remove_object(Ref<SceneObject> object) -> void {
-    if (auto it = objects_it_map_.find(object.get()); it != objects_it_map_.end()) {
-        objects_.erase(it->second);
-    }
-    if (auto it = root_objects_it_map_.find(object.get()); it != root_objects_it_map_.end()) {
-        root_objects_.erase(it->second);
-    }
-}
 auto Scene::remove_root_object(Ref<SceneObject> object) -> void {
     if (auto it = root_objects_it_map_.find(object.get()); it != root_objects_it_map_.end()) {
         root_objects_.erase(it->second);

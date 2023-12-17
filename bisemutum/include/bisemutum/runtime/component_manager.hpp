@@ -38,24 +38,14 @@ struct ComponentManager final : PImpl<ComponentManager> {
             .serializer = [](serde::Value& serde_value, void const* component_value) {
                 serde::to_value(serde_value, *reinterpret_cast<Component const*>(component_value));
             },
+            .editor = [](Ref<SceneObject> object, void* component_value) -> bool {
+                return editor::default_component_editor(object, reinterpret_cast<Component*>(component_value));
+            },
             .clone_to = [](Ref<SceneObject> object, void const* component_value) {
                 auto component = *reinterpret_cast<Component const*>(component_value);
                 object->attach_component(std::move(component));
             },
         };
-        if constexpr (
-            requires(Ref<SceneObject> object, Component* component_value) {
-                { Component::editor(object, component_value) } -> std::convertible_to<bool>;
-            }
-        ) {
-            metadata.editor = [](Ref<SceneObject> object, void* component_value) -> bool {
-                return Component::editor(object, reinterpret_cast<Component*>(component_value));
-            };
-        } else {
-            metadata.editor = [](Ref<SceneObject> object, void* component_value) -> bool {
-                return editor::default_component_editor(object, reinterpret_cast<Component*>(component_value));
-            };
-        }
         register_component(Component::component_type_name, std::move(metadata));
     }
 

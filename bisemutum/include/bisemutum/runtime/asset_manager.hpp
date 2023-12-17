@@ -11,6 +11,13 @@ namespace bi::rt {
 using AssetLoader = auto(Dyn<IFile>::Ref) -> AssetAny;
 using AssetSaver = auto(Dyn<IFile>::Ref, AssetAny const&) -> void;
 
+struct AssetMetadata final {
+    uint64_t id;
+    std::string type;
+    std::string path;
+};
+BI_SREFL(type(AssetMetadata), field(id), field(type), field(path));
+
 struct AssetManager final : PImpl<AssetManager> {
     struct Impl;
 
@@ -36,6 +43,9 @@ struct AssetManager final : PImpl<AssetManager> {
     }
 
     auto state_of(AssetId asset_id) -> AssetState;
+
+    auto metadata_of(AssetId asset_id) const -> CPtr<AssetMetadata>;
+    auto all_metadata_of_type(std::string_view type) const -> std::vector<CRef<AssetMetadata>>;
 
     auto asset_id_of(std::string_view path) -> AssetId;
 

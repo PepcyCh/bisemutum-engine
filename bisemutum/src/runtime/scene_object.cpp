@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <bisemutum/runtime/scene.hpp>
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/runtime/component_manager.hpp>
 
 namespace bi::rt {
 
@@ -62,7 +63,7 @@ auto SceneObject::set_enabled(bool enabled) -> void {
 auto SceneObject::mark_as_destroyed() -> void {
     destroyed_ = true;
     enabled_ = false;
-    scene_->remove_object(unsafe_make_ref(this));
+    scene_->remove_root_object(unsafe_make_ref(this));
 }
 
 auto SceneObject::add_child(Ref<SceneObject> object) -> void {
@@ -124,6 +125,35 @@ auto SceneObject::extract_all_children() -> void {
             scene_->detach_as_root_object(object);
         });
     }
+}
+
+auto SceneObject::clone(bool include_children, Ptr<Scene> dst_scene) const -> Ref<SceneObject> {
+    auto clone_object = [](CRef<SceneObject> src, Ref<SceneObject> dst) {
+        dst->set_name(src->get_name());
+        src->for_each_component([dst](std::string_view component_type_name, void const* value) {
+            auto& clone_func = g_engine->component_manager()->get_metadata(component_type_name).clone_to;
+            clone_func(dst, value);
+        });
+    };
+
+    if (!dst_scene) {
+        dst_scene = scene_;
+    }
+    auto dst = dst_scene->create_scene_object(dst_scene == scene_ ? parent_ : nullptr, false);
+
+    std::vector<std::pair<CRef<SceneObject>, Ref<SceneObject>>> stack{};
+    stack.emplace_back(unsafe_make_cref(this), dst);
+    while (!stack.empty()) {
+        auto [u_src, u_dst] = stack.back();
+        stack.pop_back();
+        clone_object(u_src, u_dst);
+        u_src->for_each_children([&stack, &u_dst, dst_scene](CRef<SceneObject> src_ch) {
+            auto dst_ch = dst_scene->create_scene_object(u_dst, false);
+            stack.emplace_back(src_ch, dst_ch);
+        });
+    }
+
+    return dst;
 }
 
 auto SceneObject::for_each_children(std::function<auto(Ref<SceneObject>) -> void> op) -> void {

@@ -23,10 +23,8 @@ struct RangeI final {
     int step = 1;
 };
 
-// Mark a `float3` variable that represents color.
+// Mark a `float3` or 'float4' variable that represents color.
 struct Color final {};
-// Mark a `float3` variable that represents Euler angle.
-struct Rotation final {};
 
 }
 

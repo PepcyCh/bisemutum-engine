@@ -52,6 +52,8 @@ struct SceneObject final {
     auto remove_self_from_sibling_list(bool add_to_root) -> void;
     auto extract_all_children() -> void;
 
+    auto clone(bool include_children = true, Ptr<Scene> dst_scene = nullptr) const -> Ref<SceneObject>;
+
     auto for_each_children(std::function<auto(Ref<SceneObject>) -> void> op) -> void;
     auto for_each_children(std::function<auto(CRef<SceneObject>) -> void> op) const -> void;
 

@@ -71,20 +71,17 @@ auto Transform::operator*(Transform const& rhs) const -> Transform {
     return from_matrix(matrix() * rhs.matrix());
 }
 
-auto Transform::editor(Ref<rt::SceneObject> object, Transform* component_value) -> bool {
-    float3 rotation{};
-    math::extractEulerAngleZXY(float4x4{component_value->rotation}, rotation.z, rotation.x, rotation.y);
-    rotation = math::degrees(rotation);
-    auto dirty = editor::edit_float3("translation", component_value->translation);
-    dirty |= editor::edit_float3("scaling", component_value->scaling);
-    auto rotation_dirty = editor::edit_float3("rotation", rotation);
+auto Transform::edit() -> bool {
+    float3 rotation_angles{};
+    math::extractEulerAngleZXY(float4x4{rotation}, rotation_angles.z, rotation_angles.x, rotation_angles.y);
+    rotation_angles = math::degrees(rotation_angles);
+    auto dirty = editor::edit_float3("translation", translation);
+    dirty |= editor::edit_float3("scaling", scaling);
+    auto rotation_dirty = editor::edit_float3("rotation", rotation_angles);
     if (rotation_dirty) {
         dirty = true;
-        rotation = math::radians(rotation);
-        component_value->rotation = math::eulerAngleZXY(rotation.z, rotation.x, rotation.y);
-    }
-    if (dirty) {
-        object->notify_component_dirty<Transform>();
+        rotation_angles = math::radians(rotation_angles);
+        rotation = math::eulerAngleZXY(rotation_angles.z, rotation_angles.x, rotation_angles.y);
     }
     return dirty;
 }

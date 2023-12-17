@@ -2,10 +2,6 @@
 
 namespace bi::editor {
 
-enum struct Foo {
-    A = 1, B = 10, AC = 100,
-};
-
 auto edit_float(std::string_view name, float& value, float speed, float min, float max) -> bool {
     return ImGui::DragFloat(name.data(), &value, speed, min, max);
 }

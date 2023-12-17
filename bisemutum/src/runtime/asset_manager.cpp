@@ -7,13 +7,6 @@
 
 namespace bi::rt {
 
-struct AssetMetadata final {
-    uint64_t id;
-    std::string type;
-    std::string path;
-};
-BI_SREFL(type(AssetMetadata), field(id), field(type), field(path));
-
 struct AssetManager::Impl final {
     auto initialize(Dyn<IFile>::Ref metadata_file) -> bool {
         auto metadata_str = metadata_file.read_string_data();
@@ -32,7 +25,9 @@ struct AssetManager::Impl final {
         for (auto &data : metadata) {
             auto it = assets.try_emplace(data.id, Asset{.metadata = std::move(data)}).first;
             next_id = std::max(next_id, data.id);
-            assets_path_map[it->second.metadata.path] = static_cast<AssetId>(it->first);
+            auto asset_id = static_cast<AssetId>(it->first);
+            assets_path_map[it->second.metadata.path] = asset_id;
+            assets_type_map[it->second.metadata.type].push_back(asset_id);
         }
         ++next_id;
 
@@ -49,6 +44,27 @@ struct AssetManager::Impl final {
             return AssetState::not_found;
         }
         return it->second.state;
+    }
+
+    auto metadata_of(AssetId asset_id) const -> CPtr<AssetMetadata> {
+        auto it = assets.find(static_cast<uint64_t>(asset_id));
+        if (it == assets.end()) {
+            return nullptr;
+        }
+        return &it->second.metadata;
+    }
+
+    auto all_metadata_of_type(std::string_view type) const -> std::vector<CRef<AssetMetadata>> {
+        if (auto it = assets_type_map.find(type); it != assets_type_map.end()) {
+            std::vector<CRef<AssetMetadata>> ret;
+            ret.reserve(it->second.size());
+            for (auto asset_id : it->second) {
+                ret.push_back(assets.at(static_cast<uint64_t>(asset_id)).metadata);
+            }
+            return ret;
+        } else {
+            return {};
+        }
     }
 
     auto asset_id_of(std::string_view path) -> AssetId {
@@ -85,6 +101,7 @@ struct AssetManager::Impl final {
         it->second.dirty = true;
         it->second.metadata = {it->first, std::string{asset_type_name}, std::string{asset_path}};
         assets_path_map[it->second.metadata.path] = id;
+        assets_type_map[it->second.metadata.type].push_back(id);
         return {id, std::addressof(it->second.content)};
     }
 
@@ -116,6 +133,7 @@ struct AssetManager::Impl final {
     };
     std::unordered_map<uint64_t, Asset> assets;
     std::unordered_map<std::string_view, AssetId> assets_path_map;
+    std::unordered_map<std::string_view, std::vector<AssetId>> assets_type_map;
     uint64_t next_id;
     std::unordered_map<std::string_view, AssetFunctions> asset_functions;
 };
@@ -133,6 +151,14 @@ auto AssetManager::register_asset(std::string_view type, AssetFunctions&& functi
 
 auto AssetManager::state_of(AssetId asset_id) -> AssetState {
     return impl()->state_of(asset_id);
+}
+
+auto AssetManager::metadata_of(AssetId asset_id) const -> CPtr<AssetMetadata> {
+    return impl()->metadata_of(asset_id);
+}
+
+auto AssetManager::all_metadata_of_type(std::string_view type) const -> std::vector<CRef<AssetMetadata>> {
+    return impl()->all_metadata_of_type(type);
 }
 
 auto AssetManager::asset_id_of(std::string_view path) -> AssetId {

@@ -27,7 +27,6 @@ struct Scene final {
 
     auto detach_as_root_object(Ref<SceneObject> object) -> void;
     auto attach_as_child_object(Ref<SceneObject> object, Ref<SceneObject> parent) -> void;
-    auto remove_object(Ref<SceneObject> object) -> void;
     auto remove_root_object(Ref<SceneObject> object) -> void;
 
     auto create_scene_object(Ptr<SceneObject> parent = nullptr) -> Ref<SceneObject>;
@@ -39,6 +38,7 @@ struct Scene final {
     auto save_to_value(serde::Value& value) const -> void;
 
 private:
+    friend SceneObject;
     friend Prefab;
     auto create_scene_object(Ptr<SceneObject> parent, bool with_transform) -> Ref<SceneObject>;
 

@@ -11,18 +11,6 @@
 
 namespace bi::rt {
 
-namespace {
-
-auto clone_object(CRef<SceneObject> src, Ref<SceneObject> dst) -> void {
-    dst->set_name(src->get_name());
-    src->for_each_component([dst](std::string_view component_type_name, void const* value) {
-        auto& clone_func = g_engine->component_manager()->get_metadata(component_type_name).clone_to;
-        clone_func(dst, value);
-    });
-}
-
-} // namespace
-
 auto Prefab::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     auto prefab_mgr = g_engine->system_manager()->get_global_system<PrefabManager>();
 
@@ -79,19 +67,7 @@ auto Prefab::create_from(CRef<SceneObject> object, std::string_view dst_path) ->
     auto prefab_mgr = g_engine->system_manager()->get_global_system<PrefabManager>();
 
     Prefab prefab{};
-    prefab.object_ = prefab_mgr->scene()->create_scene_object(nullptr, false);
-
-    std::vector<std::pair<CRef<SceneObject>, Ref<SceneObject>>> stack{};
-    stack.emplace_back(object, prefab.object_.value());
-    while (!stack.empty()) {
-        auto [u_src, u_dst] = stack.back();
-        stack.pop_back();
-        clone_object(u_src, u_dst);
-        u_src->for_each_children([&stack, &u_dst, prefab_mgr](CRef<SceneObject> src_ch) {
-            auto dst_ch = prefab_mgr->scene()->create_scene_object(u_dst, false);
-            stack.emplace_back(src_ch, dst_ch);
-        });
-    }
+    prefab.object_ = object->clone(true, prefab_mgr->scene());
 
     g_engine->asset_manager()->create_asset(dst_path, std::move(prefab));
 }
@@ -135,19 +111,7 @@ auto Prefab::save(Dyn<rt::IFile>::Ref file) const -> void {
 
 auto Prefab::instantiate() -> void {
     auto current_scene = g_engine->world()->current_scene().value();
-    auto object = current_scene->create_scene_object(nullptr, false);
-
-    std::vector<std::pair<CRef<SceneObject>, Ref<SceneObject>>> stack{};
-    stack.emplace_back(object_.value(), object);
-    while (!stack.empty()) {
-        auto [u_src, u_dst] = stack.back();
-        stack.pop_back();
-        clone_object(u_src, u_dst);
-        u_src->for_each_children([&stack, &u_dst, current_scene](CRef<SceneObject> src_ch) {
-            auto dst_ch = current_scene->create_scene_object(u_dst, false);
-            stack.emplace_back(src_ch, dst_ch);
-        });
-    }
+    object_->clone(true, current_scene);
 }
 
 }

@@ -3,6 +3,7 @@
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/asset_manager.hpp>
 #include <bisemutum/runtime/logger.hpp>
+#include <bisemutum/editor/basic.hpp>
 
 namespace bi::rt {
 
@@ -13,6 +14,26 @@ auto AssetPtr::state() const -> AssetState {
 auto AssetPtr::load() const -> AssetAny* {
     return g_engine->asset_manager()->load_asset(asset_id);
 }
+
+auto AssetPtr::edit(std::string_view type) -> bool {
+    auto asset_mgr = g_engine->asset_manager();
+
+    auto curr_asset = asset_mgr->metadata_of(asset_id);
+    auto all_assets = asset_mgr->all_metadata_of_type(type);
+    auto edited = false;
+    if (ImGui::BeginCombo(type.data(), curr_asset ? curr_asset->path.c_str() : "<null>")) {
+        for (auto& asset : all_assets) {
+            auto selected = asset->id == static_cast<uint64_t>(asset_id);
+            if (ImGui::Selectable(asset->path.c_str(), selected) && !selected) {
+                edited = true;
+                asset_id = static_cast<AssetId>(asset->id);
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return edited;
+}
+
 
 auto check_if_binary_asset_valid(
     std::string_view filename, uint32_t magic_number, std::string const& type_name, std::string_view expected_type_name

@@ -2,7 +2,6 @@
 
 #include "math.hpp"
 #include "bbox.hpp"
-#include "../prelude/ref.hpp"
 #include "../utils/serde.hpp"
 
 namespace bi {
@@ -16,9 +15,9 @@ struct SceneObject;
 struct Transform final {
     static constexpr std::string_view component_type_name = "Transform";
 
-    float3 translation = float3(0.0f);
-    float3x3 rotation = float3x3(1.0f);
-    float3 scaling = float3(1.0f);
+    float3 translation = float3{0.0f};
+    float3x3 rotation = float3x3{1.0f};
+    float3 scaling = float3{1.0f};
 
     auto matrix() const -> float4x4;
     auto matrix_transposed_inverse() const -> float4x4;
@@ -33,7 +32,7 @@ struct Transform final {
     static auto to_value(serde::Value &v, Transform const& o) -> void;
     static auto from_value(serde::Value const& v, Transform& o) -> void;
 
-    static auto editor(Ref<rt::SceneObject> object, Transform* component_value) -> bool;
+    auto edit() -> bool;
 };
 
 BI_SREFL(

@@ -33,6 +33,8 @@ struct AssetPtr final {
     auto state() const -> AssetState;
     auto load() const -> AssetAny*;
 
+    auto edit(std::string_view type) -> bool;
+
     AssetId asset_id = AssetId::invalid;
 };
 
@@ -68,6 +70,8 @@ struct TAssetPtr final {
         o.asset_ = nullptr;
         o.asset_ptr_.asset_id = static_cast<AssetId>(v["asset_id"].get<serde::Value::Integer>());
     }
+
+    auto edit() -> bool { return asset_ptr_.edit(Asset::asset_type_name); }
 
 private:
     mutable Ptr<Asset> asset_;
