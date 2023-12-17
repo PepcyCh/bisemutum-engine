@@ -4,39 +4,36 @@ WIP very slowly...
 
 My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
-## Modules and TODO
+## Features
 
-* [x] core
-  * [x] main loop
-  * [x] some helpers
-* [x] RHI on Vulkan and D3D12
-  * [x] ImGUI integration
-  * [ ] tessellation
-  * [ ] meshlet pipeline
-  * [ ] raytracing pipeline
-  * [ ] multisample texture and resolve
-* [x] graphics
-  * [x] render graph
-  * [x] mipmap generation
-  * [x] shader resources definition and pipeline layout generated from C++ structs
-  * [x] PBR material
-* [x] runtime
-  * [x] window and inputs based on GLFW
-  * [x] scene objects hierarchy
-  * [x] virtual filesystem
-    * [ ] pak file ?
-  * [x] ECS wrapper over EnTT
-  * [x] simple asset manager
-    * [ ] async load ?
-  * [x] simple frame timer
-* [x] basic scene objects
-  * [x] camera
-  * [x] static mesh
-  * [x] material
-  * [x] lights
-* [ ] basic renderer
-  * [ ] forward pipeline
-  * [ ] deferred pipeline
+* Graphics
+  * RHI on Vulkan and D3D12
+  * ImGui Integration on RHI
+  * Render Graph
+  * Generate shader resources definition and pipeline layout from C++ structs
+* Rendering
+  * Basic PBR
+  * CSM for Directional Lights
+* Core
+  * Custom Static Reflection
+    * Reflection on `enum` is based on Magic Enum
+  * Polymorphism using AnyAny
+* Runtime
+  * ECS using EnTT & Scene Hierarchy & Prefab
+  * Basic Asset Manager
+  * Basic Virtual File System
+  * Saving & Loading
+* Editor
+  * Component Editor based on Reflection
+  * Scene Objects
+  * Import Model via Assimp
+
+### Features to be Developed Next
+
+* Skybox & IBL
+* Shadow Mapping for Point & Spot Light
+* Bloom
+* Basic Resource Browser
 
 ## Build
 
@@ -46,28 +43,44 @@ On Windows, clang-cl is preferred.
 
 ## Used Thirdparty
 
-in source
+Core
 
-* AnyAny (Apache-2.0)
-* volk (MIT)
-* pep-cprep (MIT)
-* ImGui File Dialog (MIT)
+* [AnyAny](https://github.com/kelbon/AnyAny) (Apache-2.0) (in source)
+* [magic enum](https://github.com/Neargye/magic_enum) (MIT)
+* [fmt](https://github.com/fmtlib/fmt) ([LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE))
+* [GLM](https://github.com/g-truc/glm) (MIT)
 
-directly via xmake
+Runtime
 
-* fmt ([LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE))
-* spdlog (MIT)
-* EnTT (MIT)
-* magic enum (MIT)
-* GLFW (zlib)
-* GLM (MIT)
-* Vulkan Memory Allocator (MIT)
-* D3D12 Memory Allocator (MIT)
-* DirectXShaderCompiler ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
-* Dear ImGui (MIT)
-* crypto algorithms
-* stb
-* assimp ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))
-* nlohmann json (MIT)
-* toml++ (MIT)
-* mikktspace
+* [EnTT](https://github.com/skypjack/entt) (MIT)
+* [spdlog](https://github.com/gabime/spdlog) (MIT)
+
+Graphics
+
+* [volk](https://github.com/zeux/volk) (MIT) (in source)
+* [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT)
+* [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) (MIT)
+* [pep-cprep](https://github.com/PepcyCh/pep-cprep) (MIT) (in source)
+* [DirectXShaderCompiler](https://github.com/microsoft/DirectXShaderCompiler) ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
+
+Window
+
+* [GLFW](https://github.com/glfw/glfw) (zlib)
+
+Editor
+
+* [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
+* [ImGui File Dialog](https://github.com/aiekick/ImGuiFileDialog) (MIT) (in source)
+
+Asset
+
+* [stb](https://github.com/nothings/stb) (MIT)
+* [assimp](https://github.com/assimp/assimp) ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))
+
+Misc
+
+* [crypto algorithms](https://github.com/KorewaWatchful/crypto-algorithms)
+* [mikktspace](https://github.com/mmikk/MikkTSpace)
+* [nlohmann json](https://github.com/nlohmann/json) (MIT)
+* [toml++](https://github.com/marzer/tomlplusplus) (MIT)
+
