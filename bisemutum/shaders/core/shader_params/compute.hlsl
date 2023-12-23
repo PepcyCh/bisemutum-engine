@@ -1,0 +1,3 @@
+#pragma once
+
+$COMPUTE_SHADER_PARAMS

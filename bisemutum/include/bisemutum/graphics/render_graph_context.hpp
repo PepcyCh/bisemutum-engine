@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shader.hpp"
 #include "shader_param.hpp"
 #include "handles.hpp"
 #include "../rhi/command.hpp"
@@ -18,6 +19,12 @@ struct ResourceBindingContext final {
         ShaderParameter& params
     ) -> void;
     auto set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder, uint32_t set) -> void;
+
+    auto set_shader_params(
+        Ref<rhi::ComputeCommandEncoder> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
+        ShaderParameter& params
+    ) -> void;
+    auto set_samplers(Ref<rhi::ComputeCommandEncoder> cmd_encoder, uint32_t set) -> void;
 
     struct SetSamplers final {
         std::vector<rhi::DescriptorHandle> cpu_descriptors;
@@ -50,9 +57,21 @@ private:
 };
 
 struct ComputePassContext final {
+    ComputePassContext(
+        CRef<RenderGraph> rg,
+        Ref<rhi::ComputeCommandEncoder> cmd_encoder
+    );
+
+    auto dispatch(
+        CRef<ComputeShader> compute_shader, ShaderParameter& params,
+        uint32_t num_groups_x = 1, uint32_t num_groups_y = 1, uint32_t num_groups_z = 1
+    ) const -> void;
+
     CRef<RenderGraph> rg;
     Ref<rhi::ComputeCommandEncoder> cmd_encoder;
-    // TODO - compute pass context
+
+private:
+    Box<ResourceBindingContext> resource_binding_ctx_;
 };
 
 }

@@ -49,6 +49,16 @@ struct ComputeShader;
 struct Camera;
 struct Drawable;
 
+enum class DefaultTexture : uint8_t {
+    white_1x1,
+    black_1x1,
+    normal_1x1,
+    black_1x1_cube,
+
+    last_ = black_1x1_cube,
+};
+inline constexpr auto num_default_textures = static_cast<size_t>(DefaultTexture::last_) + 1;
+
 struct GraphicsManager final : PImpl<GraphicsManager> {
     struct Impl;
 
@@ -100,6 +110,8 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto shader_compiler() -> Ref<ShaderCompiler>;
     auto render_graph() -> RenderGraph&;
 
+    auto default_texture(DefaultTexture index) -> Ref<Texture>;
+
     auto swapchain_format() const -> rhi::ResourceFormat;
     auto num_frames_in_flight() const -> uint32_t;
     auto curr_frame_index() const -> uint32_t;
@@ -125,6 +137,9 @@ private:
     auto compile_pipeline_for_drawable(
         GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
     ) -> Ref<rhi::GraphicsPipeline>;
+
+    friend ComputePassContext;
+    auto compile_pipeline_compute(CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline>;
 };
 
 }

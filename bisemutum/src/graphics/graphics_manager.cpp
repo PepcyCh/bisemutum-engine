@@ -108,6 +108,73 @@ struct GraphicsManager::Impl final {
         immediate_execution_fence = device->create_fence();
 
         render_graph.set_graphics_device(device.ref(), frame_data.size());
+
+        initialize_default_textures();
+    }
+
+    auto initialize_default_textures() -> void {
+        auto usages = BitFlags<rhi::TextureUsage>{rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read};
+        default_textures[static_cast<size_t>(DefaultTexture::black_1x1)] = gfx::Texture(
+            gfx::TextureBuilder{}
+                .dim_2d(rhi::ResourceFormat::rgba8_unorm, 1, 1)
+                .usage(usages)
+        );
+        default_textures[static_cast<size_t>(DefaultTexture::white_1x1)] = gfx::Texture(
+            gfx::TextureBuilder{}
+                .dim_2d(rhi::ResourceFormat::rgba8_unorm, 1, 1)
+                .usage(usages)
+        );
+        default_textures[static_cast<size_t>(DefaultTexture::normal_1x1)] = gfx::Texture(
+            gfx::TextureBuilder{}
+                .dim_2d(rhi::ResourceFormat::rgba16_sfloat, 1, 1)
+                .usage(usages)
+        );
+        default_textures[static_cast<size_t>(DefaultTexture::black_1x1_cube)] = gfx::Texture(
+            gfx::TextureBuilder{}
+                .dim_cube(rhi::ResourceFormat::rgba8_unorm, 1)
+                .usage(usages)
+        );
+
+        constexpr size_t temp_buffer_size = 4 * 6;
+        gfx::Buffer temp_buffer{gfx::BufferBuilder().size(temp_buffer_size).mem_upload()};
+        std::array<uint8_t, temp_buffer_size> black{};
+        std::fill(black.begin(), black.end(), 0);
+        std::array<uint8_t, temp_buffer_size> white{};
+        std::fill(white.begin(), white.end(), 255);
+        std::array<uint16_t, 4> normal{0x3800, 0x3800, 0x3c00, 0x3c00};
+
+        auto update_texture = [this, &temp_buffer](Texture& texture) {
+            execute_immediately([&texture, &temp_buffer](Ref<rhi::CommandEncoder> cmd) {
+                cmd->resource_barriers({}, {
+                    rhi::TextureBarrier{
+                        .texture = texture.rhi_texture(),
+                        .dst_access_type = rhi::ResourceAccessType::transfer_write,
+                    },
+                });
+                cmd->copy_buffer_to_texture(
+                    temp_buffer.rhi_buffer(),
+                    texture.rhi_texture(),
+                    rhi::BufferTextureCopyDesc{
+                        .buffer_pixels_per_row = 1,
+                        .buffer_rows_per_texture = 1,
+                    }
+                );
+                cmd->resource_barriers({}, {
+                    rhi::TextureBarrier{
+                        .texture = texture.rhi_texture(),
+                        .src_access_type = rhi::ResourceAccessType::transfer_write,
+                        .dst_access_type = rhi::ResourceAccessType::sampled_texture_read,
+                    },
+                });
+            });
+        };
+        temp_buffer.set_data_raw(black.data(), temp_buffer_size);
+        update_texture(default_textures[static_cast<size_t>(DefaultTexture::black_1x1)]);
+        update_texture(default_textures[static_cast<size_t>(DefaultTexture::black_1x1_cube)]);
+        temp_buffer.set_data_raw(white.data(), temp_buffer_size);
+        update_texture(default_textures[static_cast<size_t>(DefaultTexture::white_1x1)]);
+        temp_buffer.set_data_raw(normal.data(), normal.size() * sizeof(uint16_t));
+        update_texture(default_textures[static_cast<size_t>(DefaultTexture::normal_1x1)]);
     }
 
     auto wait_idle() -> void {
@@ -551,6 +618,79 @@ struct GraphicsManager::Impl final {
         return pipeline_it->second.ref();
     }
 
+    auto compile_pipeline_compute(CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
+        ShaderCompilationEnvironment shader_env;
+        cs->modify_compiler_environment(shader_env);
+        auto shader_env_id = shader_env.get_config_identifier();
+
+        auto pipeline_id = fmt::format(
+            "CS '{}' {} {}",
+            cs->source_path,
+            cs->source_entry,
+            shader_env_id
+        );
+        auto pipeline_it = compute_pipelines.find(pipeline_id);
+        if (pipeline_it != compute_pipelines.end()) {
+            return pipeline_it->second.ref();
+        }
+
+        shader_env.set_replace_arg(
+            "COMPUTE_SHADER_PARAMS",
+            cs->shader_params_metadata.generated_shader_definition(compute_set_normal, compute_set_samplers)
+        );
+
+        auto cs_id = pipeline_id + "cs";
+        auto cs_it = cached_shaders.find(cs_id);
+        if (cs_it == cached_shaders.end()) {
+            auto shader = shader_compiler.compile_shader(
+                cs->source_path,
+                cs->source_entry,
+                rhi::ShaderStage::compute,
+                shader_env
+            );
+            BI_ASSERT_MSG(shader.has_value(), shader.error());
+            cs_it = cached_shaders.insert({std::move(cs_id), shader.value()}).first;
+        }
+
+        rhi::ComputePipelineDesc pipeline_desc{
+            .compute = {cs_it->second, cs->source_entry},
+        };
+        pipeline_desc.bind_groups_layout.push_back(
+            cs->shader_params_metadata.bind_group_layout(compute_set_normal, rhi::ShaderStage::compute)
+        );
+        if (device->properties().separate_sampler_heap) {
+            rhi::BindGroupLayout samplers_layout{};
+            for (uint32_t set = 0; auto& layout : pipeline_desc.bind_groups_layout) {
+                for (auto& entry : layout) {
+                    if (entry.type == rhi::DescriptorType::sampler) {
+                        samplers_layout.push_back(entry);
+                        samplers_layout.back().binding_or_register += samplers_binding_shift * set;
+                        samplers_layout.back().space = compute_set_samplers;
+                        samplers_layout.back().visibility = rhi::ShaderStage::compute;
+                    }
+                }
+                layout.erase(
+                    std::remove_if(
+                        layout.begin(), layout.end(),
+                        [](rhi::BindGroupLayoutEntry const& entry) {
+                            return entry.type == rhi::DescriptorType::sampler;
+                        }
+                    ),
+                    layout.end()
+                );
+                ++set;
+            }
+            if (!samplers_layout.empty()) {
+                pipeline_desc.bind_groups_layout.push_back(std::move(samplers_layout));
+            }
+        }
+
+        pipeline_it = compute_pipelines.insert(
+            {std::move(pipeline_id), device->create_compute_pipeline(pipeline_desc)}
+        ).first;
+        return pipeline_it->second.ref();
+    }
+
     auto get_gpu_descriptor_for(
         std::vector<rhi::DescriptorHandle>&& cpu_descriptors,
         rhi::BindGroupLayout const& layout
@@ -622,8 +762,11 @@ struct GraphicsManager::Impl final {
     RenderGraph render_graph;
     std::unordered_map<rhi::SamplerDesc, Sampler> samplers;
 
+    std::array<Texture, num_default_textures> default_textures;
+
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;
     StringHashMap<Box<rhi::GraphicsPipeline>> graphics_pipelines;
+    StringHashMap<Box<rhi::ComputePipeline>> compute_pipelines;
 };
 
 GraphicsManager::GraphicsManager() = default;
@@ -698,6 +841,10 @@ auto GraphicsManager::render_graph() -> RenderGraph& {
     return impl()->render_graph;
 }
 
+auto GraphicsManager::default_texture(DefaultTexture index) -> Ref<Texture> {
+    return impl()->default_textures[static_cast<size_t>(index)];
+}
+
 auto GraphicsManager::swapchain_format() const -> rhi::ResourceFormat {
     return impl()->swapchain->format();
 }
@@ -723,6 +870,10 @@ auto GraphicsManager::compile_pipeline_for_drawable(
     GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
 ) -> Ref<rhi::GraphicsPipeline> {
     return impl()->compile_pipeline_for_drawable(graphics_context, camera, drawable, fs);
+}
+
+auto GraphicsManager::compile_pipeline_compute(CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
+    return impl()->compile_pipeline_compute(cs);
 }
 
 auto GraphicsManager::get_gpu_descriptor_for(

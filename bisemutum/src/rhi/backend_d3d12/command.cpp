@@ -207,44 +207,53 @@ auto CommandEncoderD3D12::copy_buffer_to_texture(
     auto src_buffer_dx = src_buffer.cast_to<const BufferD3D12>();
     auto dst_texture_dx = dst_texture.cast_to<TextureD3D12>();
     auto& extent = dst_texture_dx->desc().extent;
-    D3D12_TEXTURE_COPY_LOCATION src_loc{
-        .pResource = src_buffer_dx->raw(),
-        .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-        .PlacedFootprint = D3D12_PLACED_SUBRESOURCE_FOOTPRINT{
-            .Offset = region.buffer_offset,
-            .Footprint = {
-                .Format = to_dx_format(dst_texture_dx->desc().format),
-                .Width = std::min(region.texture_extent.width, extent.width),
-                .Height = std::min(region.texture_extent.height, extent.height),
-                .Depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
-                .RowPitch = region.buffer_pixels_per_row * format_texel_size(dst_texture_dx->desc().format),
-            }
-        },
-    };
-    D3D12_TEXTURE_COPY_LOCATION dst_loc{
-        .pResource = dst_texture_dx->raw(),
-        .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-        .SubresourceIndex = dst_texture_dx->subresource_index(region.texture_level, region.texture_layer),
-    };
-    // auto temp_texture_desc = dst_texture_dx->raw()->GetDesc();
-    // temp_texture_desc.Width = region.texture_extent.width;
-    // temp_texture_desc.Height = region.texture_extent.height;
-    // temp_texture_desc.DepthOrArraySize = region.texture_extent.depth_or_layers;
-    // temp_texture_desc.MipLevels = 1;
-    // device_->raw()->GetCopyableFootprints(
-    //     &temp_texture_desc, 0, 1, region.buffer_offset, &src_loc.PlacedFootprint, nullptr, nullptr, nullptr
-    // );
-    D3D12_BOX copy_box{
-        .left = 0,
-        .top = 0,
-        .front = 0,
-        .right = std::min(region.texture_extent.width, extent.width),
-        .bottom = std::min(region.texture_extent.height, extent.height),
-        .back = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
-    };
-    cmd_list_->CopyTextureRegion(
-        &dst_loc, region.texture_offset.x, region.texture_offset.y, region.texture_offset.z, &src_loc, &copy_box
-    );
+    uint32_t tex_depth, tex_layers;
+    dst_texture_dx->get_depth_and_layer(extent.depth_or_layers, tex_depth, tex_layers);
+    uint32_t region_depth, region_layers;
+    dst_texture_dx->get_depth_and_layer(region.texture_extent.depth_or_layers, region_depth, region_layers);
+    region_layers = std::min(region_layers, tex_layers - region.texture_layer);
+    auto row_pitch = region.buffer_pixels_per_row * format_texel_size(dst_texture_dx->desc().format);
+    auto layer_size = region.buffer_rows_per_texture * row_pitch;
+    for (uint32_t layer = 0; layer < region_layers; layer++) {
+        D3D12_TEXTURE_COPY_LOCATION src_loc{
+            .pResource = src_buffer_dx->raw(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            .PlacedFootprint = D3D12_PLACED_SUBRESOURCE_FOOTPRINT{
+                .Offset = region.buffer_offset + layer * layer_size,
+                .Footprint = {
+                    .Format = to_dx_format(dst_texture_dx->desc().format),
+                    .Width = std::min(region.texture_extent.width, extent.width),
+                    .Height = std::min(region.texture_extent.height, extent.height),
+                    .Depth = std::min(region_depth, tex_depth),
+                    .RowPitch = row_pitch,
+                }
+            },
+        };
+        D3D12_TEXTURE_COPY_LOCATION dst_loc{
+            .pResource = dst_texture_dx->raw(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = dst_texture_dx->subresource_index(region.texture_level, region.texture_layer + layer),
+        };
+        // auto temp_texture_desc = dst_texture_dx->raw()->GetDesc();
+        // temp_texture_desc.Width = region.texture_extent.width;
+        // temp_texture_desc.Height = region.texture_extent.height;
+        // temp_texture_desc.DepthOrArraySize = region.texture_extent.depth_or_layers;
+        // temp_texture_desc.MipLevels = 1;
+        // device_->raw()->GetCopyableFootprints(
+        //     &temp_texture_desc, 0, 1, region.buffer_offset, &src_loc.PlacedFootprint, nullptr, nullptr, nullptr
+        // );
+        D3D12_BOX copy_box{
+            .left = 0,
+            .top = 0,
+            .front = 0,
+            .right = std::min(region.texture_extent.width, extent.width),
+            .bottom = std::min(region.texture_extent.height, extent.height),
+            .back = std::min(region_depth, tex_depth),
+        };
+        cmd_list_->CopyTextureRegion(
+            &dst_loc, region.texture_offset.x, region.texture_offset.y, region.texture_offset.z, &src_loc, &copy_box
+        );
+    }
 }
 
 auto CommandEncoderD3D12::copy_texture_to_buffer(
@@ -253,42 +262,51 @@ auto CommandEncoderD3D12::copy_texture_to_buffer(
     auto src_texture_dx = src_texture.cast_to<const TextureD3D12>();
     auto dst_buffer_dx = dst_buffer.cast_to<BufferD3D12>();
     auto& extent = src_texture_dx->desc().extent;
-    D3D12_TEXTURE_COPY_LOCATION src_loc{
-        .pResource = src_texture_dx->raw(),
-        .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-        .SubresourceIndex = src_texture_dx->subresource_index(region.texture_level, region.texture_layer),
-    };
-    D3D12_TEXTURE_COPY_LOCATION dst_loc{
-        .pResource = dst_buffer_dx->raw(),
-        .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-        .PlacedFootprint = D3D12_PLACED_SUBRESOURCE_FOOTPRINT{
-            .Offset = region.buffer_offset,
-            .Footprint = {
-                .Format = to_dx_format(src_texture_dx->desc().format),
-                .Width = std::min(region.texture_extent.width, extent.width),
-                .Height = std::min(region.texture_extent.height, extent.height),
-                .Depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
-                .RowPitch = region.buffer_pixels_per_row * format_texel_size(src_texture_dx->desc().format),
-            }
-        },
-    };
-    // auto temp_texture_desc = src_texture_dx->raw()->GetDesc();
-    // temp_texture_desc.Width = region.texture_extent.width;
-    // temp_texture_desc.Height = region.texture_extent.height;
-    // temp_texture_desc.DepthOrArraySize = region.texture_extent.depth_or_layers;
-    // temp_texture_desc.MipLevels = 1;
-    // device_->raw()->GetCopyableFootprints(
-    //     &temp_texture_desc, 0, 1, region.buffer_offset, &dst_loc.PlacedFootprint, nullptr, nullptr, nullptr
-    // );
-    D3D12_BOX copy_box{
-        .left = region.texture_offset.x,
-        .top = region.texture_offset.y,
-        .front = region.texture_offset.z,
-        .right = std::min(region.texture_offset.x + region.texture_extent.width, extent.width),
-        .bottom = std::min(region.texture_offset.y + region.texture_extent.height, extent.height),
-        .back = std::min(region.texture_offset.z + region.texture_extent.depth_or_layers, extent.depth_or_layers),
-    };
-    cmd_list_->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &copy_box);
+    uint32_t tex_depth, tex_layers;
+    src_texture_dx->get_depth_and_layer(extent.depth_or_layers, tex_depth, tex_layers);
+    uint32_t region_depth, region_layers;
+    src_texture_dx->get_depth_and_layer(region.texture_extent.depth_or_layers, region_depth, region_layers);
+    region_layers = std::min(region_layers, tex_layers - region.texture_layer);
+    auto row_pitch = region.buffer_pixels_per_row * format_texel_size(src_texture_dx->desc().format);
+    auto layer_size = region.buffer_rows_per_texture * row_pitch;
+    for (uint32_t layer = 0; layer < region_layers; layer++) {
+        D3D12_TEXTURE_COPY_LOCATION src_loc{
+            .pResource = src_texture_dx->raw(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            .SubresourceIndex = src_texture_dx->subresource_index(region.texture_level, region.texture_layer + layer),
+        };
+        D3D12_TEXTURE_COPY_LOCATION dst_loc{
+            .pResource = dst_buffer_dx->raw(),
+            .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            .PlacedFootprint = D3D12_PLACED_SUBRESOURCE_FOOTPRINT{
+                .Offset = region.buffer_offset + layer_size,
+                .Footprint = {
+                    .Format = to_dx_format(src_texture_dx->desc().format),
+                    .Width = std::min(region.texture_extent.width, extent.width),
+                    .Height = std::min(region.texture_extent.height, extent.height),
+                    .Depth = std::min(region_depth, tex_depth),
+                    .RowPitch = row_pitch,
+                }
+            },
+        };
+        // auto temp_texture_desc = src_texture_dx->raw()->GetDesc();
+        // temp_texture_desc.Width = region.texture_extent.width;
+        // temp_texture_desc.Height = region.texture_extent.height;
+        // temp_texture_desc.DepthOrArraySize = region.texture_extent.depth_or_layers;
+        // temp_texture_desc.MipLevels = 1;
+        // device_->raw()->GetCopyableFootprints(
+        //     &temp_texture_desc, 0, 1, region.buffer_offset, &dst_loc.PlacedFootprint, nullptr, nullptr, nullptr
+        // );
+        D3D12_BOX copy_box{
+            .left = region.texture_offset.x,
+            .top = region.texture_offset.y,
+            .front = region.texture_offset.z,
+            .right = std::min(region.texture_offset.x + region.texture_extent.width, extent.width),
+            .bottom = std::min(region.texture_offset.y + region.texture_extent.height, extent.height),
+            .back = std::min(region.texture_offset.z + region_depth, tex_depth),
+        };
+        cmd_list_->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &copy_box);
+    }
 }
 
 auto CommandEncoderD3D12::resource_barriers(

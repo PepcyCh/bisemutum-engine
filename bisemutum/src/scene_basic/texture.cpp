@@ -107,17 +107,22 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     if (storage_type == 0) {
         bs.read(texture.texture_data);
     } else if (storage_type == 1) {
-        std::vector<std::byte> png_data;
-        bs.read(png_data);
-        int temp_width, temp_height, temp_comp;
-        auto image_data = stbi_load_from_memory(
-            reinterpret_cast<stbi_uc*>(png_data.data()), png_data.size(),
-            &temp_width, &temp_height, &temp_comp, 0
-        );
-        auto image_size_bytes =
+        auto bytes_per_layer =
             texture_desc.extent.width * texture_desc.extent.height * rhi::format_texel_size(texture_desc.format);
-        texture.texture_data.resize(image_size_bytes);
-        std::copy_n(reinterpret_cast<std::byte const*>(image_data), image_size_bytes, texture.texture_data.data());
+        texture.texture_data.resize(bytes_per_layer * texture_desc.extent.depth_or_layers);
+        for (uint32_t layer = 0; layer < texture_desc.extent.depth_or_layers; layer++) {
+            std::vector<std::byte> png_data;
+            bs.read(png_data);
+            int temp_width, temp_height, temp_comp;
+            auto image_data = stbi_load_from_memory(
+                reinterpret_cast<stbi_uc*>(png_data.data()), png_data.size(),
+                &temp_width, &temp_height, &temp_comp, 0
+            );
+            std::copy_n(
+                reinterpret_cast<std::byte const*>(image_data), bytes_per_layer,
+                texture.texture_data.data() + layer * bytes_per_layer
+            );
+        }
     }
 
     gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture.texture_data.size()).mem_upload()};
@@ -193,10 +198,14 @@ auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
                 ctx->bs.write_raw(reinterpret_cast<std::byte*>(data), size);
             };
             StbiContext ctx{bs};
-            stbi_write_png_to_func(
-                stbi_write_func, &ctx, texture_desc.extent.width, texture_desc.extent.height, num_components,
-                texture_data.data(), texture_desc.extent.width * num_components
-            );
+            auto bytes_per_line = texture_desc.extent.width * num_components;
+            auto bytes_per_layer = texture_desc.extent.height * bytes_per_line;
+            for (uint32_t layer = 0; layer < texture_desc.extent.depth_or_layers; layer++) {
+                stbi_write_png_to_func(
+                    stbi_write_func, &ctx, texture_desc.extent.width, texture_desc.extent.height, num_components,
+                    texture_data.data() + layer * bytes_per_layer, bytes_per_line
+                );
+            }
             stored = true;
         }
     }

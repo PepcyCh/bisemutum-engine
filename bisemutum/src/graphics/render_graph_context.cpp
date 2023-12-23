@@ -11,12 +11,14 @@
 
 namespace bi::gfx {
 
-ResourceBindingContext::ResourceBindingContext() : temp_set_samplers(possible_max_sets) {}
+namespace {
 
-auto ResourceBindingContext::set_shader_params(
-    Ref<rhi::GraphicsCommandEncoder> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
+template <typename CommandBuffer>
+auto set_shader_params_helper(
+    ResourceBindingContext& resource_binding_ctx,
+    Ref<CommandBuffer> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
     ShaderParameter& params
-) -> void {
+) {
     auto& metadata_list = params.metadata_list();
     if (metadata_list.params.empty()) { return; }
 
@@ -37,8 +39,8 @@ auto ResourceBindingContext::set_shader_params(
     uint32_t curr_binding = 1;
     auto separate_samplers = g_engine->graphics_manager()->device()->properties().separate_sampler_heap;
     if (separate_samplers) {
-        temp_set_samplers[set].cpu_descriptors.clear();
-        temp_set_samplers[set].layout.clear();
+        resource_binding_ctx.temp_set_samplers[set].cpu_descriptors.clear();
+        resource_binding_ctx.temp_set_samplers[set].layout.clear();
     }
 
     for (auto& param : metadata_list.params) {
@@ -87,7 +89,7 @@ auto ResourceBindingContext::set_shader_params(
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
                     auto sampler = params.typed_data_offset<SamplerState>(cpu_size)->sampler.value();
                     if (separate_samplers) {
-                        temp_set_samplers[set].cpu_descriptors.push_back(sampler->get_descriptor());
+                        resource_binding_ctx.temp_set_samplers[set].cpu_descriptors.push_back(sampler->get_descriptor());
                     } else {
                         cpu_descriptors.push_back(sampler->get_descriptor());
                     }
@@ -112,8 +114,14 @@ auto ResourceBindingContext::set_shader_params(
         };
         if (separate_samplers && param.descriptor_type == rhi::DescriptorType::sampler) {
             layout_entry.binding_or_register += set * samplers_binding_shift;
-            temp_set_samplers[set].layout.push_back(std::move(layout_entry));
-            temp_set_samplers[set].layout.back().visibility = graphics_set_visibility_samplers;
+            resource_binding_ctx.temp_set_samplers[set].layout.push_back(std::move(layout_entry));
+            if constexpr (std::is_same_v<CommandBuffer, rhi::GraphicsCommandEncoder>) {
+                resource_binding_ctx.temp_set_samplers[set].layout.back().visibility = graphics_set_visibility_samplers;
+            } else if constexpr (std::is_same_v<CommandBuffer, rhi::ComputeCommandEncoder>) {
+                resource_binding_ctx.temp_set_samplers[set].layout.back().visibility = rhi::ShaderStage::compute;
+            } else {
+                static_assert(false, "Invalid template parameter value 'CommandBuffer'.");
+            }
         } else {
             layout.push_back(std::move(layout_entry));
         }
@@ -124,10 +132,14 @@ auto ResourceBindingContext::set_shader_params(
     cmd_encoder->set_descriptors(set, {descriptor});
 }
 
-auto ResourceBindingContext::set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder, uint32_t set) -> void {
+template <typename CommandBuffer>
+auto set_samplers_helper(
+    ResourceBindingContext& resource_binding_ctx,
+    Ref<CommandBuffer> cmd_encoder, uint32_t set
+) {
     uint32_t num_samplers = 0;
     uint32_t num_entries = 0;
-    for (auto const& set_samplers : temp_set_samplers) {
+    for (auto const& set_samplers : resource_binding_ctx.temp_set_samplers) {
         num_samplers += set_samplers.cpu_descriptors.size();
         num_entries += set_samplers.layout.size();
     }
@@ -137,7 +149,7 @@ auto ResourceBindingContext::set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_e
     rhi::BindGroupLayout layout(num_entries);
     uint32_t p_samplers = 0;
     uint32_t p_entries = 0;
-    for (auto const& set_samplers : temp_set_samplers) {
+    for (auto const& set_samplers : resource_binding_ctx.temp_set_samplers) {
         std::copy(
             set_samplers.cpu_descriptors.begin(), set_samplers.cpu_descriptors.end(),
             cpu_descriptors.begin() + p_samplers
@@ -152,6 +164,30 @@ auto ResourceBindingContext::set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_e
 
     auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
     cmd_encoder->set_descriptors(set, {descriptor});
+}
+
+}
+
+ResourceBindingContext::ResourceBindingContext() : temp_set_samplers(possible_max_sets) {}
+
+auto ResourceBindingContext::set_shader_params(
+    Ref<rhi::GraphicsCommandEncoder> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
+    ShaderParameter& params
+) -> void {
+    set_shader_params_helper(*this, cmd_encoder, set, visibility, params);
+}
+auto ResourceBindingContext::set_samplers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder, uint32_t set) -> void {
+    set_samplers_helper(*this, cmd_encoder, set);
+}
+
+auto ResourceBindingContext::set_shader_params(
+    Ref<rhi::ComputeCommandEncoder> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
+    ShaderParameter& params
+) -> void {
+    set_shader_params_helper(*this, cmd_encoder, set, visibility, params);
+}
+auto ResourceBindingContext::set_samplers(Ref<rhi::ComputeCommandEncoder> cmd_encoder, uint32_t set) -> void {
+    set_samplers_helper(*this, cmd_encoder, set);
 }
 
 
@@ -219,6 +255,30 @@ auto GraphicsPassContext::render_full_screen(
     );
     resource_binding_ctx_->set_samplers(cmd_encoder, graphics_set_samplers);
     cmd_encoder->draw_indexed(screen_triangle.num_indices());
+}
+
+
+ComputePassContext::ComputePassContext(
+    CRef<RenderGraph> rg,
+    Ref<rhi::ComputeCommandEncoder> cmd_encoder
+)
+    : rg(rg)
+    , cmd_encoder(cmd_encoder)
+{
+    resource_binding_ctx_ = Box<ResourceBindingContext>::make();
+}
+
+auto ComputePassContext::dispatch(
+    CRef<ComputeShader> compute_shader, ShaderParameter& params,
+    uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z
+) const -> void {
+    auto pipeline = g_engine->graphics_manager()->compile_pipeline_compute(compute_shader);
+    cmd_encoder->set_pipeline(pipeline);
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, compute_set_normal, rhi::ShaderStage::compute, params
+    );
+    resource_binding_ctx_->set_samplers(cmd_encoder, compute_set_samplers);
+    cmd_encoder->dispatch(num_groups_x, num_groups_y, num_groups_z);
 }
 
 }

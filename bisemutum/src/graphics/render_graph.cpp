@@ -840,8 +840,8 @@ auto RenderGraph::Impl::ComputePassNode::execute(
 
     auto compute_encoder = cmd_encoder->begin_compute_pass(label);
     ComputePassContext context{
-        .rg = make_cref(rg),
-        .cmd_encoder = compute_encoder.ref(),
+        make_cref(rg),
+        compute_encoder.ref(),
     };
     builder.execution_func_(&pass_data, context);
     compute_encoder.reset();

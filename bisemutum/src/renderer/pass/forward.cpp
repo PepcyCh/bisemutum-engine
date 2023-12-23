@@ -4,6 +4,8 @@
 
 namespace bi {
 
+namespace {
+
 BI_SHADER_PARAMETERS_BEGIN(ForwardPassParams)
     BI_SHADER_PARAMETER(uint, num_dir_lights)
     BI_SHADER_PARAMETER(uint, num_point_lights)
@@ -14,7 +16,19 @@ BI_SHADER_PARAMETERS_BEGIN(ForwardPassParams)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, dir_lights_shadow_transform)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, dir_lights_shadow_map)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, shadow_map_sampler)
+
+    BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox_diffuse_irradiance)
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
 BI_SHADER_PARAMETERS_END(ForwardPassParams)
+
+struct PassData final {
+    gfx::TextureHandle output;
+    gfx::TextureHandle depth;
+
+    gfx::RenderedObjectListHandle list;
+};
+
+}
 
 ForwardPass::ForwardPass() {
     fragmeng_shader_params.initialize<ForwardPassParams>();
@@ -25,7 +39,7 @@ ForwardPass::ForwardPass() {
     fragmeng_shader.cull_mode = rhi::CullMode::back_face;
 }
 
-auto ForwardPass::update_params(LightsContext& lights_ctx) -> void {
+auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
     auto params = fragmeng_shader_params.mutable_typed_data<ForwardPassParams>();
     params->num_dir_lights = lights_ctx.dir_lights.size();
     params->num_point_lights = lights_ctx.point_lights.size();
@@ -36,9 +50,12 @@ auto ForwardPass::update_params(LightsContext& lights_ctx) -> void {
     params->dir_lights_shadow_transform = {&lights_ctx.dir_lights_shadow_transform_buffer, 0};
     params->dir_lights_shadow_map = {&lights_ctx.dir_lights_shadow_map};
     params->shadow_map_sampler = {lights_ctx.shadow_map_sampler};
+
+    params->skybox_diffuse_irradiance = {&skybox_ctx.diffuse_irradiance};
+    params->skybox_sampler = {skybox_ctx.skybox_sampler};
 }
 
-auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> Ref<PassData> {
+auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData {
     auto& camera_target = camera.target_texture();
 
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("Forward Pass");
@@ -68,6 +85,8 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
 
     builder.read(input.dir_lighst_shadow_map);
 
+    builder.read(input.skybox.diffuse_irradiance);
+
     pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
         .camera = camera,
         .fragmeng_shader = fragmeng_shader,
@@ -82,7 +101,10 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
         }
     );
 
-    return pass_data;
+    return OutputData{
+        .output = pass_data->output,
+        .depth = pass_data->depth,
+    };
 }
 
 }

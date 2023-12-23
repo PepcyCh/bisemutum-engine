@@ -290,15 +290,19 @@ auto CommandEncoderVulkan::copy_buffer_to_texture(
     auto src_buffer_vk = src_buffer.cast_to<const BufferVulkan>();
     auto dst_texture_vk = dst_texture.cast_to<TextureVulkan>();
     auto& extent = dst_texture_vk->desc().extent;
+    uint32_t tex_depth, tex_layers;
+    dst_texture_vk->get_depth_and_layer(extent.depth_or_layers, tex_depth, tex_layers);
+    uint32_t region_depth, region_layers;
+    dst_texture_vk->get_depth_and_layer(region.texture_extent.depth_or_layers, region_depth, region_layers);
     VkBufferImageCopy region_vk{
         .bufferOffset = region.buffer_offset,
         .bufferRowLength = region.buffer_pixels_per_row,
         .bufferImageHeight = region.buffer_rows_per_texture,
         .imageSubresource = VkImageSubresourceLayers{
-            .aspectMask = dst_texture_vk->get_aspect(),
+            .aspectMask = dst_texture_vk->get_aspect(true),
             .mipLevel = region.texture_level,
             .baseArrayLayer = region.texture_layer,
-            .layerCount = 1,
+            .layerCount = std::min(region_layers, tex_layers - region.texture_layer),
         },
         .imageOffset = VkOffset3D{
             .x = static_cast<int>(region.texture_offset.x),
@@ -308,7 +312,7 @@ auto CommandEncoderVulkan::copy_buffer_to_texture(
         .imageExtent = VkExtent3D{
             .width = std::min(region.texture_extent.width, extent.width),
             .height = std::min(region.texture_extent.height, extent.height),
-            .depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
+            .depth = std::min(region_depth, tex_depth),
         },
     };
     vkCmdCopyBufferToImage(
@@ -325,15 +329,19 @@ auto CommandEncoderVulkan::copy_texture_to_buffer(
     auto src_texture_vk = src_texture.cast_to<const TextureVulkan>();
     auto dst_buffer_vk = dst_buffer.cast_to<BufferVulkan>();
     auto& extent = src_texture_vk->desc().extent;
+    uint32_t tex_depth, tex_layers;
+    src_texture_vk->get_depth_and_layer(extent.depth_or_layers, tex_depth, tex_layers);
+    uint32_t region_depth, region_layers;
+    src_texture_vk->get_depth_and_layer(region.texture_extent.depth_or_layers, region_depth, region_layers);
     VkBufferImageCopy region_vk{
         .bufferOffset = region.buffer_offset,
         .bufferRowLength = region.buffer_pixels_per_row,
         .bufferImageHeight = region.buffer_rows_per_texture,
         .imageSubresource = VkImageSubresourceLayers{
-            .aspectMask = src_texture_vk->get_aspect(),
+            .aspectMask = src_texture_vk->get_aspect(true),
             .mipLevel = region.texture_level,
             .baseArrayLayer = region.texture_layer,
-            .layerCount = 1,
+            .layerCount = std::min(region_layers, tex_layers - region.texture_layer),
         },
         .imageOffset = VkOffset3D{
             .x = static_cast<int>(region.texture_offset.x),
@@ -343,7 +351,7 @@ auto CommandEncoderVulkan::copy_texture_to_buffer(
         .imageExtent = VkExtent3D{
             .width = std::min(region.texture_extent.width, extent.width),
             .height = std::min(region.texture_extent.height, extent.height),
-            .depth = std::min(region.texture_extent.depth_or_layers, extent.depth_or_layers),
+            .depth = std::min(region_depth, tex_depth),
         },
     };
     vkCmdCopyImageToBuffer(

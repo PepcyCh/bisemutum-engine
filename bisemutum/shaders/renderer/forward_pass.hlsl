@@ -41,5 +41,7 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
         color += le * surface_eval(N, T, B, V, light_dir, surface);
     }
 
+    color += skybox_diffuse_irradiance.Sample(skybox_sampler, N);
+
     return float4(color, 1.0);
 }

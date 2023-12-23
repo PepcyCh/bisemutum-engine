@@ -2,12 +2,16 @@
 
 namespace bi {
 
+namespace {
+
 BI_SHADER_PARAMETERS_BEGIN(ShadowMappingParams)
 BI_SHADER_PARAMETERS_END(ShadowMappingParams)
 
 struct PassData final {
     gfx::RenderedObjectListHandle list;
 };
+
+}
 
 ShadowMappingPass::ShadowMappingPass() {
     fragmeng_shader_params.initialize<ShadowMappingParams>();

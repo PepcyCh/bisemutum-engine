@@ -6,6 +6,7 @@
 
 #include <bisemutum/scene_basic/camera.hpp>
 #include <bisemutum/scene_basic/light.hpp>
+#include <bisemutum/scene_basic/skybox.hpp>
 #include <bisemutum/scene_basic/static_mesh.hpp>
 #include <bisemutum/scene_basic/mesh_renderer.hpp>
 
@@ -17,6 +18,7 @@ auto register_components(Ref<rt::ComponentManager> mgr) -> void {
     mgr->register_component<CameraComponent>();
     mgr->register_component<LightComponent>();
     mgr->register_component<DirectionalLightComponent>();
+    mgr->register_component<SkyboxComponent>();
     mgr->register_component<StaticMeshComponent>();
     mgr->register_component<MeshRendererComponent>();
 }

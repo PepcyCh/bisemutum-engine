@@ -173,6 +173,14 @@ TextureVulkan::TextureVulkan(Ref<DeviceVulkan> device, TextureDesc const& desc) 
     };
     current_layout_ = image_ci.initialLayout;
 
+    if (
+        desc.dim == TextureDimension::d2
+        && desc.extent.width == desc.extent.height
+        && desc.extent.depth_or_layers >= 6
+    ) {
+        image_ci.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    }
+
     VmaAllocationCreateInfo allocation_ci{
         .flags = 0,
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
