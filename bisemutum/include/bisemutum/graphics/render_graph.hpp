@@ -48,13 +48,20 @@ struct RenderGraph final : PImpl<RenderGraph> {
         return {builder, unsafe_make_ref(pass_data)};
     }
 
+    enum class BlitPassMode : uint8_t {
+        normal,
+        equitangular_to_cubemap,
+    };
     auto add_blit_pass(
         std::string_view name,
         TextureHandle src, uint32_t src_mip_level, uint32_t src_array_layer,
-        TextureHandle dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+        TextureHandle dst, uint32_t dst_mip_level, uint32_t dst_array_layer,
+        BlitPassMode mode = BlitPassMode::normal
     ) -> void;
-    auto add_blit_pass(std::string_view name, TextureHandle src, TextureHandle dst) -> void {
-        add_blit_pass(name, src, 0, 0, dst, 0, 0);
+    auto add_blit_pass(
+        std::string_view name, TextureHandle src, TextureHandle dst, BlitPassMode mode = BlitPassMode::normal
+    ) -> void {
+        add_blit_pass(name, src, 0, 0, dst, 0, 0, mode);
     }
 
     auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle;

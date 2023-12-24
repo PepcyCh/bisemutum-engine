@@ -15,6 +15,9 @@ struct TextureAsset final {
 
     auto save(Dyn<rt::IFile>::Ref file) const -> void;
 
+    auto update_gpu_data() -> void;
+    auto update_cpu_data() -> void;
+
     std::vector<std::byte> texture_data;
     gfx::Texture texture;
     Ptr<gfx::Sampler> sampler;

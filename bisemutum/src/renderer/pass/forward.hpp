@@ -27,6 +27,9 @@ struct ForwardPass final {
 
     gfx::FragmentShader fragmeng_shader;
     gfx::ShaderParameter fragmeng_shader_params;
+
+    gfx::FragmentShader skybox_shader;
+    gfx::ShaderParameter skybox_shader_params;
 };
 
 }

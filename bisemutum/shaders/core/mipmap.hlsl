@@ -44,7 +44,7 @@ float mipmap_fs(float4 pos : SV_Position) : SV_Depth {
     const uint2 pixel_coord = pos.xy;
 #else
 [numthreads(16, 16, 1)]
-void mipmap_cs(int3 dtid : SV_DispatchThreadID) {
+void mipmap_cs(uint3 dtid : SV_DispatchThreadID) {
     const uint2 pixel_coord = dtid.xy;
     if (any(pixel_coord >= push_c.tex_size)) { return; }
 #endif

@@ -9,6 +9,7 @@
 
 #include <bisemutum/scene_basic/camera_system.hpp>
 #include <bisemutum/scene_basic/static_mesh_render_system.hpp>
+#include <bisemutum/scene_basic/skybox.hpp>
 
 namespace bi {
 
@@ -20,6 +21,7 @@ auto register_systems(Ref<rt::SystemManager> mgr) -> void {
 
     mgr->register_system<CameraSystem>();
     mgr->register_system<StaticMeshRenderSystem>();
+    mgr->register_system<SkyboxSystem>();
 }
 
 }

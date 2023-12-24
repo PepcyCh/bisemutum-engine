@@ -125,29 +125,7 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         }
     }
 
-    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture.texture_data.size()).mem_upload()};
-    temp_buffer.set_data_raw(texture.texture_data.data(), texture.texture_data.size());
-    g_engine->graphics_manager()->execute_immediately(
-        [&temp_buffer, &texture, &texture_desc](Ref<rhi::CommandEncoder> cmd) {
-            auto access = BitFlags{rhi::ResourceAccessType::transfer_write};
-            cmd->resource_barriers({}, {
-                rhi::TextureBarrier{
-                    .texture = texture.texture.rhi_texture(),
-                    .dst_access_type = access,
-                },
-            });
-            cmd->copy_buffer_to_texture(
-                temp_buffer.rhi_buffer(),
-                texture.texture.rhi_texture(),
-                rhi::BufferTextureCopyDesc{
-                    .buffer_pixels_per_row = texture_desc.extent.width,
-                    .buffer_rows_per_texture = texture_desc.extent.height,
-                }
-            );
-            g_engine->graphics_manager()->generate_mipmaps_2d(cmd, texture.texture, access);
-            BI_ASSERT(access == rhi::ResourceAccessType::sampled_texture_read);
-        }
-    );
+    texture.update_gpu_data();
 
     return texture;
 }
@@ -215,6 +193,75 @@ auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
     }
 
     file.write_binary_data(bs.data());
+}
+
+auto TextureAsset::update_gpu_data() -> void {
+    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture_data.size()).mem_upload()};
+    temp_buffer.set_data_raw(texture_data.data(), texture_data.size());
+    g_engine->graphics_manager()->execute_immediately(
+        [this, &temp_buffer](Ref<rhi::CommandEncoder> cmd) {
+            auto access = BitFlags{rhi::ResourceAccessType::transfer_write};
+            cmd->resource_barriers({}, {
+                rhi::TextureBarrier{
+                    .texture = texture.rhi_texture(),
+                    .dst_access_type = access,
+                },
+            });
+            auto& extent = texture.desc().extent;
+            cmd->copy_buffer_to_texture(
+                temp_buffer.rhi_buffer(),
+                texture.rhi_texture(),
+                rhi::BufferTextureCopyDesc{
+                    .buffer_pixels_per_row = extent.width,
+                    .buffer_rows_per_texture = extent.height,
+                }
+            );
+            if (texture.desc().levels > 1) {
+                g_engine->graphics_manager()->generate_mipmaps_2d(cmd, texture, access);
+                BI_ASSERT(access == rhi::ResourceAccessType::sampled_texture_read);
+            } else {
+                cmd->resource_barriers({}, {
+                    rhi::TextureBarrier{
+                        .texture = texture.rhi_texture(),
+                        .src_access_type = access,
+                        .dst_access_type = rhi::ResourceAccessType::sampled_texture_read,
+                    },
+                });
+            }
+        }
+    );
+}
+
+auto TextureAsset::update_cpu_data() -> void {
+    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture_data.size()).mem_upload()};
+    g_engine->graphics_manager()->execute_immediately(
+        [this, &temp_buffer](Ref<rhi::CommandEncoder> cmd) {
+            auto access = BitFlags{rhi::ResourceAccessType::transfer_read};
+            cmd->resource_barriers({}, {
+                rhi::TextureBarrier{
+                    .texture = texture.rhi_texture(),
+                    .dst_access_type = access,
+                },
+            });
+            auto& extent = texture.desc().extent;
+            cmd->copy_texture_to_buffer(
+                texture.rhi_texture(),
+                temp_buffer.rhi_buffer(),
+                rhi::BufferTextureCopyDesc{
+                    .buffer_pixels_per_row = extent.width,
+                    .buffer_rows_per_texture = extent.height,
+                }
+            );
+            cmd->resource_barriers({}, {
+                rhi::TextureBarrier{
+                    .texture = texture.rhi_texture(),
+                    .src_access_type = access,
+                    .dst_access_type = rhi::ResourceAccessType::sampled_texture_read,
+                },
+            });
+        }
+    );
+    temp_buffer.get_data_raw(texture_data.data(), texture_data.size());
 }
 
 }

@@ -70,6 +70,8 @@ struct Buffer final {
     }
     auto set_data_raw(void const* data, uint64_t size, uint64_t offset = 0) -> void;
 
+    auto get_data_raw(void* dst_data, uint64_t size, uint64_t offset = 0) -> void;
+
     struct DataSetDesc final {
         void const* data;
         uint64_t size;

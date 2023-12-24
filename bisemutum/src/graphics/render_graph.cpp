@@ -10,6 +10,7 @@
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/prelude/hash.hpp>
+#include <bisemutum/prelude/misc.hpp>
 
 namespace bi::gfx {
 
@@ -139,6 +140,7 @@ struct RenderGraph::Impl final {
         TextureHandle dst;
         uint32_t dst_mip_level;
         uint32_t dst_array_layer;
+        BlitPassMode mode;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
         auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
@@ -234,7 +236,8 @@ struct RenderGraph::Impl final {
     auto add_blit_pass(
         RenderGraph* rg, std::string_view name,
         TextureHandle src, uint32_t src_mip_level, uint32_t src_array_layer,
-        TextureHandle dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+        TextureHandle dst, uint32_t dst_mip_level, uint32_t dst_array_layer,
+        BlitPassMode mode
     ) -> void {
         auto node = Box<BlitPassNode>::make();
         node->index = graph_nodes_.size();
@@ -245,6 +248,7 @@ struct RenderGraph::Impl final {
         node->dst = dst;
         node->dst_mip_level = dst_mip_level;
         node->dst_array_layer = dst_array_layer;
+        node->mode = mode;
         graph_nodes_.push_back(std::move(node));
         rg->add_read_edge(graph_nodes_.size() - 1, src);
         rg->add_write_edge(graph_nodes_.size() - 1, dst);
@@ -886,11 +890,24 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
 auto RenderGraph::Impl::BlitPassNode::execute(
     Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
 ) const -> void {
-    g_engine->graphics_manager()->blit_texture_2d(
-        cmd_encoder,
-        rg.texture(src), src_mip_level, src_array_layer,
-        rg.texture(dst), dst_mip_level, dst_array_layer
-    );
+    switch (mode) {
+        case BlitPassMode::normal:
+            g_engine->graphics_manager()->blit_texture_2d(
+                cmd_encoder,
+                rg.texture(src), src_mip_level, src_array_layer,
+                rg.texture(dst), dst_mip_level, dst_array_layer
+            );
+            break;
+        case BlitPassMode::equitangular_to_cubemap:
+            g_engine->graphics_manager()->equitangular_to_cubemap(
+                cmd_encoder,
+                rg.texture(src), src_mip_level, src_array_layer,
+                rg.texture(dst), dst_mip_level, dst_array_layer
+            );
+            break;
+        default:
+            unreachable();
+    }
 }
 
 auto RenderGraph::Impl::PresentPassNode::set_barriers(
@@ -958,9 +975,10 @@ auto RenderGraph::add_compute_pass_impl(
 auto RenderGraph::add_blit_pass(
     std::string_view name,
     TextureHandle src, uint32_t src_mip_level, uint32_t src_array_layer,
-    TextureHandle dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+    TextureHandle dst, uint32_t dst_mip_level, uint32_t dst_array_layer,
+    BlitPassMode mode
 ) -> void {
-    impl()->add_blit_pass(this, name, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer);
+    impl()->add_blit_pass(this, name, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer, mode);
 }
 
 auto RenderGraph::add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {

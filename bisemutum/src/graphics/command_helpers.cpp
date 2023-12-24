@@ -11,6 +11,7 @@ auto CommandHelpers::initialize(Ref<rhi::Device> device, ShaderCompiler& shader_
 
     initialize_blit(device, shader_compiler);
     initialize_mipmap(device, shader_compiler);
+    initialize_equitangular_to_cubemap(device, shader_compiler);
 }
 
 auto CommandHelpers::blit_2d(
@@ -218,6 +219,57 @@ auto CommandHelpers::generate_mipmaps_2d(
     texture_access = read_access;
 }
 
+auto CommandHelpers::equitangular_to_cubemap(
+    Ref<rhi::CommandEncoder> cmd_encoder,
+    Ref<Texture> src, uint32_t src_mip_level, uint32_t src_array_layer,
+    Ref<Texture> dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+) -> void {
+    cmd_encoder->resource_barriers({}, {
+        rhi::TextureBarrier{
+            .texture = src->rhi_texture(),
+            .dst_access_type = rhi::ResourceAccessType::sampled_texture_read,
+        },
+        rhi::TextureBarrier{
+            .texture = dst->rhi_texture(),
+            .dst_access_type = rhi::ResourceAccessType::storage_resource_write,
+        },
+    });
+
+    {
+        auto compute_encoder = cmd_encoder->begin_compute_pass(
+            rhi::CommandLabel{"equitangular to cubemap", {1.0f, 0.0f, 0.0f}}
+        );
+        compute_encoder->set_pipeline(equitangular_to_cubemap_pipeline_.ref());
+
+        auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(
+            {
+                src->get_srv(src_mip_level, 1, src_array_layer, 1),
+                dst->get_uav(dst_mip_level, dst_array_layer, 6),
+            },
+            equitangular_to_cubemap_pipeline_->desc().bind_groups_layout[0]
+        );
+        compute_encoder->set_descriptors(0, {descriptor});
+        struct {
+            uint32_t size;
+            float inv_size;
+        } push_c;
+        push_c.size = dst->desc().extent.width;
+        push_c.inv_size = 1.0f / push_c.size;
+        compute_encoder->push_constants(&push_c, sizeof(push_c));
+
+        auto num_groups = (push_c.size + 15) / 16;
+        compute_encoder->dispatch(num_groups, num_groups, 6);
+    }
+
+    cmd_encoder->resource_barriers({}, {
+        rhi::TextureBarrier{
+            .texture = dst->rhi_texture(),
+            .src_access_type = rhi::ResourceAccessType::storage_resource_write,
+            .dst_access_type = rhi::ResourceAccessType::sampled_texture_read,
+        },
+    });
+}
+
 auto CommandHelpers::initialize_blit(Ref<rhi::Device> device, ShaderCompiler& shader_compiler) -> void {
     blit_sampler_ = device->create_sampler(rhi::SamplerDesc{
         .mag_filter = rhi::SamplerFilterMode::linear,
@@ -410,6 +462,54 @@ auto CommandHelpers::get_mipmap_pipeline(Ref<Texture> dst_texture, MipmapMode mo
         auto it = mipmap_pipelines_.insert({key, device_->create_graphics_pipeline(pipeline_desc)}).first;
         return it->second.ref();
     }
+}
+
+auto CommandHelpers::initialize_equitangular_to_cubemap(
+    Ref<rhi::Device> device, ShaderCompiler& shader_compiler
+) -> void {
+    auto source_path = "/bisemutum/shaders/core/equitangular_to_cubemap.hlsl";
+    auto source_entry = "equitangular_to_cubemap_cs";
+
+    ShaderCompilationEnvironment shader_env;
+    auto shader_cs = shader_compiler.compile_shader(
+        source_path, source_entry, rhi::ShaderStage::compute, shader_env
+    );
+    BI_ASSERT_MSG(shader_cs.has_value(), shader_cs.error());
+
+    rhi::BindGroupLayout layout{
+        rhi::BindGroupLayoutEntry{
+            .count = 1,
+            .type = rhi::DescriptorType::sampled_texture,
+            .visibility = rhi::ShaderStage::compute,
+            .binding_or_register = 1,
+            .space = 0,
+        },
+        rhi::BindGroupLayoutEntry{
+            .count = 1,
+            .type = rhi::DescriptorType::read_write_storage_texture,
+            .visibility = rhi::ShaderStage::compute,
+            .binding_or_register = 2,
+            .space = 0,
+        },
+    };
+    rhi::StaticSampler static_sampler{
+        .sampler = blit_sampler_.ref(),
+        .binding_or_register = 0,
+        .space = 1,
+        .visibility = rhi::ShaderStage::compute,
+    };
+    rhi::ComputePipelineDesc pipeline_desc{
+        .bind_groups_layout = {std::move(layout)},
+        .static_samplers = {std::move(static_sampler)},
+        .push_constants = {
+            .size = sizeof(uint32_t) + sizeof(float),
+            .visibility = rhi::ShaderStage::compute,
+            .register_ = 0,
+            .space = 0,
+        },
+        .compute = {shader_cs.value(), source_entry},
+    };
+    equitangular_to_cubemap_pipeline_ = device->create_compute_pipeline(pipeline_desc);
 }
 
 }

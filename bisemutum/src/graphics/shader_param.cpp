@@ -233,7 +233,7 @@ auto ShaderParameter::initialize(ShaderParameterMetadataList metadata_list, bool
         });
     }
 
-    for (size_t i = 0; i < temp_uniform_ranges.size(); i++) {
+    for (size_t i = 0; i < temp_uniform_ranges.size(); ) {
         size_t j = i + 1;
         while (j < temp_uniform_ranges.size()) {
             if (

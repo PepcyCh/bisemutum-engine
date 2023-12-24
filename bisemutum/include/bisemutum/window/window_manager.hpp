@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
 #include "window_size.hpp"
 #include "../math/math.hpp"
@@ -25,6 +25,8 @@ struct WindowManager final : PImpl<WindowManager> {
     ~WindowManager();
 
     auto new_frame() -> void;
+
+    auto frame_count() const -> uint64_t;
 
     auto frame_size(std::string_view name) const -> WindowSize;
     auto logic_size(std::string_view name) const -> WindowSize;

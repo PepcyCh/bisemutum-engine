@@ -1,34 +1,24 @@
 #include "../core/math.hlsl"
 #include "../core/utils/frame.hlsl"
+#include "../core/utils/cubemap.hlsl"
 
 #include "../core/shader_params/compute.hlsl"
 
 [numthreads(16, 16, 1)]
-void skybox_precompute_diffuse_cs(uint3 global_thread_id: SV_DispatchThreadID) {
-    float2 xy = (float2(global_thread_id.xy) * 2.0 + 1.0) * inv_size - 1.0;
-    float3 dir;
-    if (global_thread_id.z == 0) { // +X
-        dir = normalize(float3(1.0, 1.0 - xy.y, 1.0 - xy.x));
-    } else if (global_thread_id.z == 1) { // -X
-        dir = normalize(float3(-1.0, xy.y, 1.0 - xy.x));
-    } else if (global_thread_id.z == 2) { // +Y
-        dir = normalize(float3(xy.x, 1.0, xy.y));
-    } else if (global_thread_id.z == 3) { // -Y
-        dir = normalize(float3(xy.x, -1.0, 1.0 - xy.y));
-    } else if (global_thread_id.z == 4) { // +Z
-        dir = normalize(float3(xy.x, 1.0 - xy.y, 1.0));
-    } else { // -Z
-        dir = normalize(float3(1.0 - xy.x, 1.0 - xy.y, -1.0));
-    }
+void skybox_precompute_diffuse_cs(uint3 global_thread_id : SV_DispatchThreadID) {
+    if (any(global_thread_id.xy >= tex_size)) { return; }
+
+    float2 xy = (float2(global_thread_id.xy) + 0.5) * inv_tex_size;
+    float3 dir = cubemap_direction_from_layered_uv(xy, global_thread_id.z);
 
     float3 irradiance = 0.0;
     Frame frame = create_frame(dir);
 
     float delta = PI / 64.0;
-    for (float phi = 0.0; phi < TWO_PI; phi += delta) {
+    for (float phi = delta * 0.5; phi < TWO_PI; phi += delta) {
         float cos_phi = cos(phi);
         float sin_phi = sin(phi);
-        for (float theta = 0.0; theta < 0.5 * PI; theta += delta) {
+        for (float theta = delta * 0.5; theta < 0.5 * PI; theta += delta) {
             float cos_theta = cos(theta);
             float sin_theta = sin(theta);
             float3 v = float3(sin_theta * cos_phi, sin_theta * sin_phi, cos_theta);

@@ -363,6 +363,16 @@ struct GraphicsManager::Impl final {
         command_helpers.generate_mipmaps_2d(cmd_encoder, texture, texture_access, mode);
     }
 
+    auto equitangular_to_cubemap(
+        Ref<rhi::CommandEncoder> cmd_encoder,
+        Ref<Texture> src, uint32_t src_mip_level, uint32_t src_array_layer,
+        Ref<Texture> dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+    ) -> void {
+        command_helpers.equitangular_to_cubemap(
+            cmd_encoder, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer
+        );
+    }
+
     auto allocate_cpu_descriptor(rhi::DescriptorType type) -> rhi::DescriptorHandle {
         if (type != rhi::DescriptorType::sampler) {
             return cpu_resource_descriptor_allocator->allocate(type);
@@ -827,6 +837,16 @@ auto GraphicsManager::generate_mipmaps_2d(
     MipmapMode mode
 ) -> void {
     impl()->generate_mipmaps_2d(cmd_encoder, texture, texture_access, mode);
+}
+
+auto GraphicsManager::equitangular_to_cubemap(
+    Ref<rhi::CommandEncoder> cmd_encoder,
+    Ref<Texture> src, uint32_t src_mip_level, uint32_t src_array_layer,
+    Ref<Texture> dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+) -> void {
+    impl()->equitangular_to_cubemap(
+        cmd_encoder, src, src_mip_level, src_array_layer, dst, dst_mip_level, dst_array_layer
+    );
 }
 
 auto GraphicsManager::device() -> Ref<rhi::Device> {

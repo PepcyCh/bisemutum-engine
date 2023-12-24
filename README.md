@@ -14,6 +14,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 * Rendering
   * Basic PBR
   * CSM for Directional Lights
+  * Skybox & IBL
 * Core
   * Custom Static Reflection
     * Reflection on `enum` is based on Magic Enum
@@ -30,7 +31,6 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Skybox & IBL
 * Shadow Mapping for Point & Spot Light
 * Bloom
 * Basic Resource Browser
@@ -75,6 +75,7 @@ Editor
 Asset
 
 * [stb](https://github.com/nothings/stb) (MIT)
+* [tinyexr](https://github.com/syoyo/tinyexr) (BSD-3)
 * [assimp](https://github.com/assimp/assimp) ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))
 
 Misc

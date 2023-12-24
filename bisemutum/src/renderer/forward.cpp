@@ -12,7 +12,6 @@ namespace bi {
 struct ForwardRenderer::Impl final {
     auto prepare_renderer_per_frame_data() -> void {
         lights_ctx.collect_all_lights();
-        skybox_ctx.find_skybox();
 
         forward_pass.update_params(lights_ctx, skybox_ctx);
     }

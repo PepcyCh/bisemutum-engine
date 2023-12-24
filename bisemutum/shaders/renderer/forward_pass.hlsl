@@ -1,6 +1,7 @@
 #include "../core/vertex_attributes.hlsl"
 
 #include "lights.hlsl"
+#include "skybox_common.hlsl"
 
 #include "../core/shader_params/camera.hlsl"
 #include "../core/shader_params/material.hlsl"
@@ -41,7 +42,15 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
         color += le * surface_eval(N, T, B, V, light_dir, surface);
     }
 
-    color += skybox_diffuse_irradiance.Sample(skybox_sampler, N);
+    float3 R = reflect(-V, N);
+    float3 ibl_diffuse = skybox_diffuse_irradiance.Sample(skybox_sampler, N).xyz * skybox_diffuse_color;
+    float3 ibl_specular = skybox_specular_filtered.SampleLevel(
+        skybox_sampler, R, surface.roughness * (ibl_specular_num_levels - 1)
+    ).xyz * skybox_specular_color;
+    color += skybox_diffuse_irradiance.Sample(skybox_sampler, N) * skybox_diffuse_color * ibl_diffuse;
+    float2 ibl_brdf = skybox_brdf_lut.Sample(skybox_sampler, float2(dot(N, V), surface.roughness)).xy;
+    float3 ibl = surface_eval_ibl(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
+    color += ibl;
 
     return float4(color, 1.0);
 }

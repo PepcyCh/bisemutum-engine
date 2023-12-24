@@ -39,8 +39,42 @@ float ggx_ndf(float3 local_h, float roughness_x, float roughness_y) {
     return INV_PI / (roughness_x * roughness_y * a * a);
 }
 
+float ggx_g1(float3 local_v, float roughness_x, float roughness_y) {
+    float a = (pow2(roughness_x * local_v.x) + pow2(roughness_y * local_v.y)) / max(local_v.z * local_v.z, 0.0001);
+    return 2.0 / (1.0 + sqrt(1.0 + a));
+}
+
 float ggx_separable_visible(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
     float v = local_v.z + sqrt(pow2(roughness_x * local_v.x) + pow2(roughness_y * local_v.y) + pow2(local_v.z));
     float l = local_l.z + sqrt(pow2(roughness_x * local_l.x) + pow2(roughness_y * local_l.y) + pow2(local_l.z));
     return 1.0 / max(v * l, 0.0001);
+}
+
+float3 ggx_vndf_sample(float3 local_v, float roughness_x, float roughness_y, float2 rand) {
+    if (local_v.z < 0.0) { local_v = -local_v; }
+
+    float3 vh = normalize(float3(roughness_x * local_v.x, roughness_y * local_v.y, local_v.z));
+    float len_sqr = vh.x * vh.x + vh.y * vh.y;
+    float3 t_vec1 = len_sqr > 0.0 ? float3(-vh.y, vh.x, 0.0) / sqrt(len_sqr) : float3(1.0, 0.0, 0.0);
+    float3 t_vec2 = cross(vh, t_vec1);
+
+    float r = sqrt(rand.x);
+    float phi = TWO_PI * rand.y;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + vh.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+    float3 nh = t1 * t_vec1 + t2 * t_vec2 + sqrt(max(1.0 - t1 * t1 - t2 * t2, 0.0)) * vh;
+    float3 h = normalize(float3(roughness_x * nh.x, roughness_y * nh.y, max(nh.z, 0.0)));
+
+    return h;
+}
+
+float ggx_vndf_sample_pdf(float3 h, float3 v, float roughness_x, float roughness_y) {
+    return ggx_g1(v, roughness_x, roughness_y) * ggx_ndf(h, roughness_x, roughness_y) * max(dot(h, v), 0.0)
+        / max(v.z, 0.0001);
+}
+
+float ggx_vndf_sample_weight(float3 v, float3 l, float roughness_x, float roughness_y) {
+    return ggx_separable_visible(v, l, roughness_x, roughness_y) / ggx_g1(v, roughness_x, roughness_y);
 }

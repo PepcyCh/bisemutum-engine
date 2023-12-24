@@ -36,3 +36,20 @@ float3 surface_eval(
     return float3(0.0, 0.0, 0.0);
 #endif
 }
+
+float3 surface_eval_ibl(
+    float3 N,
+    float3 V,
+    SurfaceData surface,
+    float3 ibl_diffuse,
+    float3 ibl_specular,
+    float2 ibl_brdf
+) {
+#if MATERIAL_SURFACE_MODEL == MATERIAL_SURFACE_MODEL_UNLIT
+    return surface_eval_ibl_unlit(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
+#elif MATERIAL_SURFACE_MODEL == MATERIAL_SURFACE_MODEL_LIT
+    return surface_eval_ibl_lit(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
+#else
+    return float3(0.0, 0.0, 0.0);
+#endif
+}

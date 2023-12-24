@@ -106,6 +106,15 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
         MipmapMode mode = MipmapMode::average
     ) -> void;
 
+    auto equitangular_to_cubemap(
+        Ref<rhi::CommandEncoder> cmd_encoder,
+        Ref<Texture> src, uint32_t src_mip_level, uint32_t src_array_layer,
+        Ref<Texture> dst, uint32_t dst_mip_level, uint32_t dst_array_layer
+    ) -> void;
+    auto equitangular_to_cubemap(Ref<rhi::CommandEncoder> cmd_encoder, Ref<Texture> src, Ref<Texture> dst) -> void {
+        equitangular_to_cubemap(cmd_encoder, src, 0, 0, dst, 0, 0);
+    }
+
     auto device() -> Ref<rhi::Device>;
     auto shader_compiler() -> Ref<ShaderCompiler>;
     auto render_graph() -> RenderGraph&;

@@ -203,6 +203,53 @@ auto Buffer::set_multiple_data_raw(CSpan<DataSetDesc> descs) -> void {
     }
 }
 
+auto Buffer::get_data_raw(void* dst_data, uint64_t size, uint64_t offset) -> void {
+    if (staging_buffers_.empty() || size == 0) { return; }
+    update_staging_buffer_size();
+
+    if (buffer_) {
+        BitFlags<rhi::ResourceAccessType> target_access{};
+        if (desc().usages.contains_any(rhi::BufferUsage::uniform)) {
+            target_access.set(rhi::ResourceAccessType::uniform_buffer_read);
+        } else if (desc().usages.contains_any(rhi::BufferUsage::indirect)) {
+            target_access.set(rhi::ResourceAccessType::indirect_read);
+        } else if (desc().usages.contains_any(rhi::BufferUsage::vertex)) {
+            target_access.set(rhi::ResourceAccessType::vertex_buffer_read);
+        } else if (desc().usages.contains_any(rhi::BufferUsage::index)) {
+            target_access.set(rhi::ResourceAccessType::index_buffer_read);
+        } else if (desc().usages.contains_any(rhi::BufferUsage::storage_read)) {
+            target_access.set(rhi::ResourceAccessType::storage_resource_read);
+        }
+
+        g_engine->graphics_manager()->execute_immediately(
+            [this, size, offset, target_access](Ref<rhi::CommandEncoder> cmd) {
+                cmd->resource_barriers({
+                    rhi::BufferBarrier{
+                        .buffer = buffer_.ref(),
+                        .src_access_type = target_access,
+                        .dst_access_type = rhi::ResourceAccessType::transfer_read,
+                    },
+                }, {});
+                cmd->copy_buffer_to_buffer(
+                    buffer_.ref(), rhi_staging_buffer(),
+                    {offset, offset, size}
+                );
+                cmd->resource_barriers({
+                    rhi::BufferBarrier{
+                        .buffer = buffer_.ref(),
+                        .src_access_type = rhi::ResourceAccessType::transfer_read,
+                        .dst_access_type = target_access,
+                    },
+                }, {});
+            }
+        );
+    }
+
+    size = std::min(size, desc().size - offset);
+    std::memcpy(dst_data, rhi_staging_buffer()->typed_map<std::byte>() + offset, size);
+    rhi_staging_buffer()->unmap();
+}
+
 auto Buffer::get_cbv() -> rhi::DescriptorHandle {
     return get_descriptor(details::BufferDescriptorKey{
         .type = rhi::DescriptorType::uniform_buffer,

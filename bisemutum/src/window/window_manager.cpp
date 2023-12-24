@@ -11,6 +11,8 @@ namespace bi {
 
 struct WindowManager::Impl final {
     auto new_frame(WindowManager& window_mgr) -> void {
+        ++frame_count;
+
         for (auto& [_, wd] : windows_data) {
             if (wd.on_resize) {
                 wd.on_resize = false;
@@ -111,6 +113,8 @@ struct WindowManager::Impl final {
         SlotMap<ResizeCallback> resize_callbacks;
     };
     StringHashMap<WindowData> windows_data;
+
+    uint64_t frame_count = 0;
 };
 
 WindowManager::WindowManager() = default;
@@ -118,6 +122,10 @@ WindowManager::~WindowManager() = default;
 
 auto WindowManager::new_frame() -> void {
     impl()->new_frame(*this);
+}
+
+auto WindowManager::frame_count() const -> uint64_t {
+    return impl()->frame_count;
 }
 
 auto WindowManager::frame_size(std::string_view name) const -> WindowSize {
