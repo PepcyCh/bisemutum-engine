@@ -28,6 +28,14 @@ auto menu_action_import_texture_hdri(MenuActionContext const& ctx) -> void {
                 if (ret != 0) { return; }
                 auto [_, texture] = g_engine->asset_manager()->create_asset(texture_path, TextureAsset{});
 
+                for (int i = 0; i < width * height; i++) {
+                    auto scale = image_data[4 * i + 3];
+                    image_data[4 * i] *= scale;
+                    image_data[4 * i + 1] *= scale;
+                    image_data[4 * i + 2] *= scale;
+                    image_data[4 * i + 3] = 1.0f;
+                }
+
                 TextureAsset temp_texture;
                 temp_texture.texture_data.resize(width * height * 4 * sizeof(float));
                 std::copy_n(

@@ -18,6 +18,9 @@ void skybox_precompute_specular_cs(uint3 global_thread_id : SV_DispatchThreadID)
     Frame frame = create_frame(dir);
     float3 wi = float3(0.0, 0.0, 1.0);
 
+    float3 center_color = skybox.SampleLevel(skybox_sampler, dir, 0.0).xyz;
+    float clamp_lum = max(luminance(center_color) * 16.0, 0.1);
+
     float3 filtered = 0.0;
     float weight_sum = 0.0;
     for (uint i = 0; i < num_samples; i++) {
@@ -27,7 +30,9 @@ void skybox_precompute_specular_cs(uint3 global_thread_id : SV_DispatchThreadID)
         if (wo.z <= 0.0) { continue; }
 
         float3 wo_world = frame_to_world(frame, wo);
-        filtered += skybox.SampleLevel(skybox_sampler, wo_world, 0.0) * wo.z;
+        float3 color = skybox.SampleLevel(skybox_sampler, wo_world, 0.0).xyz;
+        float scale = clamp_lum / max(luminance(color), clamp_lum);
+        filtered += color * scale * wo.z;
         weight_sum += wo.z;
     }
     filtered /= weight_sum;

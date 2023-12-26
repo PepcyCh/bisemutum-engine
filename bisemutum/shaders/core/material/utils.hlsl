@@ -44,10 +44,30 @@ float ggx_g1(float3 local_v, float roughness_x, float roughness_y) {
     return 2.0 / (1.0 + sqrt(1.0 + a));
 }
 
-float ggx_separable_visible(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
+// 'sep' for separable
+float ggx_g2_sep(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
+    return ggx_g1(local_v, roughness_x, roughness_y) * ggx_g1(local_l, roughness_x, roughness_y);
+}
+
+// 'sep' for separable
+float ggx_visible_sep(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
     float v = local_v.z + sqrt(pow2(roughness_x * local_v.x) + pow2(roughness_y * local_v.y) + pow2(local_v.z));
     float l = local_l.z + sqrt(pow2(roughness_x * local_l.x) + pow2(roughness_y * local_l.y) + pow2(local_l.z));
     return 1.0 / max(v * l, 0.0001);
+}
+
+// 'hc' for height correlated
+float ggx_g2_hc(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
+    float v = local_l.z * sqrt(pow2(roughness_x * local_v.x) + pow2(roughness_y * local_v.y) + pow2(local_v.z));
+    float l = local_v.z * sqrt(pow2(roughness_x * local_l.x) + pow2(roughness_y * local_l.y) + pow2(local_l.z));
+    return 2.0 * local_v.z * local_l.z / max(v + l, 0.0001);
+}
+
+// 'hc' for height correlated
+float ggx_visible_hc(float3 local_v, float3 local_l, float roughness_x, float roughness_y) {
+    float v = local_l.z * sqrt(pow2(roughness_x * local_v.x) + pow2(roughness_y * local_v.y) + pow2(local_v.z));
+    float l = local_v.z * sqrt(pow2(roughness_x * local_l.x) + pow2(roughness_y * local_l.y) + pow2(local_l.z));
+    return 0.5 / max(v + l, 0.0001);
 }
 
 float3 ggx_vndf_sample(float3 local_v, float roughness_x, float roughness_y, float2 rand) {
@@ -75,6 +95,10 @@ float ggx_vndf_sample_pdf(float3 h, float3 v, float roughness_x, float roughness
         / max(v.z, 0.0001);
 }
 
-float ggx_vndf_sample_weight(float3 v, float3 l, float roughness_x, float roughness_y) {
-    return ggx_separable_visible(v, l, roughness_x, roughness_y) / ggx_g1(v, roughness_x, roughness_y);
+float ggx_vndf_sample_weight_sep(float3 v, float3 l, float roughness_x, float roughness_y) {
+    return ggx_g1(l, roughness_x, roughness_y);
+}
+
+float ggx_vndf_sample_weight_hc(float3 v, float3 l, float roughness_x, float roughness_y) {
+    return ggx_g2_hc(v, l, roughness_x, roughness_y) / ggx_g1(v, roughness_x, roughness_y);
 }

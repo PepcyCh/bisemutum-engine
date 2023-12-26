@@ -54,10 +54,19 @@ struct SkyboxSystem::Impl final {
             auto component = curr_skybox->get_component<SkyboxComponent>();
             if (!component->texture.empty()) {
                 component->texture.load();
-                curr_skybox_info.tex = &component->texture.asset()->texture;
-                curr_skybox_info.color = component->color * component->strength;
-                curr_skybox_info.diffuse_strength = component->diffuse_strength;
-                curr_skybox_info.specular_strength = component->specular_strength;
+                if (component->texture.asset()->texture.has_value()) {
+                    auto& desc = component->texture.asset()->texture.desc();
+                    if (
+                        desc.dim == rhi::TextureDimension::d2
+                        && desc.extent.width == desc.extent.height
+                        && desc.extent.depth_or_layers >= 6
+                    ) {
+                        curr_skybox_info.tex = &component->texture.asset()->texture;
+                        curr_skybox_info.color = component->color * component->strength;
+                        curr_skybox_info.diffuse_strength = component->diffuse_strength;
+                        curr_skybox_info.specular_strength = component->specular_strength;
+                    }
+                }
             }
         }
     }

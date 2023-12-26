@@ -24,7 +24,7 @@ float3 surface_eval_lit(
     get_anisotropic_roughness(surface.roughness, surface.anisotropy, roughness_x, roughness_y);
 
     float ndf = ggx_ndf(local_h, roughness_x, roughness_y);
-    float vis = ggx_separable_visible(local_v, local_l, roughness_x, roughness_y);
+    float vis = ggx_visible_hc(local_v, local_l, roughness_x, roughness_y);
     float3 specular = fr * ndf * vis;
 
     return (diffuse + specular) * max(local_l.z, 0.0);

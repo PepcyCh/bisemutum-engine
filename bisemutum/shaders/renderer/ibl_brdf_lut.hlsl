@@ -20,7 +20,7 @@ void ibl_brdf_lut_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         float3 wh = ggx_vndf_sample(wi, roughness, roughness, rand2);
         float3 wo = reflect(-wi, wh);
         if (wo.z <= 0.0) { continue; }
-        float weight = ggx_vndf_sample_weight(wi, wo, roughness, roughness);
+        float weight = ggx_vndf_sample_weight_sep(wi, wo, roughness, roughness);
 
         float hdotv = dot(wi, wh);
         float f = pow5(1.0 - hdotv);
