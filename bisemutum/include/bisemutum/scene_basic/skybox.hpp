@@ -45,6 +45,7 @@ struct SkyboxSystem final : PImpl<SkyboxSystem> {
         float3 color;
         float diffuse_strength;
         float specular_strength;
+        float4x4 transform;
     };
     auto current_skybox() -> SkyboxInfo&;
 };

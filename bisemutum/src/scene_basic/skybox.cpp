@@ -65,6 +65,7 @@ struct SkyboxSystem::Impl final {
                         curr_skybox_info.color = component->color * component->strength;
                         curr_skybox_info.diffuse_strength = component->diffuse_strength;
                         curr_skybox_info.specular_strength = component->specular_strength;
+                        curr_skybox_info.transform = curr_skybox->world_transform().rotation;
                     }
                 }
             }

@@ -16,6 +16,7 @@ BI_SHADER_PARAMETERS_BEGIN(ForwardPassParams)
     BI_SHADER_PARAMETER(uint, num_spot_lights)
     BI_SHADER_PARAMETER(float3, skybox_diffuse_color)
     BI_SHADER_PARAMETER(float3, skybox_specular_color)
+    BI_SHADER_PARAMETER(float4x4, skybox_transform)
 
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<DirLightData>, dir_lights)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<LightData>, point_lights)
@@ -32,6 +33,7 @@ BI_SHADER_PARAMETERS_END(ForwardPassParams)
 
 BI_SHADER_PARAMETERS_BEGIN(SkyboxPassParams)
     BI_SHADER_PARAMETER(float3, skybox_color)
+    BI_SHADER_PARAMETER(float4x4, skybox_transform)
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
 BI_SHADER_PARAMETERS_END(SkyboxPassParams)
@@ -69,6 +71,7 @@ auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox
     params->num_spot_lights = lights_ctx.spot_lights.size();
     params->skybox_diffuse_color = current_skybox.color * current_skybox.diffuse_strength;
     params->skybox_specular_color = current_skybox.color * current_skybox.specular_strength;
+    params->skybox_transform = current_skybox.transform;
 
     params->dir_lights = {&lights_ctx.dir_lights_buffer, 0};
     params->point_lights = {&lights_ctx.point_lights_buffer, 0};
@@ -84,6 +87,7 @@ auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox
 
     auto skybox_params = skybox_shader_params.mutable_typed_data<SkyboxPassParams>();
     skybox_params->skybox_color = current_skybox.color;
+    skybox_params->skybox_transform = current_skybox.transform;
     skybox_params->skybox = {current_skybox.tex};
     skybox_params->skybox_sampler = {skybox_ctx.skybox_sampler};
 }

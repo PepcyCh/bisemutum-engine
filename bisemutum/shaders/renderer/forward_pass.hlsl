@@ -42,10 +42,11 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
         color += le * surface_eval(N, T, B, V, light_dir, surface);
     }
 
-    float3 R = reflect(-V, N);
-    float3 ibl_diffuse = skybox_diffuse_irradiance.Sample(skybox_sampler, N).xyz * skybox_diffuse_color;
+    float3 skybox_N = mul((float3x3) skybox_transform, N);
+    float3 ibl_diffuse = skybox_diffuse_irradiance.Sample(skybox_sampler, skybox_N).xyz * skybox_diffuse_color;
+    float3 skybox_R = mul((float3x3) skybox_transform, reflect(-V, N));
     float3 ibl_specular = skybox_specular_filtered.SampleLevel(
-        skybox_sampler, R, surface.roughness * (ibl_specular_num_levels - 1)
+        skybox_sampler, skybox_R, surface.roughness * (ibl_specular_num_levels - 1)
     ).xyz * skybox_specular_color;
     color += skybox_diffuse_irradiance.Sample(skybox_sampler, N) * skybox_diffuse_color * ibl_diffuse;
     float2 ibl_brdf = skybox_brdf_lut.Sample(skybox_sampler, float2(dot(N, V), surface.roughness)).xy;

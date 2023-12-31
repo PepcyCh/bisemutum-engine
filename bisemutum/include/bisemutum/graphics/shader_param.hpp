@@ -116,13 +116,22 @@ template <
 >
 struct TShaderParameterMetadata final {};
 
+template <typename T>
+struct ShaderParameterGpuAlignment final {
+    static constexpr size_t value = alignof(T);
+};
+
 #define BASIC_SHADER_PARAM_METADATA(ty, sz, align) \
+    template <> \
+    struct ShaderParameterGpuAlignment<ty> final { \
+        static constexpr size_t value = align; \
+    }; \
     template <ConstexprStringLit Name, ConstexprStringLit ArraySize> \
     struct TShaderParameterMetadata<ty, "", Name, ArraySize, false, rhi::ResourceFormat::undefined> final { \
         static constexpr ConstexprStringLit type_name{#ty}; \
         static constexpr size_t size = sz; \
         static constexpr size_t alignment = align; \
-        static constexpr size_t cpu_alignment = alignof(ty); \
+        static constexpr size_t cpu_alignment = align; \
         static constexpr rhi::DescriptorType descriptor_type = rhi::DescriptorType::none; \
         static constexpr size_t cpu_size = sizeof(ty); \
     };
@@ -372,16 +381,16 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
         return metadata_list; \
     }
 
-#define BI_SHADER_PARAMETER(ty, name) ty name; \
+#define BI_SHADER_PARAMETER(ty, name) alignas(::bi::gfx::ShaderParameterGpuAlignment<ty>::value) ty name; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name>>(XParamsTuple<__LINE__ - 1>::type{})); \
     };
-#define BI_SHADER_PARAMETER_ARRAY(ty, name, arr) ty name arr; \
+#define BI_SHADER_PARAMETER_ARRAY(ty, name, arr) alignas(::bi::gfx::ShaderParameterGpuAlignment<ty>::value) ty name arr; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name, #arr>>(XParamsTuple<__LINE__ - 1>::type{})); \
     };
 
-#define BI_SHADER_PARAMETER_INCLUDE(ty, name) ty name; \
+#define BI_SHADER_PARAMETER_INCLUDE(ty, name) alignas(::bi::gfx::ShaderParameterGpuAlignment<ty>::value) ty name; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name, "", true>>(XParamsTuple<__LINE__ - 1>::type{})); \
     };
