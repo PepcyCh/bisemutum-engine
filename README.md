@@ -15,6 +15,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Basic PBR
   * CSM for Directional Lights
   * Skybox & IBL
+  * Bloom
 * Core
   * Custom Static Reflection
     * Reflection on `enum` is based on Magic Enum
@@ -31,8 +32,8 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
+* Deferred Rendering
 * Shadow Mapping for Point & Spot Light
-* Bloom
 * Basic Resource Browser
 
 ## Gallary

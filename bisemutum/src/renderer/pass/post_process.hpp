@@ -10,19 +10,19 @@ struct PostProcessPass final {
         gfx::TextureHandle depth;
     };
 
-    struct PassData final {
-        gfx::TextureHandle input_color;
-        gfx::TextureHandle input_depth;
-
-        gfx::TextureHandle output;
-    };
-
     PostProcessPass();
 
-    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> Ref<PassData>;
+    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
 
     gfx::FragmentShader fragmeng_shader;
     gfx::ShaderParameter fragmeng_shader_params;
+
+    gfx::FragmentShader bloom_pre_shader;
+    gfx::ShaderParameter bloom_pre_shader_params;
+    gfx::FragmentShader bloom_filter_shader[2];
+    std::vector<gfx::ShaderParameter> bloom_filter_shader_params;
+    gfx::FragmentShader bloom_combine_shader;
+    std::vector<gfx::ShaderParameter> bloom_combine_shader_params;
 
     Ptr<gfx::Sampler> sampler;
 };

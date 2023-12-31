@@ -61,12 +61,12 @@ struct PoolTexture final {
 };
 
 struct BufferPool final {
-    std::vector<Buffer> resources;
+    std::vector<Box<Buffer>> resources;
     std::vector<BitFlags<rhi::ResourceAccessType>> accesses;
     std::vector<size_t> recycled_indices;
 };
 struct TexturePool final {
-    std::vector<Texture> resources;
+    std::vector<Box<Texture>> resources;
     std::vector<BitFlags<rhi::ResourceAccessType>> accesses;
     std::vector<size_t> recycled_indices;
 };
@@ -499,13 +499,13 @@ struct RenderGraph::Impl final {
         if (!pool.recycled_indices.empty()) {
             auto index = pool.recycled_indices.back();
             pool.recycled_indices.pop_back();
-            auto buffer = make_ref(pool.resources[index]);
+            auto buffer = pool.resources[index].ref();
             auto access = pool.accesses[index];
             return PoolBuffer{buffer, index, access};
         } else {
             auto index = pool.resources.size();
-            pool.resources.emplace_back(desc, false);
-            auto buffer = make_ref(pool.resources.back());
+            pool.resources.emplace_back(Box<Buffer>::make(desc, false));
+            auto buffer = pool.resources[index].ref();
             pool.accesses.emplace_back();
             auto access = pool.accesses.back();
             return PoolBuffer{buffer, index, access};
@@ -532,13 +532,13 @@ struct RenderGraph::Impl final {
         if (!pool.recycled_indices.empty()) {
             auto index = pool.recycled_indices.back();
             pool.recycled_indices.pop_back();
-            auto texture = make_ref(pool.resources[index]);
+            auto texture = pool.resources[index].ref();
             auto access = pool.accesses[index];
             return PoolTexture{texture, index, access};
         } else {
             auto index = pool.resources.size();
-            pool.resources.emplace_back(desc);
-            auto texture = make_ref(pool.resources.back());
+            pool.resources.emplace_back(Box<Texture>::make(desc));
+            auto texture = pool.resources.back().ref();
             pool.accesses.emplace_back();
             auto access = pool.accesses.back();
             return PoolTexture{texture, index, access};
