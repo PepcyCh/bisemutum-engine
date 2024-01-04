@@ -29,6 +29,8 @@ struct Transform final {
 
     auto operator*(Transform const& rhs) const -> Transform;
 
+    auto inverse() const -> Transform;
+
     static auto to_value(serde::Value &v, Transform const& o) -> void;
     static auto from_value(serde::Value const& v, Transform& o) -> void;
 

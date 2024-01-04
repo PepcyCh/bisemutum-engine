@@ -2,12 +2,12 @@
 
 #include <bisemutum/graphics/graphics_manager.hpp>
 
-#include <bisemutum/renderer/forward.hpp>
+#include <bisemutum/renderer/basic.hpp>
 
 namespace bi {
 
 auto register_renderers(Ref<gfx::GraphicsManager> mgr) -> void {
-    mgr->register_renderer<ForwardRenderer>();
+    mgr->register_renderer<BasicRenderer>();
 }
 
 }

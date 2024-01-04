@@ -1,4 +1,4 @@
-#include <bisemutum/renderer/forward.hpp>
+#include <bisemutum/renderer/basic.hpp>
 
 #include "context/lights.hpp"
 #include "context/skybox.hpp"
@@ -9,7 +9,7 @@
 
 namespace bi {
 
-struct ForwardRenderer::Impl final {
+struct BasicRenderer::Impl final {
     auto prepare_renderer_per_frame_data() -> void {
         lights_ctx.collect_all_lights();
 
@@ -49,19 +49,19 @@ struct ForwardRenderer::Impl final {
     PostProcessPass post_process_pass;
 };
 
-ForwardRenderer::ForwardRenderer() = default;
-ForwardRenderer::~ForwardRenderer() = default;
+BasicRenderer::BasicRenderer() = default;
+BasicRenderer::~BasicRenderer() = default;
 
-ForwardRenderer::ForwardRenderer(ForwardRenderer&& rhs) noexcept = default;
-auto ForwardRenderer::operator=(ForwardRenderer&& rhs) noexcept -> ForwardRenderer& = default;
+BasicRenderer::BasicRenderer(BasicRenderer&& rhs) noexcept = default;
+auto BasicRenderer::operator=(BasicRenderer&& rhs) noexcept -> BasicRenderer& = default;
 
-auto ForwardRenderer::prepare_renderer_per_frame_data() -> void {
+auto BasicRenderer::prepare_renderer_per_frame_data() -> void {
     impl()->prepare_renderer_per_frame_data();
 }
-auto ForwardRenderer::prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {
+auto BasicRenderer::prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {
     impl()->prepare_renderer_per_camera_data(camera);
 }
-auto ForwardRenderer::render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
+auto BasicRenderer::render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
     impl()->render_camera(camera, rg);
 }
 

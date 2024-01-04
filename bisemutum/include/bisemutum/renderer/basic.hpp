@@ -6,16 +6,16 @@
 
 namespace bi {
 
-struct ForwardRenderer final : PImpl<ForwardRenderer> {
+struct BasicRenderer final : PImpl<BasicRenderer> {
     struct Impl;
 
-    ForwardRenderer();
-    ~ForwardRenderer();
+    BasicRenderer();
+    ~BasicRenderer();
 
-    ForwardRenderer(ForwardRenderer&& rhs) noexcept;
-    auto operator=(ForwardRenderer&& rhs) noexcept -> ForwardRenderer&;
+    BasicRenderer(BasicRenderer&& rhs) noexcept;
+    auto operator=(BasicRenderer&& rhs) noexcept -> BasicRenderer&;
 
-    static constexpr std::string_view renderer_type_name = "ForwardRenderer";
+    static constexpr std::string_view renderer_type_name = "BasicRenderer";
 
     auto prepare_renderer_per_frame_data() -> void;
     auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void;

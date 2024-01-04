@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bisemutum/graphics/render_graph.hpp>
+#include <bisemutum/scene_basic/post_process_volume.hpp>
 
 namespace bi {
 
@@ -11,6 +12,8 @@ struct PostProcessPass final {
     };
 
     PostProcessPass();
+
+    auto find_volume(gfx::Camera const& camera) -> PostProcessVolumeComponent const&;
 
     auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
 
@@ -25,6 +28,8 @@ struct PostProcessPass final {
     std::vector<gfx::ShaderParameter> bloom_combine_shader_params;
 
     Ptr<gfx::Sampler> sampler;
+
+    PostProcessVolumeComponent default_volume;
 };
 
 }

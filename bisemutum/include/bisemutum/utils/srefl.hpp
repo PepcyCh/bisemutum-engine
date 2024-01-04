@@ -23,6 +23,9 @@ struct RangeI final {
     int step = 1;
 };
 
+// Mark a `float2` or 'int2' or 'uint2' variable that represents a range.
+struct MinMaxRange final {};
+
 // Mark a `float3` or 'float4' variable that represents color.
 struct Color final {};
 

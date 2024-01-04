@@ -1,6 +1,7 @@
 #include "post_process.hpp"
 
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/runtime/component_utils.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 
 namespace bi {
@@ -98,12 +99,17 @@ PostProcessPass::PostProcessPass() {
     });
 }
 
+auto PostProcessPass::find_volume(gfx::Camera const& camera) -> PostProcessVolumeComponent const& {
+    auto volume = rt::find_volume_component_for<PostProcessVolumeComponent>(camera.position);
+    return volume ? *volume : default_volume;
+}
+
 auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void {
+    auto& volume = find_volume(camera);
+
     gfx::TextureHandle color_after_bloom;
-    {
+    if (volume.bloom) {
         constexpr uint32_t bloom_num_iterations = 3;
-        constexpr float bloom_threshold = 1.5f;
-        constexpr float bloom_threshold_soft = 0.5f;
 
         auto width = camera.target_texture().desc().extent.width;
         auto height = camera.target_texture().desc().extent.height;
@@ -117,14 +123,15 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
             pd->input_color = builder.read(input.color);
             pd->output_color = builder.use_color(0, color_before_bloom);
             builder.set_execution_function<BloomPrePassData>(
-                [&camera, this, &shader_params = bloom_pre_shader_params]
+                [&camera, &volume, this, &shader_params = bloom_pre_shader_params]
                 (CRef<BloomPrePassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+                    auto soft_threshold = volume.bloom_threshold_softness * (volume.bloom_threshold * 0.9f + 0.1f);
                     auto params = shader_params.mutable_typed_data<BloomPrePassParams>();
-                    params->bloom_weight.x = bloom_threshold;
-                    params->bloom_weight.y = bloom_threshold * bloom_threshold_soft;
+                    params->bloom_weight.x = volume.bloom_threshold;
+                    params->bloom_weight.y = volume.bloom_threshold * soft_threshold;
                     params->bloom_weight.z = 2.0f * params->bloom_weight.y;
                     params->bloom_weight.w = 0.25f / (params->bloom_weight.y + 0.00001f);
-                    params->bloom_weight.y -= bloom_threshold;
+                    params->bloom_weight.y -= volume.bloom_threshold;
                     params->input_color = {ctx.rg->texture(pass_data->input_color)};
                     params->sampler_input = {sampler.value()};
                     shader_params.update_uniform_buffer();
@@ -241,6 +248,8 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
                 ctx.render_full_screen(camera, bloom_combine_shader, shader_params);
             }
         );
+    } else {
+        color_after_bloom = input.color;
     }
 
     {

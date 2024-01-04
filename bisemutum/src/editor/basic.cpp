@@ -14,6 +14,9 @@ auto edit_float3(std::string_view name, float3& value, float speed, float min, f
 auto edit_float4(std::string_view name, float4& value, float speed, float min, float max) -> bool {
     return ImGui::DragFloat4(name.data(), &value.x, speed, min, max);
 }
+auto edit_float2_range(std::string_view name, float2& value, float speed, float min, float max) -> bool {
+    return ImGui::DragFloatRange2(name.data(), &value.x, &value.y, speed, min, max);
+}
 
 auto edit_color3(std::string_view name, float3& value) -> bool {
     return ImGui::ColorEdit3(name.data(), &value.x);
@@ -33,6 +36,9 @@ auto edit_int3(std::string_view name, int3& value, int speed, int min, int max) 
 }
 auto edit_int4(std::string_view name, int4& value, int speed, int min, int max) -> bool {
     return ImGui::DragInt4(name.data(), &value.x, speed, max, max);
+}
+auto edit_int2_range(std::string_view name, int2& value, int speed, int min, int max) -> bool {
+    return ImGui::DragIntRange2(name.data(), &value.x, &value.y, speed, min, max);
 }
 
 auto edit_uint(std::string_view name, uint32_t& value, uint32_t speed, uint32_t min, uint32_t max) -> bool {
@@ -56,6 +62,12 @@ auto edit_uint3(std::string_view name, uint3& value, uint32_t speed, uint32_t mi
 auto edit_uint4(std::string_view name, uint4& value, uint32_t speed, uint32_t min, uint32_t max) -> bool {
     auto int_value = int4{value};
     auto dirty = ImGui::DragInt4(name.data(), &int_value.x, speed, min, max);
+    value = int_value;
+    return dirty;
+}
+auto edit_uint2_range(std::string_view name, uint2& value, uint32_t speed, uint32_t min, uint32_t max) -> bool {
+    auto int_value = int2{value};
+    auto dirty = ImGui::DragIntRange2(name.data(), &int_value.x, &int_value.y, speed, min, max);
     value = int_value;
     return dirty;
 }

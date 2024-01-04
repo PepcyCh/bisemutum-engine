@@ -223,11 +223,11 @@ inline auto from_value(Value const& v, bool& o) -> void {
     o = v.get<Value::Bool>();
 }
 
-template <std::integral T>
+template <std::integral T> requires (!std::is_same_v<T, bool>)
 auto to_value(Value &v, T const& o) -> void {
     v = static_cast<Value::Integer>(o);
 }
-template <std::integral T>
+template <std::integral T> requires (!std::is_same_v<T, bool>)
 auto from_value(Value const& v, T& o) -> void {
     o = v.get<Value::Integer>();
 }

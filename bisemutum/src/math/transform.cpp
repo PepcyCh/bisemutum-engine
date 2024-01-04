@@ -71,6 +71,10 @@ auto Transform::operator*(Transform const& rhs) const -> Transform {
     return from_matrix(matrix() * rhs.matrix());
 }
 
+auto Transform::inverse() const -> Transform {
+    return from_matrix(math::transpose(matrix_transposed_inverse()));
+}
+
 auto Transform::edit() -> bool {
     float3 rotation_angles{};
     math::extractEulerAngleZXY(float4x4{rotation}, rotation_angles.z, rotation_angles.x, rotation_angles.y);

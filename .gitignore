@@ -12,3 +12,6 @@ out/
 binaries
 imgui.ini
 _temp.*
+
+examples/
+!examples/scene_basic
