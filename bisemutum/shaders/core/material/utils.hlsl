@@ -10,7 +10,21 @@ struct SurfaceData {
     float roughness;
     float anisotropy;
     float ior;
+    float opacity;
 };
+
+SurfaceData surface_data_default() {
+    SurfaceData surface;
+    surface.base_color = 0.5;
+    surface.f0_color = 0.04;
+    surface.f90_color = 1.0;
+    surface.normal_map_value = float3(0.5, 0.5, 1.0);
+    surface.roughness = 0.5;
+    surface.anisotropy = 0.0;
+    surface.ior = 1.5;
+    surface.opacity = 1.0;
+    return surface;
+}
 
 float3 schlick_mix(float3 f0, float3 f90, float cos_theta) {
     return lerp(f0, f90, pow5(1.0 - cos_theta));

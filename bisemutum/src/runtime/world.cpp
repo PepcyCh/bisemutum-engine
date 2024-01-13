@@ -23,6 +23,7 @@ struct World::Impl final {
         g_engine->system_manager()->init_on(scene);
         return scene;
     }
+
     auto destroy_scene(Ref<Scene> scene) -> void {
         if (current_scene == scene) {
             current_scene = nullptr;
@@ -47,6 +48,7 @@ struct World::Impl final {
             return false;
         }
     }
+
     auto save_currnet_scene(Dyn<IFile>::Ref scene_file) const -> void {
         if (current_scene) {
             serde::Value value{};

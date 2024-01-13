@@ -83,12 +83,12 @@ PostProcessPass::PostProcessPass() {
     bloom_combine_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     bloom_combine_shader.depth_test = false;
 
-    fragmeng_shader_params.initialize<PostProcessPassParams>();
-    fragmeng_shader.source_path = "/bisemutum/shaders/renderer/post_process.hlsl";
-    fragmeng_shader.source_entry = "post_process_pass_fs";
-    fragmeng_shader.set_shader_params_struct<PostProcessPassParams>();
-    fragmeng_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
-    fragmeng_shader.depth_test = false;
+    fragment_shader_params.initialize<PostProcessPassParams>();
+    fragment_shader.source_path = "/bisemutum/shaders/renderer/post_process.hlsl";
+    fragment_shader.source_entry = "post_process_pass_fs";
+    fragment_shader.set_shader_params_struct<PostProcessPassParams>();
+    fragment_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    fragment_shader.depth_test = false;
 
     sampler = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
         .mag_filter = rhi::SamplerFilterMode::linear,
@@ -99,13 +99,8 @@ PostProcessPass::PostProcessPass() {
     });
 }
 
-auto PostProcessPass::find_volume(gfx::Camera const& camera) -> PostProcessVolumeComponent const& {
-    auto volume = rt::find_volume_component_for<PostProcessVolumeComponent>(camera.position);
-    return volume ? *volume : default_volume;
-}
-
 auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void {
-    auto& volume = find_volume(camera);
+    auto& volume = rt::find_volume_component_for(camera.position, default_volume);
 
     gfx::TextureHandle color_after_bloom;
     if (volume.bloom) {
@@ -263,13 +258,13 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
 
         builder.set_execution_function<PostProcessPassData>(
             [this, &camera](CRef<PostProcessPassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-                auto params = fragmeng_shader_params.mutable_typed_data<PostProcessPassParams>();
+                auto params = fragment_shader_params.mutable_typed_data<PostProcessPassParams>();
                 params->input_color = {ctx.rg->texture(pass_data->input_color)};
                 params->input_depth = {ctx.rg->texture(pass_data->input_depth)};
                 params->sampler_input = {sampler.value()};
-                fragmeng_shader_params.update_uniform_buffer();
+                fragment_shader_params.update_uniform_buffer();
 
-                ctx.render_full_screen(camera, fragmeng_shader, fragmeng_shader_params);
+                ctx.render_full_screen(camera, fragment_shader, fragment_shader_params);
             }
         );
     }

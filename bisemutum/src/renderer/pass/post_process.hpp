@@ -17,8 +17,8 @@ struct PostProcessPass final {
 
     auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
 
-    gfx::FragmentShader fragmeng_shader;
-    gfx::ShaderParameter fragmeng_shader_params;
+    gfx::FragmentShader fragment_shader;
+    gfx::ShaderParameter fragment_shader_params;
 
     gfx::FragmentShader bloom_pre_shader;
     gfx::ShaderParameter bloom_pre_shader_params;

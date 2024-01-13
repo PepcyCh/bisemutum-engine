@@ -14,11 +14,11 @@ struct PassData final {
 }
 
 ShadowMappingPass::ShadowMappingPass() {
-    fragmeng_shader_params.initialize<ShadowMappingParams>();
+    fragment_shader_params.initialize<ShadowMappingParams>();
 
-    fragmeng_shader.source_path = "/bisemutum/shaders/renderer/depth_only.hlsl";
-    fragmeng_shader.source_entry = "depth_only_fs";
-    fragmeng_shader.set_shader_params_struct<ShadowMappingParams>();
+    fragment_shader.source_path = "/bisemutum/shaders/renderer/depth_only.hlsl";
+    fragment_shader.source_entry = "depth_only_fs";
+    fragment_shader.set_shader_params_struct<ShadowMappingParams>();
 }
 
 auto ShadowMappingPass::render(
@@ -37,12 +37,12 @@ auto ShadowMappingPass::render(
         );
         pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
             .camera = dir_light.camera,
-            .fragmeng_shader = fragmeng_shader,
+            .fragment_shader = fragment_shader,
             .type = gfx::RenderedObjectType::opaque,
         });
         builder.set_execution_function<PassData>(
             [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-                ctx.render_list(pass_data->list, fragmeng_shader_params);
+                ctx.render_list(pass_data->list, fragment_shader_params);
             }
         );
 

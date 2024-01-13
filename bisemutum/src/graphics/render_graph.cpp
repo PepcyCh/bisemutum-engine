@@ -285,7 +285,7 @@ struct RenderGraph::Impl final {
             }
         });
 
-        auto& list = rendered_object_lists_.emplace_back(desc.camera, desc.fragmeng_shader);
+        auto& list = rendered_object_lists_.emplace_back(desc.camera, desc.fragment_shader);
         void* curr_mesh;
         Ptr<Material> curr_mat;
         for (size_t i = 0, j = 0; j < drawables.size(); j++) {

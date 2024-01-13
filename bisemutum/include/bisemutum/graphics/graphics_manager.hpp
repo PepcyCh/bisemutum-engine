@@ -76,6 +76,7 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
         register_renderer(std::string{Renderer::renderer_type_name}, []() -> Dyn<IRenderer>::Box { return Renderer{}; });
     }
     auto set_renderer(std::string_view renderer_type_name) -> void;
+    auto get_renderer() const -> Dyn<IRenderer>::CRef;
 
     template <typename Displayer>
     auto set_displayer() -> void {

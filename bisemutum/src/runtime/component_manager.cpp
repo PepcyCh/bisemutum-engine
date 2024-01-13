@@ -10,6 +10,13 @@ struct ComponentManager::Impl final {
         components_metadata.insert({type, std::move(metadata)});
     }
 
+    auto try_get_metadata(std::string_view type) const -> ComponentMetadata const* {
+        if (auto it = components_metadata.find(type); it != components_metadata.end()) {
+            return &it->second;
+        } else {
+            return nullptr;
+        }
+    }
     auto get_metadata(std::string_view type) const -> ComponentMetadata const& {
         return components_metadata.at(type);
     }
@@ -27,6 +34,9 @@ auto ComponentManager::register_component(
     impl()->register_component(type, std::move(metadata));
 }
 
+auto ComponentManager::try_get_metadata(std::string_view type) const -> ComponentMetadata const* {
+    return impl()->try_get_metadata(type);
+}
 auto ComponentManager::get_metadata(std::string_view type) const -> ComponentMetadata const& {
     return impl()->get_metadata(type);
 }

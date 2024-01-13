@@ -8,6 +8,7 @@
 #include <bisemutum/runtime/prefab.hpp>
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
+#include <bisemutum/graphics/graphics_manager.hpp>
 
 namespace bi::editor {
 
@@ -33,11 +34,19 @@ auto menu_action_add_prefab_to_scene(MenuActionContext const& ctx) -> void {
     );
 }
 
+auto menu_action_add_renderer_override(MenuActionContext const& ctx) -> void {
+    auto scene = g_engine->world()->current_scene();
+    auto object = scene->create_scene_object();
+    object->set_name("Renderer Override");
+    object->attach_component_by_type_name(g_engine->graphics_manager()->get_renderer().override_volume_component_name());
+}
+
 } // namespace
 
 auto register_menu_actions_runtime(Ref<editor::MenuManager> mgr) -> void {
     mgr->register_action("Project/Save All", {}, menu_action_save_project);
     mgr->register_action("Scene/Add/Prefab", {}, menu_action_add_prefab_to_scene);
+    mgr->register_action("Scene/Add/Volume/Renderer Override", {}, menu_action_add_renderer_override);
 }
 
 }

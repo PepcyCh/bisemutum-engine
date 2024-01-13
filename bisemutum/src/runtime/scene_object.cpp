@@ -167,6 +167,12 @@ auto SceneObject::for_each_children(std::function<auto(CRef<SceneObject>) -> voi
     }
 }
 
+auto SceneObject::attach_component_by_type_name(std::string_view component_type_name) -> void {
+    if (auto metadata = g_engine->component_manager()->try_get_metadata(component_type_name); metadata) {
+        metadata->attach(unsafe_make_ref(this));
+    }
+}
+
 auto SceneObject::for_each_component(std::function<auto(std::string_view, void*) -> void> func) -> void {
     for (auto& [name, value] : components_) {
         func(name, value);

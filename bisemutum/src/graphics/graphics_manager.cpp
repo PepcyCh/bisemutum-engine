@@ -262,6 +262,13 @@ struct GraphicsManager::Impl final {
             if (!camera.enabled) { return; }
 
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+
+            auto label_str = fmt::format("Render Camera {}", camera_index);
+            cmd_encoder->push_label(rhi::CommandLabel{
+                .label = label_str,
+                .color = {1.0f, 1.0f, 0.0f},
+            });
+
             set_descriptor_heaps(cmd_encoder);
             curr_cmd_encoder = cmd_encoder.ref();
             render_graph.set_command_encoder(cmd_encoder.ref());
@@ -269,6 +276,8 @@ struct GraphicsManager::Impl final {
             renderer.prepare_renderer_per_camera_data(camera);
             renderer.render_camera(camera, render_graph);
             render_graph.execute();
+
+            cmd_encoder->pop_label();
 
             curr_cmd_encoder = nullptr;
             graphics_queue->submit_command_buffer(
@@ -285,6 +294,12 @@ struct GraphicsManager::Impl final {
             auto swapchain_rhi_texture = swapchain->current_texture();
             Texture swapchain_texture{swapchain_rhi_texture};
             auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+
+            cmd_encoder->push_label(rhi::CommandLabel{
+                .label = "Display",
+                .color = {1.0f, 0.0f, 1.0f},
+            });
+
             set_descriptor_heaps(cmd_encoder);
             curr_cmd_encoder = cmd_encoder.ref();
 
@@ -309,6 +324,8 @@ struct GraphicsManager::Impl final {
                 wait_semaphores.push_back(fd.camera_semaphores[i].ref());
             }
             wait_semaphores.push_back(fd.acquire_semaphore.ref());
+
+            cmd_encoder->pop_label();
 
             curr_cmd_encoder = nullptr;
             graphics_queue->submit_command_buffer(
@@ -801,6 +818,9 @@ auto GraphicsManager::register_renderer(
 }
 auto GraphicsManager::set_renderer(std::string_view renderer_type_name) -> void {
     impl()->set_renderer(renderer_type_name);
+}
+auto GraphicsManager::get_renderer() const -> Dyn<IRenderer>::CRef {
+    return *&impl()->renderer;
 }
 
 auto GraphicsManager::set_displayer(Dyn<IDisplayer>::Ref displayer) -> void {

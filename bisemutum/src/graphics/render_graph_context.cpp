@@ -209,7 +209,7 @@ auto GraphicsPassContext::render_list(RenderedObjectListHandle handle, ShaderPar
     auto list = rg->rendered_object_list(handle);
     for (auto& item : list->items) {
         auto pipeline = g_engine->graphics_manager()->compile_pipeline_for_drawable(
-            this, list->camera, item.drawables[0], list->fragmeng_shader
+            this, list->camera, item.drawables[0], list->fragment_shader
         );
         cmd_encoder->set_pipeline(pipeline);
         resource_binding_ctx_->set_shader_params(
@@ -237,14 +237,14 @@ auto GraphicsPassContext::render_list(RenderedObjectListHandle handle, ShaderPar
 }
 
 auto GraphicsPassContext::render_full_screen(
-    CRef<Camera> camera, CRef<FragmentShader> fragmeng_shader, ShaderParameter& params
+    CRef<Camera> camera, CRef<FragmentShader> fragment_shader, ShaderParameter& params
 ) const -> void {
     ScreenTriangle screen_triangle{};
     Drawable drawable{
         .mesh = &screen_triangle,
     };
     auto pipeline = g_engine->graphics_manager()->compile_pipeline_for_drawable(
-        this, camera, drawable, fragmeng_shader
+        this, camera, drawable, fragment_shader
     );
     cmd_encoder->set_pipeline(pipeline);
     resource_binding_ctx_->set_shader_params(

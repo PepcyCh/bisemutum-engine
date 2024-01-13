@@ -44,7 +44,7 @@ struct GraphicsPassContext final {
     auto render_list(RenderedObjectListHandle list, ShaderParameter& params) const -> void;
 
     auto render_full_screen(
-        CRef<Camera> camera, CRef<FragmentShader> fragmeng_shader, ShaderParameter& params
+        CRef<Camera> camera, CRef<FragmentShader> fragment_shader, ShaderParameter& params
     ) const -> void;
 
     CRef<RenderGraph> rg;

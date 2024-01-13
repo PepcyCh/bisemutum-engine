@@ -1,9 +1,6 @@
 #pragma once
 
-#include <string>
-
 #include "../prelude/poly.hpp"
-#include "../prelude/ref.hpp"
 
 namespace bi::gfx {
 
@@ -11,6 +8,9 @@ struct Camera;
 struct RenderGraph;
 
 BI_TRAIT_BEGIN(IRenderer, move)
+    BI_TRAIT_METHOD(override_volume_component_name,
+        (const& self) requires (self.override_volume_component_name()) -> std::string_view
+    )
     BI_TRAIT_METHOD(prepare_renderer_per_frame_data,
         (&self) requires (self.prepare_renderer_per_frame_data()) -> void
     )

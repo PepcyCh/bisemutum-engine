@@ -110,7 +110,7 @@ template <
     typename Type,
     ConstexprStringLit TypeName,
     ConstexprStringLit Name,
-    ConstexprStringLit ArraySize = "",
+    typename ArraySizeT = int,
     bool is_include = false,
     rhi::ResourceFormat format = rhi::ResourceFormat::undefined
 >
@@ -126,8 +126,8 @@ struct ShaderParameterGpuAlignment final {
     struct ShaderParameterGpuAlignment<ty> final { \
         static constexpr size_t value = align; \
     }; \
-    template <ConstexprStringLit Name, ConstexprStringLit ArraySize> \
-    struct TShaderParameterMetadata<ty, "", Name, ArraySize, false, rhi::ResourceFormat::undefined> final { \
+    template <ConstexprStringLit Name, typename ArraySizeT> \
+    struct TShaderParameterMetadata<ty, "", Name, ArraySizeT, false, rhi::ResourceFormat::undefined> final { \
         static constexpr ConstexprStringLit type_name{#ty}; \
         static constexpr size_t size = sz; \
         static constexpr size_t alignment = align; \
@@ -150,8 +150,8 @@ BASIC_SHADER_PARAM_METADATA(uint4, 16, 16)
 BASIC_SHADER_PARAM_METADATA(float4x4, 64, 16)
 #undef BASIC_SHADER_PARAM_METADATA
 
-template <typename T, ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize>
-struct TShaderParameterMetadata<ConstantBuffer<T>, TypeName, Name, ArraySize, false, rhi::ResourceFormat::undefined> final {
+template <typename T, ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT>
+struct TShaderParameterMetadata<ConstantBuffer<T>, TypeName, Name, ArraySizeT, false, rhi::ResourceFormat::undefined> final {
     static constexpr ConstexprStringLit type_name{TypeName.value};
     static constexpr size_t size = sizeof(TCbv<ConstantBuffer<T>>);
     static constexpr size_t alignment = 8;
@@ -161,8 +161,8 @@ struct TShaderParameterMetadata<ConstantBuffer<T>, TypeName, Name, ArraySize, fa
     static constexpr size_t structure_stride = sizeof(T);
 };
 
-template <typename T, ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize>
-struct TShaderParameterMetadata<StructuredBuffer<T>, TypeName, Name, ArraySize, false, rhi::ResourceFormat::undefined> final {
+template <typename T, ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT>
+struct TShaderParameterMetadata<StructuredBuffer<T>, TypeName, Name, ArraySizeT, false, rhi::ResourceFormat::undefined> final {
     static constexpr ConstexprStringLit type_name{TypeName.value};
     static constexpr size_t size = sizeof(TSrvBuffer<StructuredBuffer<T>>);
     static constexpr size_t alignment = 8;
@@ -172,8 +172,8 @@ struct TShaderParameterMetadata<StructuredBuffer<T>, TypeName, Name, ArraySize, 
     static constexpr size_t structure_stride = sizeof(T);
 };
 
-template <typename T, ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize>
-struct TShaderParameterMetadata<RWStructuredBuffer<T>, TypeName, Name, ArraySize, false, rhi::ResourceFormat::undefined> final {
+template <typename T, ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT>
+struct TShaderParameterMetadata<RWStructuredBuffer<T>, TypeName, Name, ArraySizeT, false, rhi::ResourceFormat::undefined> final {
     static constexpr ConstexprStringLit type_name{TypeName.value};
     static constexpr size_t size = sizeof(TUavBuffer<RWStructuredBuffer<T>>);
     static constexpr size_t alignment = 8;
@@ -184,8 +184,8 @@ struct TShaderParameterMetadata<RWStructuredBuffer<T>, TypeName, Name, ArraySize
 };
 
 #define TEXTURE_SHADER_PARAM_METADATA(tex_ty, view_ty) \
-    template <ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize> \
-    struct TShaderParameterMetadata<tex_ty, TypeName, Name, ArraySize, false, rhi::ResourceFormat::undefined> final { \
+    template <ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT> \
+    struct TShaderParameterMetadata<tex_ty, TypeName, Name, ArraySizeT, false, rhi::ResourceFormat::undefined> final { \
         static constexpr ConstexprStringLit type_name{TypeName.value}; \
         static constexpr size_t size = sizeof(TSrvTexture<tex_ty>); \
         static constexpr size_t alignment = 8; \
@@ -203,8 +203,8 @@ TEXTURE_SHADER_PARAM_METADATA(TextureCubeArray, cube_array)
 #undef TEXTURE_SHADER_PARAM_METADATA
 
 #define RWTEXTURE_SHADER_PARAM_METADATA(tex_ty, view_ty) \
-    template <RWTextureElement T, ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize, rhi::ResourceFormat format> \
-    struct TShaderParameterMetadata<tex_ty<T>, TypeName, Name, ArraySize, false, format> final { \
+    template <RWTextureElement T, ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT, rhi::ResourceFormat format> \
+    struct TShaderParameterMetadata<tex_ty<T>, TypeName, Name, ArraySizeT, false, format> final { \
         static constexpr ConstexprStringLit type_name{TypeName.value}; \
         static constexpr size_t size = sizeof(TUavTexture<tex_ty<T>>); \
         static constexpr size_t alignment = 8; \
@@ -219,8 +219,8 @@ RWTEXTURE_SHADER_PARAM_METADATA(RWTexture1DArray, d1_array)
 RWTEXTURE_SHADER_PARAM_METADATA(RWTexture2DArray, d2_array)
 #undef RWTEXTURE_SHADER_PARAM_METADATA
 
-template <ConstexprStringLit TypeName, ConstexprStringLit Name, ConstexprStringLit ArraySize>
-struct TShaderParameterMetadata<SamplerState, TypeName, Name, ArraySize, false, rhi::ResourceFormat::undefined> final {
+template <ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT>
+struct TShaderParameterMetadata<SamplerState, TypeName, Name, ArraySizeT, false, rhi::ResourceFormat::undefined> final {
     static constexpr ConstexprStringLit type_name{TypeName.value};
     static constexpr size_t size = sizeof(SamplerState);
     static constexpr size_t alignment = 8;
@@ -265,12 +265,12 @@ template <
     typename Type,
     ConstexprStringLit TypeName,
     ConstexprStringLit Name,
-    ConstexprStringLit ArraySize,
+    typename ArraySizeT,
     bool is_include,
     rhi::ResourceFormat format
 >
 auto shader_parameter_metadata_of(
-    TShaderParameterMetadata<Type, TypeName, Name, ArraySize, is_include, format>
+    TShaderParameterMetadata<Type, TypeName, Name, ArraySizeT, is_include, format>
 ) -> std::vector<ShaderParameterMetadata>;
 
 template <typename T>
@@ -302,31 +302,16 @@ template <
     typename Type,
     ConstexprStringLit TypeName,
     ConstexprStringLit Name,
-    ConstexprStringLit ArraySize,
+    typename ArraySizeT,
     bool is_include,
     rhi::ResourceFormat format
 >
 auto shader_parameter_metadata_of(
-    TShaderParameterMetadata<Type, TypeName, Name, ArraySize, is_include, format>
+    TShaderParameterMetadata<Type, TypeName, Name, ArraySizeT, is_include, format>
 ) -> std::vector<ShaderParameterMetadata> {
-    using MetadataType = TShaderParameterMetadata<Type, TypeName, Name, ArraySize, is_include, format>;
+    using MetadataType = TShaderParameterMetadata<Type, TypeName, Name, ArraySizeT, is_include, format>;
 
-    std::vector<uint32_t> array_sizes{};
-    std::string str_array_sizes = ArraySize.value;
-    for (size_t i = 0; i < str_array_sizes.size(); i++) {
-        if (str_array_sizes[i] == '[') {
-            uint32_t size = 0;
-            for (size_t j = i + 1; j < str_array_sizes.size(); j++) {
-                if (str_array_sizes[j] == ']') {
-                    array_sizes.push_back(size);
-                    i = j;
-                    break;
-                } else if ('0' <= str_array_sizes[j] && str_array_sizes[j] <= '9') {
-                    size = size * 10 + str_array_sizes[j] - '0';
-                }
-            }
-        }
-    }
+    auto array_sizes = get_array_sizes<ArraySizeT, uint32_t>();
 
     if constexpr (IsShaderParameterStruct<Type>::value) {
         auto params = ShaderParameterMetadataListHelper<typename Type::ParamsTypeList>::get_params();
@@ -387,12 +372,12 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
     };
 #define BI_SHADER_PARAMETER_ARRAY(ty, name, arr) alignas(::bi::gfx::ShaderParameterGpuAlignment<ty>::value) ty name arr; \
     template <> struct XParamsTuple<__LINE__> { \
-        using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name, #arr>>(XParamsTuple<__LINE__ - 1>::type{})); \
+        using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name, int arr>>(XParamsTuple<__LINE__ - 1>::type{})); \
     };
 
 #define BI_SHADER_PARAMETER_INCLUDE(ty, name) alignas(::bi::gfx::ShaderParameterGpuAlignment<ty>::value) ty name; \
     template <> struct XParamsTuple<__LINE__> { \
-        using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name, "", true>>(XParamsTuple<__LINE__ - 1>::type{})); \
+        using type = decltype(::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<ty, "", #name, int, true>>(XParamsTuple<__LINE__ - 1>::type{})); \
     };
 
 #define BI_SHADER_PARAMETER_CBV(ty, name) ::bi::gfx::TCbv<::bi::gfx::ty> name; \
@@ -411,7 +396,7 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
 #define BI_SHADER_PARAMETER_SRV_BUFFER_ARRAY(ty, name, arr) ::bi::gfx::TSrvBuffer<::bi::gfx::ty> name arr; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype( \
-            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, #arr>>(XParamsTuple<__LINE__ - 1>::type{}) \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, int arr>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
 #define BI_SHADER_PARAMETER_SRV_TEXTURE(ty, name) ::bi::gfx::TSrvTexture<::bi::gfx::ty> name; \
@@ -423,7 +408,7 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
 #define BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(ty, name, arr) ::bi::gfx::TSrvTexture<::bi::gfx::ty> name arr; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype( \
-            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, #arr>>(XParamsTuple<__LINE__ - 1>::type{}) \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, int arr>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
 
@@ -436,13 +421,13 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
 #define BI_SHADER_PARAMETER_UAV_TEXTURE(ty, name, format) ::bi::gfx::TUavTexture<::bi::gfx::ty> name; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype( \
-            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, "", false, format>>(XParamsTuple<__LINE__ - 1>::type{}) \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, int, false, format>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
 #define BI_SHADER_PARAMETER_UAV_TEXTURE_ARRAY(ty, name, arr, format) ::bi::gfx::TUavTexture<::bi::gfx::ty> name arr; \
     template <> struct XParamsTuple<__LINE__> { \
         using type = decltype( \
-            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, #arr, false, format>>(XParamsTuple<__LINE__ - 1>::type{}) \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::ty, #ty, #name, int arr, false, format>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
 

@@ -69,6 +69,7 @@ struct SceneObject final {
         ecs_registry_->remove<Component>(ecs_entity_);
         components_.erase(Component::component_type_name);
     }
+    auto attach_component_by_type_name(std::string_view component_type_name) -> void;
 
     template <TComponent Component>
     auto has_component() const -> bool { return ecs_registry_->all_of<Component>(ecs_entity_); }

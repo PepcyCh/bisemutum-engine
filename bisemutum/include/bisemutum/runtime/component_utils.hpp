@@ -40,4 +40,16 @@ auto find_volume_component_for(float3 position) -> Component const* {
     return find_volume_component_for<Component>(scene, position);
 }
 
+template <TVolumeComponent Component>
+auto find_volume_component_for(Ref<Scene> scene, float3 position, Component const& fallback) -> Component const& {
+    auto volume = find_volume_component_for<Component>(scene, position);
+    return volume ? *volume : fallback;
+}
+template <TVolumeComponent Component>
+auto find_volume_component_for(float3 position, Component const& fallback) -> Component const& {
+    auto scene = g_engine->world()->current_scene().value();
+    auto volume = find_volume_component_for<Component>(scene, position);
+    return volume ? *volume : fallback;
+}
+
 }
