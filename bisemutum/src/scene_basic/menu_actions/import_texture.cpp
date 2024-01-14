@@ -58,7 +58,7 @@ auto menu_action_import_texture_hdri(MenuActionContext const& ctx) -> void {
                         .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write})
                 );
                 texture->sampler = g_engine->graphics_manager()->get_sampler({});
-                g_engine->graphics_manager()->execute_immediately(
+                g_engine->graphics_manager()->execute_in_this_frame(
                     [&temp_texture, texture](Ref<rhi::CommandEncoder> cmd) {
                         g_engine->graphics_manager()->equitangular_to_cubemap(cmd, temp_texture.texture, texture->texture);
                     }

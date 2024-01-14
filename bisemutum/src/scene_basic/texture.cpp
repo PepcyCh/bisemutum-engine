@@ -198,7 +198,7 @@ auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
 auto TextureAsset::update_gpu_data() -> void {
     gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture_data.size()).mem_upload()};
     temp_buffer.set_data_raw(texture_data.data(), texture_data.size());
-    g_engine->graphics_manager()->execute_immediately(
+    g_engine->graphics_manager()->execute_in_this_frame(
         [this, &temp_buffer](Ref<rhi::CommandEncoder> cmd) {
             auto access = BitFlags{rhi::ResourceAccessType::transfer_write};
             cmd->resource_barriers({}, {
@@ -233,8 +233,8 @@ auto TextureAsset::update_gpu_data() -> void {
 }
 
 auto TextureAsset::update_cpu_data() -> void {
-    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture_data.size()).mem_upload()};
-    g_engine->graphics_manager()->execute_immediately(
+    gfx::Buffer temp_buffer{gfx::BufferBuilder().size(texture_data.size()).mem_readback()};
+    g_engine->graphics_manager()->execute_in_this_frame(
         [this, &temp_buffer](Ref<rhi::CommandEncoder> cmd) {
             auto access = BitFlags{rhi::ResourceAccessType::transfer_read};
             cmd->resource_barriers({}, {

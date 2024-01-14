@@ -13,6 +13,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Generate shader resources definition and pipeline layout from C++ structs
 * Rendering
   * Basic PBR
+  * Forward and Deferred Rendering
   * CSM for Directional Lights
   * Skybox & IBL
   * Bloom
@@ -32,7 +33,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Deferred Rendering
+* Raytracing Pipeline in RHI
 * Shadow Mapping for Point & Spot Light
 * Basic Resource Browser
 

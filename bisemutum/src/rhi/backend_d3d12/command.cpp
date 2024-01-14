@@ -443,7 +443,7 @@ GraphicsCommandEncoderD3D12::GraphicsCommandEncoderD3D12(
             .BeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS{
                 .Type = desc.colors[i].clear
                     ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
-                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD,
+                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE,
                 .Clear = D3D12_RENDER_PASS_BEGINNING_ACCESS_CLEAR_PARAMETERS{
                     .ClearValue = D3D12_CLEAR_VALUE{
                         .Format = color_format,
@@ -478,7 +478,7 @@ GraphicsCommandEncoderD3D12::GraphicsCommandEncoderD3D12(
             .DepthBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS{
                 .Type = depth_stencil.clear
                     ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
-                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD,
+                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE,
                 .Clear = D3D12_RENDER_PASS_BEGINNING_ACCESS_CLEAR_PARAMETERS{
                     .ClearValue = D3D12_CLEAR_VALUE{
                         .Format = depth_stencil_format,
@@ -491,7 +491,7 @@ GraphicsCommandEncoderD3D12::GraphicsCommandEncoderD3D12(
             .StencilBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS{
                 .Type = depth_stencil.clear 
                     ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR
-                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD,
+                    : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE,
                 .Clear = D3D12_RENDER_PASS_BEGINNING_ACCESS_CLEAR_PARAMETERS{
                     .ClearValue = D3D12_CLEAR_VALUE{
                         .Format = depth_stencil_format,

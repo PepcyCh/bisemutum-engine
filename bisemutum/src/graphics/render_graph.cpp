@@ -252,6 +252,7 @@ struct RenderGraph::Impl final {
         graph_nodes_.push_back(std::move(out_node));
         auto out_node_ref = graph_nodes_.back().ref().cast_to<NodeT>();
         add_edge(alias_node_ref, out_node_ref);
+        add_edge(pass_node, out_node_ref);
 
         from_node->next_alias = out_node_ref;
         out_node_ref->prev_alias = from_node;

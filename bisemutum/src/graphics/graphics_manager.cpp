@@ -234,6 +234,9 @@ struct GraphicsManager::Impl final {
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
 
         auto& fd = curr_frame_data();
+        auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+        set_descriptor_heaps(cmd_encoder);
+        curr_cmd_encoder = cmd_encoder.ref();
 
         renderer.prepare_renderer_per_frame_data();
 
@@ -250,18 +253,10 @@ struct GraphicsManager::Impl final {
             }
         });
 
-        if (fd.camera_semaphores.size() < num_enabled_camera) {
-            for (size_t i = fd.camera_semaphores.size(); i < num_enabled_camera; i++) {
-                fd.camera_semaphores.push_back(device->create_semaphore());
-            }
-        }
-
         // Render each camera
         size_t camera_index = 0;
-        gpu_scene->for_each_camera([&camera_index, &fd, this](Camera& camera) {
+        gpu_scene->for_each_camera([&cmd_encoder, &camera_index, &fd, this](Camera& camera) {
             if (!camera.enabled) { return; }
-
-            auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
 
             auto label_str = fmt::format("Render Camera {}", camera_index);
             cmd_encoder->push_label(rhi::CommandLabel{
@@ -269,8 +264,6 @@ struct GraphicsManager::Impl final {
                 .color = {1.0f, 1.0f, 0.0f},
             });
 
-            set_descriptor_heaps(cmd_encoder);
-            curr_cmd_encoder = cmd_encoder.ref();
             render_graph.set_command_encoder(cmd_encoder.ref());
             render_graph.set_back_buffer(camera.target_texture(), rhi::ResourceAccessType::none);
             renderer.prepare_renderer_per_camera_data(camera);
@@ -279,13 +272,6 @@ struct GraphicsManager::Impl final {
 
             cmd_encoder->pop_label();
 
-            curr_cmd_encoder = nullptr;
-            graphics_queue->submit_command_buffer(
-                {cmd_encoder->finish()},
-                {},
-                {fd.camera_semaphores[camera_index].ref()}
-            );
-
             ++camera_index;
         });
 
@@ -293,15 +279,11 @@ struct GraphicsManager::Impl final {
         {
             auto swapchain_rhi_texture = swapchain->current_texture();
             Texture swapchain_texture{swapchain_rhi_texture};
-            auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
 
             cmd_encoder->push_label(rhi::CommandLabel{
                 .label = "Display",
                 .color = {1.0f, 0.0f, 1.0f},
             });
-
-            set_descriptor_heaps(cmd_encoder);
-            curr_cmd_encoder = cmd_encoder.ref();
 
             cmd_encoder->resource_barriers({}, {
                 rhi::TextureBarrier{
@@ -319,10 +301,6 @@ struct GraphicsManager::Impl final {
             });
 
             std::vector<CRef<rhi::Semaphore>> wait_semaphores{};
-            wait_semaphores.reserve(num_enabled_camera + 1);
-            for (size_t i = 0; i < num_enabled_camera; i++) {
-                wait_semaphores.push_back(fd.camera_semaphores[i].ref());
-            }
             wait_semaphores.push_back(fd.acquire_semaphore.ref());
 
             cmd_encoder->pop_label();
@@ -774,7 +752,6 @@ struct GraphicsManager::Impl final {
         Box<rhi::Semaphore> acquire_semaphore;
         Box<rhi::Semaphore> signal_semaphore;
         Box<rhi::Fence> fence;
-        std::vector<Box<rhi::Semaphore>> camera_semaphores;
 
         Box<rhi::CommandPool> graphics_cmd_pool;
         std::unordered_map<std::vector<rhi::DescriptorHandle>, rhi::DescriptorHandle> cached_descriptors;
