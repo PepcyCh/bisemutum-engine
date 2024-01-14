@@ -14,8 +14,8 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     GBuffer gbuffer;
     gbuffer.base_color = gbuffer_textures[GBUFFER_BASE_COLOR].Sample(gbuffer_sampler, fin.texcoord0);
     gbuffer.normal_roughness = gbuffer_textures[GBUFFER_NORMAL_ROUGHNESS].Sample(gbuffer_sampler, fin.texcoord0);
-    gbuffer.specular_model = gbuffer_textures[GBUFFER_SPECULAR_MODEL].Sample(gbuffer_sampler, fin.texcoord0);
-    gbuffer.additional_0 = gbuffer_textures[GBUFFER_ADDITIONAL_0].Sample(gbuffer_sampler, fin.texcoord0);
+    gbuffer.fresnel = gbuffer_textures[GBUFFER_FRESNEL].Sample(gbuffer_sampler, fin.texcoord0);
+    gbuffer.material_0 = gbuffer_textures[GBUFFER_MATERIAL_0].Sample(gbuffer_sampler, fin.texcoord0);
     float depth = depth_texture.Sample(gbuffer_sampler, fin.texcoord0).x;
     if (depth == 1.0) {
         return float4(0.0, 0.0, 0.0, 1.0);

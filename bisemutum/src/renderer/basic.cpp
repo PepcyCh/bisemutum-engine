@@ -5,6 +5,7 @@
 #include "context/lights.hpp"
 #include "context/skybox.hpp"
 #include "pass/skybox_precompute.hpp"
+#include "pass/skybox.hpp"
 #include "pass/shadow_mapping.hpp"
 #include "pass/forward.hpp"
 #include "pass/gbuffer.hpp"
@@ -19,6 +20,7 @@ struct BasicRenderer::Impl final {
 
         forward_pass.update_params(lights_ctx, skybox_ctx);
         deferred_lighting_pass.update_params(lights_ctx, skybox_ctx);
+        skybox_pass.update_params(skybox_ctx);
     }
 
     auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {
@@ -56,6 +58,13 @@ struct BasicRenderer::Impl final {
             color = lighting_output.output;
             depth = gbuffer_output.depth;
         }
+        auto skybox_output = skybox_pass.render(camera, rg, {
+            .color = color,
+            .depth = depth,
+            .skybox = skybox,
+        });
+        color = skybox_output.color;
+        depth = skybox_output.depth;
 
         post_process_pass.render(camera, rg, {
             .color = color,
@@ -74,6 +83,7 @@ struct BasicRenderer::Impl final {
     ForwardPass forward_pass;
     GBufferdPass gbuffer_pass;
     DeferredLightingPass deferred_lighting_pass;
+    SkyboxPass skybox_pass;
 
     PostProcessPass post_process_pass;
 };

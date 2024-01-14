@@ -48,6 +48,7 @@ DeferredLightingPass::DeferredLightingPass() {
     fragment_shader.source_entry = "deferred_lighting_pass_fs";
     fragment_shader.set_shader_params_struct<DeferredLightingPassParams>();
     fragment_shader.depth_test = false;
+    fragment_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
 }
 
 auto DeferredLightingPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
@@ -107,8 +108,8 @@ auto DeferredLightingPass::render(gfx::Camera const& camera, gfx::RenderGraph& r
             auto params = fragment_shader_params.mutable_typed_data<DeferredLightingPassParams>();
             params->gbuffer_textures[0] = {ctx.rg->texture(pass_data->gbuffer.base_color)};
             params->gbuffer_textures[1] = {ctx.rg->texture(pass_data->gbuffer.normal_roughness)};
-            params->gbuffer_textures[2] = {ctx.rg->texture(pass_data->gbuffer.specular_model)};
-            params->gbuffer_textures[3] = {ctx.rg->texture(pass_data->gbuffer.additional_0)};
+            params->gbuffer_textures[2] = {ctx.rg->texture(pass_data->gbuffer.fresnel)};
+            params->gbuffer_textures[3] = {ctx.rg->texture(pass_data->gbuffer.material_0)};
             params->depth_texture = {ctx.rg->texture(pass_data->depth)};
             params->gbuffer_sampler = {pass_data->gbuffer.get_sampler()};
             fragment_shader_params.update_uniform_buffer();

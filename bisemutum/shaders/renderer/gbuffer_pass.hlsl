@@ -9,8 +9,8 @@
 struct GBufferOutput {
     float4 base_color : SV_Target0;
     float4 normal_roughness : SV_Target1;
-    float4 specular_model : SV_Target2;
-    float4 additional_0 : SV_Target3;
+    float4 fresnel : SV_Target2;
+    float4 material_0 : SV_Target3;
 };
 
 GBufferOutput gbuffer_pass_fs(VertexAttributesOutput fin) {
@@ -27,8 +27,8 @@ GBufferOutput gbuffer_pass_fs(VertexAttributesOutput fin) {
     GBufferOutput fout;
     fout.base_color = gbuffer.base_color;
     fout.normal_roughness = gbuffer.normal_roughness;
-    fout.specular_model = gbuffer.specular_model;
-    fout.additional_0 = gbuffer.additional_0;
+    fout.fresnel = gbuffer.fresnel;
+    fout.material_0 = gbuffer.material_0;
 
     return fout;
 }

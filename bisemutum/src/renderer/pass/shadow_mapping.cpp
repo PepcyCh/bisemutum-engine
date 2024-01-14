@@ -30,7 +30,7 @@ auto ShadowMappingPass::render(
         auto [builder, pass_data] = rg.add_graphics_pass<PassData>(
             fmt::format("Dir Light Shadow Map Pass #{}", index + 1)
         );
-        builder.use_depth_stencil(
+        dir_lights_shadow_map = builder.use_depth_stencil(
             gfx::GraphicsPassDepthStencilTargetBuilder{dir_lights_shadow_map}
                 .clear_depth_stencil()
                 .array_layer(index)

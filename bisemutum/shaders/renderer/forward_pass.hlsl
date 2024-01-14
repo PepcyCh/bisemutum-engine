@@ -16,6 +16,7 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
     SurfaceData surface = material_function(fin);
     float3 normal_tspace = surface.normal_map_value * 2.0 - 1.0;
     N = normalize(normal_tspace.x * T + normal_tspace.y * B + normal_tspace.z * N);
+    B = cross(N, T);
 
     float3 color = 0.0;
     float3 light_dir;

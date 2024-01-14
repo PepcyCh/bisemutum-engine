@@ -59,12 +59,16 @@ auto GraphicsPassDepthStencilTargetBuilder::generate_mipmaps() -> GraphicsPassDe
     target_.generate_mipmaps = true;
     return *this;
 }
+auto GraphicsPassDepthStencilTargetBuilder::read_only() -> GraphicsPassDepthStencilTargetBuilder& {
+    target_.read_only = true;
+    return *this;
+}
 
 auto GraphicsPassBuilder::use_color(uint32_t index, GraphicsPassColorTargetBuilder const& target) -> TextureHandle {
     if (index < color_targets_.size()) {
         color_targets_[index] = target;
         auto handle = color_targets_[index].value().handle;
-        rg_->add_write_edge(pass_index_, handle);
+        handle = rg_->add_write_edge(pass_index_, handle);
         return handle;
     } else {
         return static_cast<TextureHandle>(-1);
@@ -73,27 +77,31 @@ auto GraphicsPassBuilder::use_color(uint32_t index, GraphicsPassColorTargetBuild
 auto GraphicsPassBuilder::use_depth_stencil(GraphicsPassDepthStencilTargetBuilder const& target) -> TextureHandle {
     depth_stencil_target_ = target;
     auto handle = depth_stencil_target_.value().handle;
-    rg_->add_write_edge(pass_index_, handle);
+    if (!depth_stencil_target_.value().read_only) {
+        handle = rg_->add_write_edge(pass_index_, handle);
+    } else {
+        handle = rg_->add_read_edge(pass_index_, handle);
+    }
     return handle;
 }
 auto GraphicsPassBuilder::read(BufferHandle handle) -> BufferHandle {
     read_buffers_.push_back(handle);
-    rg_->add_read_edge(pass_index_, handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
     return handle;
 }
 auto GraphicsPassBuilder::read(TextureHandle handle) -> TextureHandle {
     read_textures_.push_back(handle);
-    rg_->add_read_edge(pass_index_, handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
     return handle;
 }
 auto GraphicsPassBuilder::write(BufferHandle handle) -> BufferHandle {
     write_buffers_.push_back(handle);
-    rg_->add_write_edge(pass_index_, handle);
+    handle = rg_->add_write_edge(pass_index_, handle);
     return handle;
 }
 auto GraphicsPassBuilder::write(TextureHandle handle) -> TextureHandle {
     write_textures_.push_back(handle);
-    rg_->add_write_edge(pass_index_, handle);
+    handle = rg_->add_write_edge(pass_index_, handle);
     return handle;
 }
 auto GraphicsPassBuilder::set_execution_function_impl(
@@ -104,22 +112,22 @@ auto GraphicsPassBuilder::set_execution_function_impl(
 
 auto ComputePassBuilder::read(BufferHandle handle) -> BufferHandle {
     read_buffers_.push_back(handle);
-    rg_->add_read_edge(pass_index_, handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
     return handle;
 }
 auto ComputePassBuilder::read(TextureHandle handle) -> TextureHandle {
     read_textures_.push_back(handle);
-    rg_->add_read_edge(pass_index_, handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
     return handle;
 }
 auto ComputePassBuilder::write(BufferHandle handle) -> BufferHandle {
     write_buffers_.push_back(handle);
-    rg_->add_write_edge(pass_index_, handle);
+    handle = rg_->add_write_edge(pass_index_, handle);
     return handle;
 }
 auto ComputePassBuilder::write(TextureHandle handle) -> TextureHandle {
     write_textures_.push_back(handle);
-    rg_->add_write_edge(pass_index_, handle);
+    handle = rg_->add_write_edge(pass_index_, handle);
     return handle;
 }
 auto ComputePassBuilder::set_execution_function_impl(

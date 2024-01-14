@@ -52,12 +52,32 @@ namespace {
 struct PoolBuffer final {
     Ref<Buffer> buffer;
     size_t index;
+    // `access` is only valid for the first resource in the a aliasing chain.
+    // `p_access` in the same chain all pointer to that.
     BitFlags<rhi::ResourceAccessType> access;
+    Ptr<BitFlags<rhi::ResourceAccessType>> p_access = nullptr;
+
+    auto get_access() const -> BitFlags<rhi::ResourceAccessType> {
+        return *p_access;
+    }
+    auto set_access(BitFlags<rhi::ResourceAccessType> value) -> void {
+        *p_access = value;
+    }
 };
 struct PoolTexture final {
     Ref<Texture> texture;
     size_t index;
+    // `access` is only valid for the first resource in the a aliasing chain.
+    // `p_access` in the same chain all pointer to that.
     BitFlags<rhi::ResourceAccessType> access;
+    Ptr<BitFlags<rhi::ResourceAccessType>> p_access = nullptr;
+
+    auto get_access() const -> BitFlags<rhi::ResourceAccessType> {
+        return *p_access;
+    }
+    auto set_access(BitFlags<rhi::ResourceAccessType> value) -> void {
+        *p_access = value;
+    }
 };
 
 struct BufferPool final {
@@ -92,6 +112,7 @@ struct RenderGraph::Impl final {
         virtual ~Node() = default;
 
         virtual auto is_resource() const -> bool { return false; }
+        auto is_pass() const -> bool { return !is_resource(); }
 
         virtual auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void {}
         virtual auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void {}
@@ -104,6 +125,9 @@ struct RenderGraph::Impl final {
         Option<PoolBuffer> buffer;
         bool imported = false;
 
+        Ptr<BufferNode> prev_alias = nullptr;
+        Ptr<BufferNode> next_alias = nullptr;
+
         auto is_resource() const -> bool override { return true; }
 
         auto create(RenderGraph::Impl& rg) -> void override;
@@ -114,11 +138,15 @@ struct RenderGraph::Impl final {
         Option<PoolTexture> texture;
         bool imported = false;
 
+        Ptr<TextureNode> prev_alias = nullptr;
+        Ptr<TextureNode> next_alias = nullptr;
+
         auto is_resource() const -> bool override { return true; }
 
         auto create(RenderGraph::Impl& rg) -> void override;
         auto destroy(RenderGraph::Impl& rg) -> void override;
     };
+    struct AliasPassNode final : Node {};
     struct GraphicsPassNode final : Node {
         GraphicsPassBuilder builder;
         std::any pass_data;
@@ -170,6 +198,7 @@ struct RenderGraph::Impl final {
             .index = static_cast<size_t>(-1),
             .access = rhi::ResourceAccessType::none,
         };
+        node->buffer.value().p_access = &node->buffer.value().access;
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
 
@@ -194,6 +223,7 @@ struct RenderGraph::Impl final {
             .index = static_cast<size_t>(-1),
             .access = access,
         };
+        node->texture.value().p_access = &node->texture.value().access;
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
 
@@ -201,6 +231,38 @@ struct RenderGraph::Impl final {
     }
     auto import_back_buffer() const -> TextureHandle {
         return back_buffer_handle_;
+    }
+
+    template <typename HandleT, typename NodeT>
+    auto add_alias_node_helper(Ref<Node> pass_node, Ref<NodeT> from_node) -> HandleT {
+        auto alias_node = Box<AliasPassNode>::make();
+        alias_node->index = graph_nodes_.size();
+        graph_nodes_.push_back(std::move(alias_node));
+        auto alias_node_ref = graph_nodes_.back().ref();
+        for (auto node : from_node->out_nodes) {
+            add_edge(node, alias_node_ref);
+        }
+        add_edge(from_node, alias_node_ref);
+        add_edge(alias_node_ref, pass_node);
+
+        auto out_node = Box<NodeT>::make();
+        out_node->index = graph_nodes_.size();
+        out_node->desc = from_node->desc;
+        out_node->imported = from_node->imported;
+        graph_nodes_.push_back(std::move(out_node));
+        auto out_node_ref = graph_nodes_.back().ref().cast_to<NodeT>();
+        add_edge(alias_node_ref, out_node_ref);
+
+        from_node->next_alias = out_node_ref;
+        out_node_ref->prev_alias = from_node;
+
+        return static_cast<HandleT>(graph_nodes_.size() - 1);
+    }
+    auto add_alias_node(Ref<Node> pass_node, Ref<BufferNode> from_node) -> BufferHandle {
+        return add_alias_node_helper<BufferHandle, BufferNode>(pass_node, from_node);
+    }
+    auto add_alias_node(Ref<Node> pass_node, Ref<TextureNode> from_node) -> TextureHandle {
+        return add_alias_node_helper<TextureHandle, TextureNode>(pass_node, from_node);
     }
 
     auto add_graphics_pass(
@@ -456,17 +518,33 @@ struct RenderGraph::Impl final {
         cmd_encoder_ = cmd_encoder;
     }
 
-    auto add_read_edge(size_t pass_index, BufferHandle handle) -> void {
+    auto add_read_edge(size_t pass_index, BufferHandle handle) -> BufferHandle {
         add_edge(graph_nodes_[static_cast<size_t>(handle)].ref(), graph_nodes_[pass_index].ref());
+        return handle;
     }
-    auto add_read_edge(size_t pass_index, TextureHandle handle) -> void {
+    auto add_read_edge(size_t pass_index, TextureHandle handle) -> TextureHandle {
         add_edge(graph_nodes_[static_cast<size_t>(handle)].ref(), graph_nodes_[pass_index].ref());
+        return handle;
     }
-    auto add_write_edge(size_t pass_index, BufferHandle handle) -> void {
-        add_edge(graph_nodes_[pass_index].ref(), graph_nodes_[static_cast<size_t>(handle)].ref());
+    auto add_write_edge(size_t pass_index, BufferHandle handle) -> BufferHandle {
+        auto pass_node = graph_nodes_[pass_index].ref();
+        auto to_node = graph_nodes_[static_cast<size_t>(handle)].ref();
+        if (to_node->in_nodes.empty()) {
+            add_edge(pass_node, to_node);
+        } else {
+            handle = add_alias_node(pass_node, to_node.cast_to<BufferNode>());
+        }
+        return handle;
     }
-    auto add_write_edge(size_t pass_index, TextureHandle handle) -> void {
-        add_edge(graph_nodes_[pass_index].ref(), graph_nodes_[static_cast<size_t>(handle)].ref());
+    auto add_write_edge(size_t pass_index, TextureHandle handle) -> TextureHandle {
+        auto pass_node = graph_nodes_[pass_index].ref();
+        auto to_node = graph_nodes_[static_cast<size_t>(handle)].ref();
+        if (to_node->in_nodes.empty()) {
+            add_edge(pass_node, to_node);
+        } else {
+            handle = add_alias_node(pass_node, to_node.cast_to<TextureNode>());
+        }
+        return handle;
     }
 
     auto clear() -> void {
@@ -523,7 +601,7 @@ struct RenderGraph::Impl final {
             ++key.size_log;
         }
         auto& pool = buffer_pools[key];
-        pool.accesses[buffer.index] = buffer.access;
+        pool.accesses[buffer.index] = buffer.get_access();
         pool.recycled_indices.push_back(buffer.index);
     }
 
@@ -546,7 +624,7 @@ struct RenderGraph::Impl final {
     }
     auto remove_texture(PoolTexture const& texture, rhi::TextureDesc const& desc) -> void {
         auto& pool = texture_pools[desc];
-        pool.accesses[texture.index] = texture.access;
+        pool.accesses[texture.index] = texture.get_access();
         pool.recycled_indices.push_back(texture.index);
     }
 
@@ -571,24 +649,32 @@ struct RenderGraph::Impl final {
 };
 
 auto RenderGraph::Impl::BufferNode::create(RenderGraph::Impl& rg) -> void {
+    if (prev_alias) {
+        buffer = prev_alias->buffer;
+    }
     if (!buffer.has_value()) {
         buffer = rg.require_buffer(rg.device_.value(), desc);
+        buffer.value().p_access = &buffer.value().access;
     }
 }
 auto RenderGraph::Impl::BufferNode::destroy(RenderGraph::Impl& rg) -> void {
-    if (!imported && buffer.has_value()) {
+    if (!imported && !next_alias && buffer.has_value()) {
         rg.remove_buffer(buffer.value(), desc);
         buffer.reset();
     }
 }
 
 auto RenderGraph::Impl::TextureNode::create(RenderGraph::Impl& rg) -> void {
+    if (prev_alias) {
+        texture = prev_alias->texture;
+    }
     if (!texture.has_value()) {
         texture = rg.require_texture(rg.device_.value(), desc);
+        texture.value().p_access = &texture.value().access;
     }
 }
 auto RenderGraph::Impl::TextureNode::destroy(RenderGraph::Impl& rg) -> void {
-    if (!imported && texture.has_value()) {
+    if (!imported && !next_alias && texture.has_value()) {
         rg.remove_texture(texture.value(), desc);
         texture.reset();
     }
@@ -614,13 +700,13 @@ auto get_shader_barriers(
             // Only add storage_resource_read when buffer cannot be used as others
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
-        if (need_barrier(pool_buffer.access, target_access)) {
+        if (need_barrier(pool_buffer.get_access(), target_access)) {
             buffer_barriers.push_back(rhi::BufferBarrier{
                 .buffer = pool_buffer.buffer->rhi_buffer(),
-                .src_access_type = pool_buffer.access,
+                .src_access_type = pool_buffer.get_access(),
                 .dst_access_type = target_access,
             });
-            pool_buffer.access = target_access;
+            pool_buffer.set_access(target_access);
         }
     }
     for (auto handle : read_textures) {
@@ -632,13 +718,13 @@ auto get_shader_barriers(
             // Only add storage_resource_read when texture cannot be used as a sampled texture
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
-        if (need_barrier(pool_texture.access, target_access)) {
+        if (need_barrier(pool_texture.get_access(), target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = pool_texture.texture->rhi_texture(),
-                .src_access_type = pool_texture.access,
+                .src_access_type = pool_texture.get_access(),
                 .dst_access_type = target_access,
             });
-            pool_texture.access = target_access;
+            pool_texture.set_access(target_access);
         }
     }
     for (auto handle : write_buffers) {
@@ -647,13 +733,13 @@ auto get_shader_barriers(
         if (pool_buffer.buffer->desc().usages.contains_any(rhi::BufferUsage::storage_read_write)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_write);
         }
-        if (need_barrier(pool_buffer.access, target_access)) {
+        if (need_barrier(pool_buffer.get_access(), target_access)) {
             buffer_barriers.push_back(rhi::BufferBarrier{
                 .buffer = pool_buffer.buffer->rhi_buffer(),
-                .src_access_type = pool_buffer.access,
+                .src_access_type = pool_buffer.get_access(),
                 .dst_access_type = target_access,
             });
-            pool_buffer.access = target_access;
+            pool_buffer.set_access(target_access);
         }
     }
     for (auto handle : write_textures) {
@@ -662,13 +748,13 @@ auto get_shader_barriers(
         if (pool_texture.texture->desc().usages.contains_any(rhi::TextureUsage::storage_read_write)) {
             target_access.set(rhi::ResourceAccessType::storage_resource_write);
         }
-        if (need_barrier(pool_texture.access, target_access)) {
+        if (need_barrier(pool_texture.get_access(), target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = pool_texture.texture->rhi_texture(),
-                .src_access_type = pool_texture.access,
+                .src_access_type = pool_texture.get_access(),
                 .dst_access_type = target_access,
             });
-            pool_texture.access = target_access;
+            pool_texture.set_access(target_access);
         }
     }
 }
@@ -696,26 +782,30 @@ auto RenderGraph::Impl::GraphicsPassNode::set_barriers(
 
         auto const& target = target_opt.value();
         auto& texture = rg.pool_texture(target.handle);
-        if (need_barrier(texture.access, target_access)) {
+        if (need_barrier(texture.get_access(), target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = texture.texture->rhi_texture(),
-                .src_access_type = texture.access,
+                .src_access_type = texture.get_access(),
                 .dst_access_type = target_access,
             });
-            texture.access = target_access;
+            texture.set_access(target_access);
         }
     }
     if (builder.depth_stencil_target_.has_value()) {
-        target_access = rhi::ResourceAccessType::depth_stencil_attachment_write;
+        // TODO - handle `read_only` correctly
+        // TODO - seperate to `depth_read_only` and `stencil_read_only`
+        target_access = builder.depth_stencil_target_.value().read_only
+            ? rhi::ResourceAccessType::depth_stencil_attachment_read
+            : rhi::ResourceAccessType::depth_stencil_attachment_write;
         auto const& target = builder.depth_stencil_target_.value();
         auto& texture = rg.pool_texture(target.handle);
-        if (need_barrier(texture.access, target_access)) {
+        if (need_barrier(texture.get_access(), target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = texture.texture->rhi_texture(),
-                .src_access_type = texture.access,
+                .src_access_type = texture.get_access(),
                 .dst_access_type = target_access,
             });
-            texture.access = target_access;
+            texture.set_access(target_access);
         }
     }
 
@@ -861,13 +951,13 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
     {
         auto& pool_texture = rg.pool_texture(src);
         auto target_access = rhi::ResourceAccessType::sampled_texture_read;
-        if (need_barrier(pool_texture.access, target_access)) {
+        if (need_barrier(pool_texture.get_access(), target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = pool_texture.texture->rhi_texture(),
-                .src_access_type = pool_texture.access,
+                .src_access_type = pool_texture.get_access(),
                 .dst_access_type = target_access,
             });
-            pool_texture.access = target_access;
+            pool_texture.set_access(target_access);
         }
     }
     {
@@ -875,13 +965,13 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
         auto target_access = rhi::is_depth_stencil_format(pool_texture.texture->desc().format)
             ? rhi::ResourceAccessType::depth_stencil_attachment_write
             : rhi::ResourceAccessType::color_attachment_write;
-        if (need_barrier(pool_texture.access, target_access)) {
+        if (need_barrier(pool_texture.get_access(), target_access)) {
             texture_barriers.push_back(rhi::TextureBarrier{
                 .texture = pool_texture.texture->rhi_texture(),
-                .src_access_type = pool_texture.access,
+                .src_access_type = pool_texture.get_access(),
                 .dst_access_type = target_access,
             });
-            pool_texture.access = target_access;
+            pool_texture.set_access(target_access);
         }
     }
 
@@ -915,13 +1005,13 @@ auto RenderGraph::Impl::PresentPassNode::set_barriers(
 ) -> void {
     auto target_access = rhi::ResourceAccessType::sampled_texture_read;
     auto& pool_texture = rg.pool_texture(texture);
-    if (need_barrier(pool_texture.access, target_access)) {
+    if (need_barrier(pool_texture.get_access(), target_access)) {
         rhi::TextureBarrier barrier{
             .texture = pool_texture.texture->rhi_texture(),
-            .src_access_type = pool_texture.access,
+            .src_access_type = pool_texture.get_access(),
             .dst_access_type = target_access,
         };
-        pool_texture.access = target_access;
+        pool_texture.set_access(target_access);
         cmd_encoder->resource_barriers({}, {barrier});
     }
 }
@@ -995,17 +1085,17 @@ auto RenderGraph::set_command_encoder(Ref<rhi::CommandEncoder> cmd_encoder) -> v
     impl()->set_command_encoder(cmd_encoder);
 }
 
-auto RenderGraph::add_read_edge(size_t pass_index, BufferHandle handle) -> void {
-    impl()->add_read_edge(pass_index, handle);
+auto RenderGraph::add_read_edge(size_t pass_index, BufferHandle handle) -> BufferHandle {
+    return impl()->add_read_edge(pass_index, handle);
 }
-auto RenderGraph::add_read_edge(size_t pass_index, TextureHandle handle) -> void {
-    impl()->add_read_edge(pass_index, handle);
+auto RenderGraph::add_read_edge(size_t pass_index, TextureHandle handle) -> TextureHandle {
+    return impl()->add_read_edge(pass_index, handle);
 }
-auto RenderGraph::add_write_edge(size_t pass_index, BufferHandle handle) -> void {
-    impl()->add_write_edge(pass_index, handle);
+auto RenderGraph::add_write_edge(size_t pass_index, BufferHandle handle) -> BufferHandle {
+    return impl()->add_write_edge(pass_index, handle);
 }
-auto RenderGraph::add_write_edge(size_t pass_index, TextureHandle handle) -> void {
-    impl()->add_write_edge(pass_index, handle);
+auto RenderGraph::add_write_edge(size_t pass_index, TextureHandle handle) -> TextureHandle {
+    return impl()->add_write_edge(pass_index, handle);
 }
 
 }

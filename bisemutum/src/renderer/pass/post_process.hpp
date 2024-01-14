@@ -13,8 +13,6 @@ struct PostProcessPass final {
 
     PostProcessPass();
 
-    auto find_volume(gfx::Camera const& camera) -> PostProcessVolumeComponent const&;
-
     auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
 
     gfx::FragmentShader fragment_shader;

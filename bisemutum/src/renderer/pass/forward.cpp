@@ -31,13 +31,6 @@ BI_SHADER_PARAMETERS_BEGIN(ForwardPassParams)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
 BI_SHADER_PARAMETERS_END(ForwardPassParams)
 
-BI_SHADER_PARAMETERS_BEGIN(SkyboxPassParams)
-    BI_SHADER_PARAMETER(float3, skybox_color)
-    BI_SHADER_PARAMETER(float4x4, skybox_transform)
-    BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox)
-    BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
-BI_SHADER_PARAMETERS_END(SkyboxPassParams)
-
 struct PassData final {
     gfx::TextureHandle output;
     gfx::TextureHandle depth;
@@ -49,17 +42,11 @@ struct PassData final {
 
 ForwardPass::ForwardPass() {
     fragment_shader_params.initialize<ForwardPassParams>();
+
     fragment_shader.source_path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
     fragment_shader.source_entry = "forward_pass_fs";
     fragment_shader.set_shader_params_struct<ForwardPassParams>();
     fragment_shader.cull_mode = rhi::CullMode::back_face;
-
-    skybox_shader_params.initialize<SkyboxPassParams>();
-    skybox_shader.source_path = "/bisemutum/shaders/renderer/skybox_pass.hlsl";
-    skybox_shader.source_entry = "skybox_pass_fs";
-    skybox_shader.set_shader_params_struct<SkyboxPassParams>();
-    skybox_shader.depth_write = false;
-    skybox_shader.depth_compare_op = rhi::CompareOp::less_equal;
 }
 
 auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
@@ -84,12 +71,6 @@ auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox
     params->skybox_specular_filtered = {&skybox_ctx.specular_filtered};
     params->skybox_brdf_lut = {&skybox_ctx.brdf_lut};
     params->skybox_sampler = {skybox_ctx.skybox_sampler};
-
-    auto skybox_params = skybox_shader_params.mutable_typed_data<SkyboxPassParams>();
-    skybox_params->skybox_color = current_skybox.color;
-    skybox_params->skybox_transform = current_skybox.transform;
-    skybox_params->skybox = {current_skybox.tex};
-    skybox_params->skybox_sampler = {skybox_ctx.skybox_sampler};
 }
 
 auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData {
@@ -122,7 +103,6 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
 
     builder.read(input.dir_lighst_shadow_map);
 
-    builder.read(input.skybox.skybox);
     builder.read(input.skybox.diffuse_irradiance);
     builder.read(input.skybox.specular_filtered);
     builder.read(input.skybox.brdf_lut);
@@ -134,12 +114,10 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
     });
 
     fragment_shader_params.update_uniform_buffer();
-    skybox_shader_params.update_uniform_buffer();
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
             ctx.render_list(pass_data->list, fragment_shader_params);
-            ctx.render_full_screen(camera, skybox_shader, skybox_shader_params);
         }
     );
 

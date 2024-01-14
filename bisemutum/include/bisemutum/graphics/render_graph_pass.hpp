@@ -9,7 +9,6 @@
 #include "../rhi/command.hpp"
 #include "../math/math.hpp"
 #include "../prelude/ref.hpp"
-#include "../containers/hash.hpp"
 
 namespace bi::gfx {
 
@@ -67,6 +66,7 @@ struct GraphicsPassDepthStencilTarget final {
     Option<std::pair<float, uint8_t>> clear_value = {};
     bool store = true;
     bool generate_mipmaps = false;
+    bool read_only = false;
 };
 struct GraphicsPassDepthStencilTargetBuilder final {
     GraphicsPassDepthStencilTargetBuilder(TextureHandle handle);
@@ -78,6 +78,7 @@ struct GraphicsPassDepthStencilTargetBuilder final {
     auto clear_depth_stencil(float depth = 1.0f, uint8_t stencil = 0) -> GraphicsPassDepthStencilTargetBuilder&;
     auto dont_store() -> GraphicsPassDepthStencilTargetBuilder&;
     auto generate_mipmaps() -> GraphicsPassDepthStencilTargetBuilder&;
+    auto read_only() -> GraphicsPassDepthStencilTargetBuilder&;
 
 private:
     GraphicsPassDepthStencilTarget target_;

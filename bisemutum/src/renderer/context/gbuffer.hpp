@@ -7,8 +7,8 @@ namespace bi {
 struct GBufferTextures final {
     gfx::TextureHandle base_color;
     gfx::TextureHandle normal_roughness;
-    gfx::TextureHandle specular_model;
-    gfx::TextureHandle additional_0;
+    gfx::TextureHandle fresnel;
+    gfx::TextureHandle material_0;
 
     static inline constexpr uint32_t count = 4;
 

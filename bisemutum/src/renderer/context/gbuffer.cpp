@@ -16,12 +16,12 @@ auto GBufferTextures::add_textures(gfx::RenderGraph& rg, uint32_t width, uint32_
             .dim_2d(rhi::ResourceFormat::rgba16_sfloat, width, height)
             .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
     });
-    specular_model = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    fresnel = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(rhi::ResourceFormat::rgba16_sfloat, width, height)
+            .dim_2d(rhi::ResourceFormat::rgba16_unorm, width, height)
             .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
     });
-    additional_0 = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    material_0 = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(rhi::ResourceFormat::rgba8_unorm, width, height)
             .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
@@ -31,16 +31,16 @@ auto GBufferTextures::add_textures(gfx::RenderGraph& rg, uint32_t width, uint32_
 auto GBufferTextures::use_color(gfx::GraphicsPassBuilder& builder) -> void {
     builder.use_color(0, gfx::GraphicsPassColorTargetBuilder{base_color}.clear_color());
     builder.use_color(1, gfx::GraphicsPassColorTargetBuilder{normal_roughness}.clear_color());
-    builder.use_color(2, gfx::GraphicsPassColorTargetBuilder{specular_model}.clear_color());
-    builder.use_color(3, gfx::GraphicsPassColorTargetBuilder{additional_0}.clear_color());
+    builder.use_color(2, gfx::GraphicsPassColorTargetBuilder{fresnel}.clear_color());
+    builder.use_color(3, gfx::GraphicsPassColorTargetBuilder{material_0}.clear_color());
 }
 
 auto GBufferTextures::read(gfx::GraphicsPassBuilder& builder) const -> GBufferTextures {
     GBufferTextures ret;
     ret.base_color = builder.read(base_color);
     ret.normal_roughness = builder.read(normal_roughness);
-    ret.specular_model = builder.read(specular_model);
-    ret.additional_0 = builder.read(additional_0);
+    ret.fresnel = builder.read(fresnel);
+    ret.material_0 = builder.read(material_0);
     return ret;
 }
 

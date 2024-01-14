@@ -101,6 +101,7 @@ auto SkyboxPrecomputePass::render(gfx::RenderGraph& rg, InputData const& input) 
 
         pd_diffuse->skybox = builder_diffuse.read(skybox.skybox);
         pd_diffuse->diffuse_irradiance = builder_diffuse.write(skybox.diffuse_irradiance);
+        skybox.diffuse_irradiance = pd_diffuse->diffuse_irradiance;
 
         builder_diffuse.set_execution_function<SkyboxPrecomputeDiffusePassData>(
             [this, input](CRef<SkyboxPrecomputeDiffusePassData> pass_data, gfx::ComputePassContext const& ctx) {
@@ -130,6 +131,7 @@ auto SkyboxPrecomputePass::render(gfx::RenderGraph& rg, InputData const& input) 
 
             pd_specular->skybox = builder_specular.read(skybox.skybox);
             pd_specular->specular_filtered = builder_specular.write(skybox.specular_filtered);
+            skybox.specular_filtered = pd_specular->specular_filtered;
 
             builder_specular.set_execution_function<SkyboxPrecomputeSpecularPassData>(
                 [this, i, num_specular_levels, input](

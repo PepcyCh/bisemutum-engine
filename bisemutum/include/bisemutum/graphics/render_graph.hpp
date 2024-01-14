@@ -89,10 +89,10 @@ private:
 
     friend GraphicsPassBuilder;
     friend ComputePassBuilder;
-    auto add_read_edge(size_t pass_index, BufferHandle handle) -> void;
-    auto add_read_edge(size_t pass_index, TextureHandle handle) -> void;
-    auto add_write_edge(size_t pass_index, BufferHandle handle) -> void;
-    auto add_write_edge(size_t pass_index, TextureHandle handle) -> void;
+    auto add_read_edge(size_t pass_index, BufferHandle handle) -> BufferHandle;
+    auto add_read_edge(size_t pass_index, TextureHandle handle) -> TextureHandle;
+    auto add_write_edge(size_t pass_index, BufferHandle handle) -> BufferHandle;
+    auto add_write_edge(size_t pass_index, TextureHandle handle) -> TextureHandle;
 };
 
 }

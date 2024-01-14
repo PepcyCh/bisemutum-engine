@@ -1,113 +1,24 @@
 [[objects]]
-name = 'Renderer Override'
+name = 'Camera'
 
     [[objects.components]]
     type = 'Transform'
 
         [objects.components.value]
-        rotation = [ 0.0, 0.0, -0.0 ]
+        rotation = [ -9.3324127197265625, 63.346549987792969, 17.90446662902832 ]
         scaling = [ 1.0, 1.0, 1.0 ]
-        translation = [ 0.0, 0.0, 0.0 ]
+        translation = [ 10.5, 4.5, 6.0 ]
 
     [[objects.components]]
-    type = 'BasicRendererOverrideVolume'
+    type = 'CameraComponent'
 
         [objects.components.value]
-        global = true
-        priority = 0.0
-
-            [objects.components.value.settings]
-            mode = 'deferred'
-
-[[objects]]
-name = 'Post Process Volume'
-
-    [[objects.components]]
-    type = 'Transform'
-
-        [objects.components.value]
-        rotation = [ 0.0, 0.0, -0.0 ]
-        scaling = [ 1.0, 1.0, 1.0 ]
-        translation = [ 0.0, 0.0, 0.0 ]
-
-    [[objects.components]]
-    type = 'PostProcessVolumeComponent'
-
-        [objects.components.value]
-        bloom = true
-        bloom_threshold = 1.5
-        bloom_threshold_softness = 0.5
-        global = true
-        priority = 0.0
-
-[[objects]]
-name = 'Plane'
-
-    [[objects.components]]
-    type = 'Transform'
-
-        [objects.components.value]
-        rotation = [ 0.0, 0.0, 0.0 ]
-        scaling = [ 5.0, 1.0, 5.0 ]
-        translation = [ 0.0, -1.0, 0.0 ]
-
-    [[objects.components]]
-    type = 'StaticMeshComponent'
-
-        [objects.components.value.static_mesh]
-        asset_id = 0
-
-    [[objects.components]]
-    type = 'MeshRendererComponent'
-
-        [objects.components.value.material]
-        asset_id = 3
-
-[[objects]]
-name = 'Cube'
-
-    [[objects.components]]
-    type = 'Transform'
-
-        [objects.components.value]
-        rotation = [ 0.0, 30.000001907348633, 0.0 ]
-        scaling = [ 1.0, 1.0, 1.0 ]
-        translation = [ 1.0, 0.0, -1.0 ]
-
-    [[objects.components]]
-    type = 'StaticMeshComponent'
-
-        [objects.components.value.static_mesh]
-        asset_id = 1
-
-    [[objects.components]]
-    type = 'MeshRendererComponent'
-
-        [objects.components.value.material]
-        asset_id = 5
-
-[[objects]]
-name = 'Sphere'
-
-    [[objects.components]]
-    type = 'Transform'
-
-        [objects.components.value]
-        rotation = [ 0.0, 0.0, 0.0 ]
-        scaling = [ 1.0, 1.0, 1.0 ]
-        translation = [ -1.0, 0.0, 1.0 ]
-
-    [[objects.components]]
-    type = 'StaticMeshComponent'
-
-        [objects.components.value.static_mesh]
-        asset_id = 2
-
-    [[objects.components]]
-    type = 'MeshRendererComponent'
-
-        [objects.components.value.material]
-        asset_id = 4
+        far_z = 100000.0
+        near_z = 0.0010000000474974513
+        projection_type = 'perspective'
+        render_target_format = 'rgba16_sfloat'
+        render_target_size = [ 1298, 637 ]
+        yfov = 30.0
 
 [[objects]]
 name = 'Dir Light'
@@ -133,23 +44,112 @@ name = 'Dir Light'
         strength = 4.0
 
 [[objects]]
-name = 'Camera'
+name = 'Sphere'
 
     [[objects.components]]
     type = 'Transform'
 
         [objects.components.value]
-        rotation = [ -9.3324127197265625, 63.346549987792969, 17.90446662902832 ]
+        rotation = [ 0.0, 0.0, 0.0 ]
         scaling = [ 1.0, 1.0, 1.0 ]
-        translation = [ 10.5, 4.5, 6.0 ]
+        translation = [ -1.0, 0.0, 1.0 ]
 
     [[objects.components]]
-    type = 'CameraComponent'
+    type = 'StaticMeshComponent'
+
+        [objects.components.value.static_mesh]
+        asset_id = 2
+
+    [[objects.components]]
+    type = 'MeshRendererComponent'
+
+        [objects.components.value.material]
+        asset_id = 4
+
+[[objects]]
+name = 'Cube'
+
+    [[objects.components]]
+    type = 'Transform'
 
         [objects.components.value]
-        far_z = 100000.0
-        near_z = 0.0010000000474974513
-        projection_type = 'perspective'
-        render_target_format = 'rgba16_sfloat'
-        render_target_size = [ 1298, 637 ]
-        yfov = 30.0
+        rotation = [ 0.0, 30.000001907348633, 0.0 ]
+        scaling = [ 1.0, 1.0, 1.0 ]
+        translation = [ 1.0, 0.0, -1.0 ]
+
+    [[objects.components]]
+    type = 'StaticMeshComponent'
+
+        [objects.components.value.static_mesh]
+        asset_id = 1
+
+    [[objects.components]]
+    type = 'MeshRendererComponent'
+
+        [objects.components.value.material]
+        asset_id = 5
+
+[[objects]]
+name = 'Plane'
+
+    [[objects.components]]
+    type = 'Transform'
+
+        [objects.components.value]
+        rotation = [ 0.0, 0.0, 0.0 ]
+        scaling = [ 5.0, 1.0, 5.0 ]
+        translation = [ 0.0, -1.0, 0.0 ]
+
+    [[objects.components]]
+    type = 'StaticMeshComponent'
+
+        [objects.components.value.static_mesh]
+        asset_id = 0
+
+    [[objects.components]]
+    type = 'MeshRendererComponent'
+
+        [objects.components.value.material]
+        asset_id = 3
+
+[[objects]]
+name = 'Post Process Volume'
+
+    [[objects.components]]
+    type = 'Transform'
+
+        [objects.components.value]
+        rotation = [ 0.0, 0.0, -0.0 ]
+        scaling = [ 1.0, 1.0, 1.0 ]
+        translation = [ 0.0, 0.0, 0.0 ]
+
+    [[objects.components]]
+    type = 'PostProcessVolumeComponent'
+
+        [objects.components.value]
+        bloom = true
+        bloom_threshold = 1.5
+        bloom_threshold_softness = 0.5
+        global = true
+        priority = 0.0
+
+[[objects]]
+name = 'Renderer Override'
+
+    [[objects.components]]
+    type = 'Transform'
+
+        [objects.components.value]
+        rotation = [ 0.0, 0.0, -0.0 ]
+        scaling = [ 1.0, 1.0, 1.0 ]
+        translation = [ 0.0, 0.0, 0.0 ]
+
+    [[objects.components]]
+    type = 'BasicRendererOverrideVolume'
+
+        [objects.components.value]
+        global = true
+        priority = 0.0
+
+            [objects.components.value.settings]
+            mode = 'deferred'

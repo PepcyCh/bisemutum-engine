@@ -3,6 +3,14 @@
 #include "frame.hlsl"
 #include "../math.hlsl"
 
+float2 pack_u32_to_unorm16x2(uint x) {
+    return float2((x & 0xffffu) / 65536.0, (x >> 16) / 65536.0);
+}
+uint unpack_u32_from_unorm16x2(float2 x) {
+    uint2 ux = (uint2) (x * 65535.5);
+    return ux.x | (ux.y << 16);
+}
+
 uint pack_color_rg11b10(float3 color) {
     return uint(color.x * 0x7ff) | (uint(color.y * 0x7ff) << 11) | (uint(color.z * 0x3ff) << 22);
 }

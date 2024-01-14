@@ -65,7 +65,7 @@ struct Option final {
 
     auto operator=(Option<T> const& rhs) noexcept -> Option& {
         reset();
-        rhs.has_value_ = has_value_;
+        has_value_ = rhs.has_value_;
         if (has_value_) {
             new (memory_) T(rhs.value());
         }
