@@ -3,6 +3,7 @@
 #include <array>
 
 #include <bisemutum/rhi/device.hpp>
+#include <bisemutum/prelude/hash.hpp>
 #include <dxgi1_6.h>
 #include <d3d12.h>
 #include <D3D12MemAlloc.h>
@@ -24,6 +25,8 @@ struct DeviceD3D12 final : Device {
     static Box<DeviceD3D12> create(DeviceDesc const& desc);
 
     auto get_backend() const -> Backend override { return Backend::d3d12; }
+
+    auto raytracing_shader_binding_table_requirements() const -> RaytracingShaderBindingTableRequirements override;
 
     auto get_queue(QueueType type) -> Ref<Queue> override;
 
@@ -61,7 +64,7 @@ struct DeviceD3D12 final : Device {
 
     auto initialize_pipeline_cache_from(std::string_view cache_file_path) -> void override;
 
-    auto raw() const -> ID3D12Device2* { return device_.Get(); }
+    auto raw() const -> ID3D12Device5* { return device_.Get(); }
 
     auto raw_factory() const -> IDXGIFactory6* { return factory_.Get(); }
 
@@ -71,6 +74,8 @@ struct DeviceD3D12 final : Device {
 
     auto rtv_heap() const -> Ref<RenderTargetDescriptorHeapD3D12> { return rtv_heap_.ref(); }
     auto dsv_heap() const -> Ref<RenderTargetDescriptorHeapD3D12> { return dsv_heap_.ref(); }
+
+    auto get_local_root_signature(uint32_t size_in_bytes, uint32_t space, uint32_t register_) -> ID3D12RootSignature*;
 
 private:
     auto initialize_device_properties() -> void;
@@ -84,7 +89,7 @@ private:
     IDXGIAdapter3* adapter_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Debug3> debug_ = nullptr;
     Microsoft::WRL::ComPtr<IDXGIFactory6> factory_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Device2> device_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Device5> device_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12InfoQueue> info_queue_ = nullptr;
 
     PipelineStateCacheD3D12 pipeline_cahce_;
@@ -96,6 +101,11 @@ private:
 
     Box<RenderTargetDescriptorHeapD3D12> rtv_heap_;
     Box<RenderTargetDescriptorHeapD3D12> dsv_heap_;
+
+    std::unordered_map<
+        std::tuple<uint32_t, uint32_t, uint32_t>,
+        Microsoft::WRL::ComPtr<ID3D12RootSignature>
+    > caced_local_root_signatures_;
 };
 
 }

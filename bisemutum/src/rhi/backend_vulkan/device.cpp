@@ -39,13 +39,21 @@ VKAPI_ATTR auto VKAPI_CALL vk_debug_callback(
     return VK_FALSE;
 }
 
-auto is_device_extension_supported(std::vector<VkExtensionProperties> const& ext_props, char const* ext_name)  -> bool {
+auto is_device_extension_supported(CSpan<VkExtensionProperties> ext_props, char const* ext_name) -> bool {
     return std::find_if(
         ext_props.begin(), ext_props.end(),
         [ext_name](VkExtensionProperties const& prop) {
             return strcmp(prop.extensionName, ext_name) == 0;
         }
     ) != ext_props.end();
+}
+auto is_device_extensions_supported(CSpan<VkExtensionProperties> ext_props, CSpan<char const*> ext_names) -> bool {
+    for (auto ext_name : ext_names) {
+        if (!is_device_extension_supported(ext_props, ext_name)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 auto to_vk_image_view_type(TextureViewType view_type) -> VkImageViewType {
@@ -275,6 +283,28 @@ auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
         enabled_device_extensions.push_back(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
     }
 
+    device_properties_.raytracing_pipeline = is_device_extensions_supported(
+        supported_device_extensions, {
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+            VK_KHR_RAY_QUERY_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+        }
+    );
+    if (device_properties_.raytracing_pipeline) {
+        enabled_device_extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        enabled_device_extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        enabled_device_extensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        enabled_device_extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+    }
+
+    device_properties_.meshlet_pipeline = is_device_extension_supported(
+        supported_device_extensions, VK_EXT_MESH_SHADER_EXTENSION_NAME
+    );
+    if (device_properties_.meshlet_pipeline) {
+        enabled_device_extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+    }
+
     VkPhysicalDeviceFeatures2 device_features{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
         .pNext = nullptr,
@@ -296,6 +326,26 @@ auto DeviceVulkan::pick_device(DeviceDesc const& desc) -> void {
     };
     if (support_descriptor_buffer_) {
         connect_vk_p_next_chain(&device_features, &desciptor_buffer_features);
+    }
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+    };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR raytracing_pipeline_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+    };
+    VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+    };
+    if (device_properties_.raytracing_pipeline) {
+        connect_vk_p_next_chain(&device_features, &acceleration_structure_features);
+        connect_vk_p_next_chain(&device_features, &raytracing_pipeline_features);
+        connect_vk_p_next_chain(&device_features, &ray_query_features);
+    }
+    VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+    };
+    if (device_properties_.meshlet_pipeline) {
+        connect_vk_p_next_chain(&device_features, &mesh_shader_features);
     }
 
     vkGetPhysicalDeviceFeatures2(physical_device_, &device_features);
@@ -345,6 +395,21 @@ auto DeviceVulkan::initialize_device_properties() -> void {
     device_properties_.max_num_bind_groups = physical_device_props_.limits.maxBoundDescriptorSets;
     device_properties_.separate_sampler_heap = support_descriptor_buffer_;
     device_properties_.descriptor_heap_suballocation = support_descriptor_buffer_;
+
+    if (device_properties_.raytracing_pipeline) {
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rt_pipeline_props{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
+            .pNext = nullptr,
+        };
+        VkPhysicalDeviceProperties2 physical_device_properties{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+            .pNext = &rt_pipeline_props,
+        };
+        vkGetPhysicalDeviceProperties2(physical_device_, &physical_device_properties);
+        rt_sbt_requirements_.handle_size = rt_pipeline_props.shaderGroupHandleSize;
+        rt_sbt_requirements_.handle_alignment = rt_pipeline_props.shaderGroupHandleAlignment;
+        rt_sbt_requirements_.base_alignment = rt_pipeline_props.shaderGroupBaseAlignment;
+    }
 }
 
 auto DeviceVulkan::init_descriptor_sizes() -> void {
@@ -442,6 +507,10 @@ auto DeviceVulkan::immutable_samplers_heap() -> Ptr<DescriptorHeapVulkanLegacy> 
         immutable_samplers_heap_ = Box<DescriptorHeapVulkanLegacy>::make(unsafe_make_ref(this), heap_desc);
     }
     return immutable_samplers_heap_.get();
+}
+
+auto DeviceVulkan::raytracing_shader_binding_table_requirements() const -> RaytracingShaderBindingTableRequirements {
+    return rt_sbt_requirements_;
 }
 
 auto DeviceVulkan::get_queue(QueueType type) -> Ref<Queue> {

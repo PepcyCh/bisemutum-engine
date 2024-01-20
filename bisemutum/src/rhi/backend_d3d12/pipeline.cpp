@@ -3,6 +3,8 @@
 #include <algorithm>
 
 #include <bisemutum/prelude/misc.hpp>
+#include <bisemutum/prelude/math.hpp>
+#include <bisemutum/runtime/logger.hpp>
 
 #include "device.hpp"
 #include "shader.hpp"
@@ -12,6 +14,13 @@
 namespace bi::rhi {
 
 namespace {
+
+auto chars_to_wstring(std::string_view str) -> std::wstring {
+    auto length = MultiByteToWideChar(CP_UTF8, 0, str.data(), str.size(), nullptr, 0);
+    std::wstring ret(length, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, str.data(), str.size(), ret.data(), length);
+    return ret;
+}
 
 auto to_dx_descriptor_range_type(DescriptorType type) -> D3D12_DESCRIPTOR_RANGE_TYPE {
     switch (type) {
@@ -148,7 +157,7 @@ auto to_dx_blend_op(BlendOp op) -> D3D12_BLEND_OP {
     switch (op) {
         case BlendOp::add: return D3D12_BLEND_OP_ADD;
         case BlendOp::subtract: return D3D12_BLEND_OP_SUBTRACT;
-        case BlendOp::reverse_subtrace: return D3D12_BLEND_OP_REV_SUBTRACT;
+        case BlendOp::reverse_subtract: return D3D12_BLEND_OP_REV_SUBTRACT;
         case BlendOp::min: return D3D12_BLEND_OP_MIN;
         case BlendOp::max: return D3D12_BLEND_OP_MAX;
         default: unreachable();
@@ -407,7 +416,7 @@ ComputePipelineD3D12::ComputePipelineD3D12(Ref<DeviceD3D12> device, ComputePipel
     );
     root_constant_index_ = desc_.bind_groups_layout.size();
 
-    auto shader_dx = desc.compute.shader_module.cast_to<const ShaderModuleD3D12>();
+    auto shader_dx = desc_.compute.shader_module.cast_to<const ShaderModuleD3D12>();
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pipeline_desc{
         .pRootSignature = root_signature_.Get(),
@@ -418,6 +427,252 @@ ComputePipelineD3D12::ComputePipelineD3D12(Ref<DeviceD3D12> device, ComputePipel
     };
 
     device_->pipeline_cache().create_compute_pipeline(desc_, pipeline_desc, pipeline_);
+}
+
+
+RaytracingPipelineD3D12::RaytracingPipelineD3D12(Ref<DeviceD3D12> device, RaytracingPipelineDesc const& desc)
+    : RaytracingPipeline(desc), device_(device)
+{
+    create_pipeline_layout(
+        device_, root_signature_,
+        desc_.bind_groups_layout, desc_.static_samplers, desc_.push_constants, false
+    );
+    root_constant_index_ = desc_.bind_groups_layout.size();
+
+    std::vector<D3D12_STATE_SUBOBJECT> subobjects;
+    // auto estimated_max_num_subobjects = 2 // raygen (1 shader + 1 LRS)
+    //     + desc_.shaders.miss.size() * 2 // miss (1 shader + 1 LRS)
+    //     + desc_.shaders.hit_group.size() * 5 // hit groups (3 shaders + 1 hit group + 1 LRS)
+    //     + desc_.shaders.callable.size() * 2 // callable (1 shader + 1 LRS)
+    //     + 3; // GRS + shader config + pipeline config
+    // subobjects.reserve(estimated_max_num_subobjects);
+
+    std::list<D3D12_DXIL_LIBRARY_DESC> shaders;
+    std::list<D3D12_EXPORT_DESC> shader_exports;
+    std::list<D3D12_HIT_GROUP_DESC> hit_groups;
+    std::list<D3D12_LOCAL_ROOT_SIGNATURE> local_root_signatures;
+    std::list<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION> lrs_associations;
+    std::list<std::wstring> owned_strings;
+
+    const auto add_subobject = [&](D3D12_STATE_SUBOBJECT_TYPE type, void* ptr) {
+        auto& subobject = subobjects.emplace_back();
+        subobject.Type = type;
+        subobject.pDesc = ptr;
+    };
+    const auto add_dxil_shader = [&](PipelineShader const& pipeline_shader, std::wstring* p_wstr = nullptr) {
+        auto& shader = shaders.emplace_back();
+        auto& export_desc = shader_exports.emplace_back();
+
+        shader.DXILLibrary = pipeline_shader.shader_module.cast_to<const ShaderModuleD3D12>()->raw_bytecode();
+        shader.NumExports = 1;
+        shader.pExports = &export_desc;
+
+        if (!p_wstr) {
+            p_wstr = &owned_strings.emplace_back();
+        }
+        *p_wstr = chars_to_wstring(pipeline_shader.entry);
+        export_desc.Name = p_wstr->c_str();
+        export_desc.Flags = D3D12_EXPORT_FLAG_NONE;
+        export_desc.ExportToRename = nullptr;
+
+        add_subobject(D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &shader);
+    };
+
+    // DXIL shaders
+    add_dxil_shader(desc_.shaders.raygen.shader, &export_names_.raygen);
+    export_names_.miss.resize(desc_.shaders.miss.size());
+    for (size_t i = 0; auto& miss : desc_.shaders.miss) {
+        add_dxil_shader(miss.shader, &export_names_.miss[i]);
+        ++i;
+    }
+    export_names_.hit_group.resize(desc_.shaders.hit_group.size());
+    for (size_t i = 0; auto& hit : desc_.shaders.hit_group) {
+        auto& hit_group = hit_groups.emplace_back();
+        hit_group.Type = hit.intersection.has_value()
+            ? D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE
+            : D3D12_HIT_GROUP_TYPE_TRIANGLES;
+        hit_group.ClosestHitShaderImport = nullptr;
+        hit_group.AnyHitShaderImport = nullptr;
+        hit_group.IntersectionShaderImport = nullptr;
+
+        export_names_.hit_group[i] = L"hit_group_" + std::to_wstring(i);
+        hit_group.HitGroupExport = export_names_.hit_group[i].c_str();
+
+        if (auto& shader = hit.closest_hit; shader) {
+            add_dxil_shader(shader.value());
+            hit_group.ClosestHitShaderImport = shader_exports.back().Name;
+        }
+        if (auto& shader = hit.any_hit; shader) {
+            add_dxil_shader(shader.value());
+            hit_group.AnyHitShaderImport = shader_exports.back().Name;
+        }
+        if (auto& shader = hit.intersection; shader) {
+            add_dxil_shader(shader.value());
+            hit_group.IntersectionShaderImport = shader_exports.back().Name;
+        }
+
+        add_subobject(D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &hit_group);
+
+        ++i;
+    }
+    export_names_.callable.resize(desc_.shaders.callable.size());
+    for (size_t i = 0; auto& callable : desc_.shaders.callable) {
+        add_dxil_shader(callable.shader, &export_names_.callable[i]);
+        ++i;
+    }
+
+    // shader & pipeline config
+    D3D12_RAYTRACING_SHADER_CONFIG shader_config{
+        .MaxPayloadSizeInBytes = desc_.state.max_ray_payload_size,
+        .MaxAttributeSizeInBytes = desc_.state.max_hit_attribute_size,
+    };
+    add_subobject(D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &shader_config);
+    D3D12_RAYTRACING_PIPELINE_CONFIG1 pipeline_config{
+        .MaxTraceRecursionDepth = desc_.state.max_recursive_depth,
+        .Flags = static_cast<D3D12_RAYTRACING_PIPELINE_FLAGS>(
+            desc_.state.skip_procedural ? D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_PROCEDURAL_PRIMITIVES : 0
+        ),
+    };
+    add_subobject(D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1, &pipeline_config);
+
+    // global root signature
+    D3D12_GLOBAL_ROOT_SIGNATURE global_root_signature{
+        .pGlobalRootSignature = root_signature_.Get(),
+    };
+    add_subobject(D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &global_root_signature);
+
+    // local root signature & associations (must be at the last)
+    std::unordered_map<ID3D12RootSignature*, std::vector<wchar_t const*>> lrs_associations_map;
+    size_t num_associations = 0;
+    if (desc_.shader_record_sizes.raygen > 0) {
+        auto lrs = device_->get_local_root_signature(
+            desc_.shader_record_sizes.raygen,
+            d3d12_local_root_signature_space, d3d12_local_root_signature_register_raygen
+        );
+        lrs_associations_map[lrs].push_back(export_names_.raygen.c_str());
+        ++num_associations;
+    }
+    if (desc_.shader_record_sizes.miss > 0) {
+        auto lrs = device_->get_local_root_signature(
+            desc_.shader_record_sizes.miss,
+            d3d12_local_root_signature_space, d3d12_local_root_signature_register_miss
+        );
+        for (auto& name : export_names_.miss) {
+            lrs_associations_map[lrs].push_back(name.c_str());
+        }
+        num_associations += export_names_.miss.size();
+    }
+    if (desc_.shader_record_sizes.hit_group > 0) {
+        auto lrs = device_->get_local_root_signature(
+            desc_.shader_record_sizes.hit_group,
+            d3d12_local_root_signature_space, d3d12_local_root_signature_register_hit_group
+        );
+        for (auto& name : export_names_.hit_group) {
+            lrs_associations_map[lrs].push_back(name.c_str());
+        }
+        num_associations += export_names_.hit_group.size();
+    }
+    if (desc_.shader_record_sizes.callable > 0) {
+        auto lrs = device_->get_local_root_signature(
+            desc_.shader_record_sizes.callable,
+            d3d12_local_root_signature_space, d3d12_local_root_signature_register_callable
+        );
+        for (auto& name : export_names_.callable) {
+            lrs_associations_map[lrs].push_back(name.c_str());
+        }
+        num_associations += export_names_.callable.size();
+    }
+    // Call `reserve` to make sure that taking pointer to `subobjects` is safe.
+    subobjects.reserve(subobjects.size() + lrs_associations_map.size() + num_associations);
+    for (auto& [rs, association_vec] : lrs_associations_map) {
+        auto& lrs = local_root_signatures.emplace_back();
+        lrs.pLocalRootSignature = rs;
+        add_subobject(D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE, &lrs);
+        auto& association = lrs_associations.emplace_back();
+        association.pSubobjectToAssociate = &subobjects.back();
+        association.NumExports = association_vec.size();
+        association.pExports = association_vec.data();
+        add_subobject(D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION, &association);
+    }
+
+    // BI_ASSERT(subobjects.size() <= estimated_max_num_subobjects);
+    D3D12_STATE_OBJECT_DESC pipeline_state{
+        .Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
+        .NumSubobjects = static_cast<uint32_t>(subobjects.size()),
+        .pSubobjects = subobjects.data(),
+    };
+
+    device_->raw()->CreateStateObject(&pipeline_state, IID_PPV_ARGS(&pipeline_));
+}
+
+auto RaytracingPipelineD3D12::get_shader_binding_table_sizes() const -> RaytracingShaderBindingTableSizes {
+    return RaytracingShaderBindingTableSizes{
+        .raygen_size = aligned_size<uint32_t>(
+            D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + desc_.shader_record_sizes.raygen,
+            D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT
+        ),
+        .miss_stride = aligned_size<uint32_t>(
+            D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + desc_.shader_record_sizes.miss,
+            D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT
+        ),
+        .hit_group_stride = aligned_size<uint32_t>(
+            D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + desc_.shader_record_sizes.hit_group,
+            D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT
+        ),
+        .callable_stride = aligned_size<uint32_t>(
+            D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + desc_.shader_record_sizes.callable,
+            D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT
+        ),
+    };
+}
+
+auto RaytracingPipelineD3D12::get_shader_handle(
+    RaytracingShaderBindingTableType type, uint32_t from_index, uint32_t count, void* dst_data
+) const -> void {
+    Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> state_props;
+    pipeline_.As(&state_props);
+
+    switch (type) {
+        case RaytracingShaderBindingTableType::raygen:
+            std::memcpy(
+                dst_data, state_props->GetShaderIdentifier(export_names_.raygen.c_str()),
+                D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
+            );
+            break;
+        case RaytracingShaderBindingTableType::miss: {
+            auto to_index = std::min<uint32_t>(from_index + count, export_names_.miss.size());
+            for (auto i = from_index; i < to_index; i++) {
+                std::memcpy(
+                    static_cast<std::byte*>(dst_data) + (i - from_index) * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+                    state_props->GetShaderIdentifier(export_names_.miss[i].c_str()),
+                    D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
+                );
+            }
+            break;
+        }
+        case RaytracingShaderBindingTableType::hit_group: {
+            auto to_index = std::min<uint32_t>(from_index + count, export_names_.hit_group.size());
+            for (auto i = from_index; i < to_index; i++) {
+                std::memcpy(
+                    static_cast<std::byte*>(dst_data) + (i - from_index) * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+                    state_props->GetShaderIdentifier(export_names_.hit_group[i].c_str()),
+                    D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
+                );
+            }
+            break;
+        }
+        case RaytracingShaderBindingTableType::callable: {
+            auto to_index = std::min<uint32_t>(from_index + count, export_names_.callable.size());
+            for (auto i = from_index; i < to_index; i++) {
+                std::memcpy(
+                    static_cast<std::byte*>(dst_data) + (i - from_index) * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+                    state_props->GetShaderIdentifier(export_names_.callable[i].c_str()),
+                    D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
+                );
+            }
+            break;
+        }
+    }
 }
 
 }

@@ -7,6 +7,7 @@
 #include <bisemutum/runtime/vfs.hpp>
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/prelude/misc.hpp>
+#include <bisemutum/prelude/math.hpp>
 
 #include "command.hpp"
 #include "queue.hpp"
@@ -135,6 +136,14 @@ auto DeviceD3D12::initialize_device_properties() -> void {
     device_properties_.gpu_name = wchars_to_string(adapter_desc.Description);
     // Maximum size of root signature is 64 DWORDS and each descriptor table costs 1 DWORD
     device_properties_.max_num_bind_groups = 64;
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 feature_supports5{};
+    device_->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feature_supports5, sizeof(feature_supports5));
+    device_properties_.raytracing_pipeline = feature_supports5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS7 feature_supports7{};
+    device_->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &feature_supports7, sizeof(feature_supports7));
+    device_properties_.meshlet_pipeline = feature_supports7.MeshShaderTier != D3D12_MESH_SHADER_TIER_NOT_SUPPORTED;
 }
 
 auto DeviceD3D12::create_queues() -> void {
@@ -169,6 +178,14 @@ auto DeviceD3D12::save_pso_cache() -> void {
         auto cache_file = g_engine->file_system()->create_file(pso_cache_file_path_).value();
         pipeline_cahce_.write_to(*&cache_file);
     }
+}
+
+auto DeviceD3D12::raytracing_shader_binding_table_requirements() const -> RaytracingShaderBindingTableRequirements {
+    return RaytracingShaderBindingTableRequirements{
+        .handle_size = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+        .handle_alignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT,
+        .base_alignment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT,
+    };
 }
 
 auto DeviceD3D12::get_queue(QueueType type) -> Ref<Queue> {
@@ -420,6 +437,41 @@ auto DeviceD3D12::copy_descriptors(
     for (size_t i = 0; i < src_descriptors.size(); i++) {
         device_->CopyDescriptorsSimple(1, {dst_desciptor.cpu + stride * i}, {src_descriptors[i].cpu}, heap_type);
     }
+}
+
+auto DeviceD3D12::get_local_root_signature(uint32_t size_in_bytes, uint32_t space, uint32_t register_) -> ID3D12RootSignature* {
+    size_in_bytes = aligned_size<uint32_t>(size_in_bytes, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+    auto key = std::make_tuple(size_in_bytes, space, register_);
+    auto [it, need_to_create] = caced_local_root_signatures_.try_emplace(key);
+    if (need_to_create) {
+        D3D12_ROOT_PARAMETER1 root_param{
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+            .Constants = D3D12_ROOT_CONSTANTS{
+                .ShaderRegister = register_,
+                .RegisterSpace = space,
+                .Num32BitValues = (size_in_bytes + 3) / 4,
+            },
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        };
+        D3D12_VERSIONED_ROOT_SIGNATURE_DESC signature_desc{
+            .Version = D3D_ROOT_SIGNATURE_VERSION_1_1,
+            .Desc_1_1 = D3D12_ROOT_SIGNATURE_DESC1 {
+                .NumParameters = 1,
+                .pParameters = &root_param,
+                .NumStaticSamplers = 0,
+                .pStaticSamplers = nullptr,
+                .Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE,
+            },
+        };
+        Microsoft::WRL::ComPtr<ID3DBlob> serialized_signature;
+        Microsoft::WRL::ComPtr<ID3DBlob> error;
+        D3D12SerializeVersionedRootSignature(&signature_desc, &serialized_signature, &error);
+        device_->CreateRootSignature(
+            0, serialized_signature->GetBufferPointer(), serialized_signature->GetBufferSize(),
+            IID_PPV_ARGS(&it->second)
+        );
+    }
+    return it->second.Get();
 }
 
 }

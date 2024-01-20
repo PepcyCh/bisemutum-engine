@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "queue.hpp"
 #include "swapchain.hpp"
 #include "sync.hpp"
@@ -34,6 +32,8 @@ struct Device {
     virtual auto get_backend() const -> Backend = 0;
 
     auto properties() const -> DeviceProperties const& { return device_properties_; }
+
+    virtual auto raytracing_shader_binding_table_requirements() const -> RaytracingShaderBindingTableRequirements = 0;
 
     virtual auto get_queue(QueueType type) -> Ref<Queue> = 0;
 

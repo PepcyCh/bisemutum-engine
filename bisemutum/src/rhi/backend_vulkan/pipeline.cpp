@@ -1,6 +1,7 @@
 #include "pipeline.hpp"
 
 #include <bisemutum/prelude/misc.hpp>
+#include <bisemutum/prelude/math.hpp>
 
 #include "volk.h"
 #include "device.hpp"
@@ -140,7 +141,7 @@ auto to_vk_blend_op(BlendOp op) -> VkBlendOp {
     switch (op) {
         case BlendOp::add: return VK_BLEND_OP_ADD;
         case BlendOp::subtract: return VK_BLEND_OP_SUBTRACT;
-        case BlendOp::reverse_subtrace: return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case BlendOp::reverse_subtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
         case BlendOp::min: return VK_BLEND_OP_MIN;
         case BlendOp::max: return VK_BLEND_OP_MAX;
     }
@@ -500,6 +501,205 @@ auto ComputePipelineVulkan::push_constants_stages() const -> VkShaderStageFlags 
 }
 
 auto ComputePipelineVulkan::static_samplers_set() const -> uint32_t {
+    if (desc_.static_samplers.empty()) {
+        return ~0u;
+    } else {
+        return set_layouts_.size() - 1;
+    }
+}
+
+
+RaytracingPipelineVulkan::RaytracingPipelineVulkan(Ref<DeviceVulkan> device, RaytracingPipelineDesc const& desc)
+    : RaytracingPipeline(desc), device_(device)
+{
+    create_pipeline_layout(
+        device_, set_layouts_, pipeline_layout_,
+        desc_.bind_groups_layout, desc_.static_samplers, desc_.push_constants
+    );
+    if (!device_->use_descriptor_buffer() && !desc_.static_samplers.empty()) {
+        immutable_samplers_set_ = device_->immutable_samplers_heap()->allocate_descriptor_raw(set_layouts_.back());
+    }
+
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+    std::vector<VkRayTracingShaderGroupCreateInfoKHR> shader_groups;
+    std::list<std::string> owned_entries;
+
+    {
+        auto& group = shader_groups.emplace_back();
+        group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        group.pNext = nullptr;
+        group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        group.generalShader = shader_stages.size();
+        group.closestHitShader = VK_SHADER_UNUSED_KHR;
+        group.anyHitShader = VK_SHADER_UNUSED_KHR;
+        group.intersectionShader = VK_SHADER_UNUSED_KHR;
+
+        auto& entry = owned_entries.emplace_back(desc_.shaders.raygen.shader.entry);
+        shader_stages.push_back(
+            to_vk_pipeline_shader_stage(desc_.shaders.raygen.shader, VK_SHADER_STAGE_RAYGEN_BIT_KHR, entry.c_str())
+        );
+    }
+    for (auto& miss : desc_.shaders.miss) {
+        auto& group = shader_groups.emplace_back();
+        group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        group.pNext = nullptr;
+        group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        group.generalShader = shader_stages.size();
+        group.closestHitShader = VK_SHADER_UNUSED_KHR;
+        group.anyHitShader = VK_SHADER_UNUSED_KHR;
+        group.intersectionShader = VK_SHADER_UNUSED_KHR;
+
+        auto& entry = owned_entries.emplace_back(miss.shader.entry);
+        shader_stages.push_back(
+            to_vk_pipeline_shader_stage(miss.shader, VK_SHADER_STAGE_MISS_BIT_KHR, entry.c_str())
+        );
+    }
+    for (auto& hit : desc_.shaders.hit_group) {
+        auto& group = shader_groups.emplace_back();
+        group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        group.pNext = nullptr;
+        group.type = hit.intersection.has_value()
+            ? VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR
+            : VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+        group.generalShader = VK_SHADER_UNUSED_KHR;
+        group.closestHitShader = VK_SHADER_UNUSED_KHR;
+        group.anyHitShader = VK_SHADER_UNUSED_KHR;
+        group.intersectionShader = VK_SHADER_UNUSED_KHR;
+
+        if (auto& shader = hit.closest_hit; shader) {
+            group.closestHitShader = shader_stages.size();
+            auto& entry = owned_entries.emplace_back(shader.value().entry);
+            shader_stages.push_back(
+                to_vk_pipeline_shader_stage(shader.value(), VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, entry.c_str())
+            );
+        }
+        if (auto& shader = hit.any_hit; shader) {
+            group.anyHitShader = shader_stages.size();
+            auto& entry = owned_entries.emplace_back(shader.value().entry);
+            shader_stages.push_back(
+                to_vk_pipeline_shader_stage(shader.value(), VK_SHADER_STAGE_ANY_HIT_BIT_KHR, entry.c_str())
+            );
+        }
+        if (auto& shader = hit.intersection; shader) {
+            group.intersectionShader = shader_stages.size();
+            auto& entry = owned_entries.emplace_back(shader.value().entry);
+            shader_stages.push_back(
+                to_vk_pipeline_shader_stage(shader.value(), VK_SHADER_STAGE_INTERSECTION_BIT_KHR, entry.c_str())
+            );
+        }
+    }
+    for (auto& callable : desc_.shaders.callable) {
+        auto& group = shader_groups.emplace_back();
+        group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        group.pNext = nullptr;
+        group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        group.generalShader = shader_stages.size();
+        group.closestHitShader = VK_SHADER_UNUSED_KHR;
+        group.anyHitShader = VK_SHADER_UNUSED_KHR;
+        group.intersectionShader = VK_SHADER_UNUSED_KHR;
+
+        auto& entry = owned_entries.emplace_back(callable.shader.entry);
+        shader_stages.push_back(
+            to_vk_pipeline_shader_stage(callable.shader, VK_SHADER_STAGE_CALLABLE_BIT_KHR, entry.c_str())
+        );
+    }
+
+    VkRayTracingPipelineInterfaceCreateInfoKHR pipeline_interface_ci{
+        .sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .maxPipelineRayPayloadSize = desc_.state.max_ray_payload_size,
+        .maxPipelineRayHitAttributeSize = desc_.state.max_hit_attribute_size,
+    };
+    VkPipelineCreateFlags flags = (device_->use_descriptor_buffer() ? VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT : 0u)
+        | (desc_.state.skip_procedural ? VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR : 0u);
+    VkRayTracingPipelineCreateInfoKHR pipeline_ci{
+        .sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .flags = flags,
+        .stageCount = static_cast<uint32_t>(shader_stages.size()),
+        .pStages = shader_stages.data(),
+        .groupCount = static_cast<uint32_t>(shader_groups.size()),
+        .pGroups = shader_groups.data(),
+        .maxPipelineRayRecursionDepth = desc_.state.max_recursive_depth,
+        .pLibraryInfo = nullptr,
+        .pLibraryInterface = &pipeline_interface_ci,
+        .pDynamicState = nullptr,
+        .layout = pipeline_layout_,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = 0,
+    };
+    vkCreateRayTracingPipelinesKHR(
+        device_->raw(), VK_NULL_HANDLE, device_->pipeline_cache(), 1, &pipeline_ci, nullptr, &pipeline_
+    );
+}
+
+RaytracingPipelineVulkan::~RaytracingPipelineVulkan() {
+    if (pipeline_) {
+        vkDestroyPipeline(device_->raw(), pipeline_, nullptr);
+        pipeline_ = VK_NULL_HANDLE;
+    }
+    if (!desc_.static_samplers.empty()) {
+        vkDestroyDescriptorSetLayout(device_->raw(), set_layouts_.back(), nullptr);
+    }
+    set_layouts_.clear();
+    if (pipeline_layout_) {
+        vkDestroyPipelineLayout(device_->raw(), pipeline_layout_, nullptr);
+        pipeline_layout_ = VK_NULL_HANDLE;
+    }
+}
+
+auto RaytracingPipelineVulkan::get_shader_binding_table_sizes() const -> RaytracingShaderBindingTableSizes {
+    auto requirements = device_->raytracing_shader_binding_table_requirements();
+    return RaytracingShaderBindingTableSizes{
+        .raygen_size = aligned_size<uint32_t>(
+            requirements.handle_size + desc_.shader_record_sizes.raygen, requirements.handle_alignment
+        ),
+        .miss_stride = aligned_size<uint32_t>(
+            requirements.handle_size + desc_.shader_record_sizes.miss, requirements.handle_alignment
+        ),
+        .hit_group_stride = aligned_size<uint32_t>(
+            requirements.handle_size + desc_.shader_record_sizes.hit_group, requirements.handle_alignment
+        ),
+        .callable_stride = aligned_size<uint32_t>(
+            requirements.handle_size + desc_.shader_record_sizes.callable, requirements.handle_alignment
+        ),
+    };
+}
+
+auto RaytracingPipelineVulkan::get_shader_handle(
+    RaytracingShaderBindingTableType type, uint32_t from_index, uint32_t count, void* dst_data
+) const -> void {
+    switch (type) {
+        case RaytracingShaderBindingTableType::raygen:
+            count = from_index == 0 ? 1 : 0;
+            break;
+        case RaytracingShaderBindingTableType::miss:
+            count = std::min<uint32_t>(from_index + count, desc_.shaders.miss.size())
+                - std::min<uint32_t>(from_index, desc_.shaders.miss.size());
+            from_index += 1;
+            break;
+        case RaytracingShaderBindingTableType::hit_group:
+            count = std::min<uint32_t>(from_index + count, desc_.shaders.hit_group.size())
+                - std::min<uint32_t>(from_index, desc_.shaders.hit_group.size());
+            from_index += 1 + desc_.shaders.miss.size();
+            break;
+        case RaytracingShaderBindingTableType::callable:
+            count = std::min<uint32_t>(from_index + count, desc_.shaders.callable.size())
+                - std::min<uint32_t>(from_index, desc_.shaders.callable.size());
+            from_index += 1 + desc_.shaders.miss.size() + desc_.shaders.hit_group.size();
+            break;
+    }
+    if (count > 0) {
+        auto handle_size = device_->raytracing_shader_binding_table_requirements().handle_size;
+        vkGetRayTracingShaderGroupHandlesKHR(device_->raw(), pipeline_, from_index, count, count * handle_size, dst_data);
+    }
+}
+
+auto RaytracingPipelineVulkan::push_constants_stages() const -> VkShaderStageFlags {
+    return to_vk_shader_stages(desc_.push_constants.visibility);
+}
+
+auto RaytracingPipelineVulkan::static_samplers_set() const -> uint32_t {
     if (desc_.static_samplers.empty()) {
         return ~0u;
     } else {

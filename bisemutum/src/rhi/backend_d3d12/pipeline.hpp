@@ -47,4 +47,37 @@ private:
     uint32_t root_constant_index_ = 0;
 };
 
+struct RaytracingPipelineD3D12 final : RaytracingPipeline {
+    RaytracingPipelineD3D12(Ref<DeviceD3D12> device, RaytracingPipelineDesc const& desc);
+
+    auto get_shader_binding_table_sizes() const -> RaytracingShaderBindingTableSizes override;
+
+    auto get_shader_handle(
+        RaytracingShaderBindingTableType type, uint32_t from_index, uint32_t count, void* dst_data
+    ) const -> void override;
+
+    auto raw() const -> ID3D12StateObject* { return pipeline_.Get(); }
+
+    auto raw_root_signature() const -> ID3D12RootSignature* { return root_signature_.Get(); }
+
+    auto root_constant_index() const -> uint32_t { return root_constant_index_; }
+
+private:
+    Ref<DeviceD3D12> device_;
+
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> root_signature_ = nullptr;
+    std::vector<Microsoft::WRL::ComPtr<ID3D12RootSignature>> local_root_signatures_;
+
+    Microsoft::WRL::ComPtr<ID3D12StateObject> pipeline_ = nullptr;
+
+    uint32_t root_constant_index_ = 0;
+
+    struct {
+        std::wstring raygen;
+        std::vector<std::wstring> miss;
+        std::vector<std::wstring> hit_group;
+        std::vector<std::wstring> callable;
+    } export_names_;
+};
+
 }

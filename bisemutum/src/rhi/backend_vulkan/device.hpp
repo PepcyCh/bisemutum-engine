@@ -25,6 +25,8 @@ struct DeviceVulkan final : Device {
 
     auto get_backend() const -> Backend override { return Backend::vulkan; }
 
+    auto raytracing_shader_binding_table_requirements() const -> RaytracingShaderBindingTableRequirements override;
+
     auto get_queue(QueueType type) -> Ref<Queue> override;
 
     auto create_command_pool(CommandPoolDesc const& desc) -> Box<CommandPool> override;
@@ -96,6 +98,8 @@ private:
     VmaAllocator allocator_ = nullptr;
 
     VkDebugUtilsMessengerEXT debug_utils_messenger_ = VK_NULL_HANDLE;
+
+    RaytracingShaderBindingTableRequirements rt_sbt_requirements_;
 
     std::array<uint32_t, 3> queue_family_indices_;
     std::array<Box<struct QueueVulkan>, 3> queues_;

@@ -101,7 +101,7 @@ struct DepthStencilState final {
 enum class BlendOp : uint8_t {
     add,
     subtract,
-    reverse_subtrace,
+    reverse_subtract,
     min,
     max,
 };
@@ -238,25 +238,36 @@ protected:
 
 struct RaytracingState final {
     uint32_t max_recursive_depth = 1;
-    // TODO - finish raytracing state
+    bool skip_procedural = false;
+    uint32_t max_ray_payload_size = 256;
+    uint32_t max_hit_attribute_size = 2 * sizeof(float);
+};
+
+// Currently, only one single root constant (size is in bytes) is supported as LRS in D3D12.
+// Because it is hard to write more complex LRS that is compatible with Vulkan SBT record.
+struct RaytracingShaderRecordSizes final {
+    uint32_t raygen = 0;
+    uint32_t miss = 0;
+    uint32_t hit_group = 0;
+    uint32_t callable = 0;
 };
 
 struct RaytracingShaderGeneralGroup final {
     PipelineShader shader;
-    uint32_t sbt_record_size = 0;
 };
 struct RaytracingShaderHitGroup final {
     Option<PipelineShader> closest_hit;
     Option<PipelineShader> any_hit;
     Option<PipelineShader> intersection;
-    uint32_t sbt_record_size = 0;
 };
+
 struct RaytracingPipelineDesc final {
     std::vector<BindGroupLayout> bind_groups_layout;
     std::vector<StaticSampler> static_samplers;
     PushConstantsDesc push_constants;
 
     RaytracingState state;
+    RaytracingShaderRecordSizes shader_record_sizes;
 
     struct {
         RaytracingShaderGeneralGroup raygen;
@@ -266,12 +277,43 @@ struct RaytracingPipelineDesc final {
     } shaders;
 };
 
-// TODO - support raytracing pipeline
+struct RaytracingShaderBindingTableSizes final {
+    uint32_t raygen_size = 0;
+    uint32_t miss_stride = 0;
+    uint32_t hit_group_stride = 0;
+    uint32_t callable_stride = 0;
+};
+
+struct RaytracingShaderBindingTableRequirements final {
+    uint32_t handle_size = 0;
+    uint32_t handle_alignment = 0;
+    uint32_t base_alignment = 0;
+};
+
+enum class RaytracingShaderBindingTableType : uint8_t {
+    raygen,
+    miss,
+    hit_group,
+    callable,
+};
+
+inline constexpr uint32_t d3d12_local_root_signature_space = 8;
+inline constexpr uint32_t d3d12_local_root_signature_register_raygen = 0;
+inline constexpr uint32_t d3d12_local_root_signature_register_miss = 1;
+inline constexpr uint32_t d3d12_local_root_signature_register_hit_group = 2;
+inline constexpr uint32_t d3d12_local_root_signature_register_callable = 3;
+
 struct RaytracingPipeline {
     RaytracingPipeline(RaytracingPipelineDesc const& desc) : desc_(desc) {}
     virtual ~RaytracingPipeline() = default;
 
     auto desc() const -> RaytracingPipelineDesc const& { return desc_; }
+
+    virtual auto get_shader_binding_table_sizes() const -> RaytracingShaderBindingTableSizes = 0;
+
+    virtual auto get_shader_handle(
+        RaytracingShaderBindingTableType type, uint32_t from_index, uint32_t count, void* dst_data
+    ) const -> void = 0;
 
 protected:
     RaytracingPipelineDesc desc_;
