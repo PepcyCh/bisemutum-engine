@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../prelude/ref.hpp"
 #include "queue.hpp"
 #include "swapchain.hpp"
 #include "sync.hpp"
@@ -51,6 +52,8 @@ struct Device {
 
     virtual auto create_sampler(SamplerDesc const& desc) -> Box<Sampler> = 0;
 
+    virtual auto create_acceleration_structure(AccelerationStructureDesc const& desc) -> Box<AccelerationStructure> = 0;
+
     virtual auto create_descriptor_heap(DescriptorHeapDesc const& desc) -> Box<DescriptorHeap> = 0;
 
     virtual auto create_shader_module(ShaderModuleDesc const& desc) -> Box<ShaderModule> = 0;
@@ -58,6 +61,8 @@ struct Device {
     virtual auto create_graphics_pipeline(GraphicsPipelineDesc const& desc) -> Box<GraphicsPipeline> = 0;
 
     virtual auto create_compute_pipeline(ComputePipelineDesc const& desc) -> Box<ComputePipeline> = 0;
+
+    virtual auto create_raytracing_pipeline(RaytracingPipelineDesc const& desc) -> Box<RaytracingPipeline> = 0;
 
     virtual auto create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void = 0;
     virtual auto create_descriptor(TextureDescriptorDesc const& texture_desc, DescriptorHandle handle) -> void = 0;
@@ -70,6 +75,13 @@ struct Device {
     ) -> void = 0;
 
     virtual auto initialize_pipeline_cache_from(std::string_view cache_file_path) -> void = 0;
+
+    virtual auto get_acceleration_structure_memory_size(
+        AccelerationStructureGeometryBuildInput const& build_info
+    ) -> AccelerationStructureMemoryInfo = 0;
+    virtual auto get_acceleration_structure_memory_size(
+        AccelerationStructureInstanceBuildInput const& build_info
+    ) -> AccelerationStructureMemoryInfo = 0;
 
 protected:
     DeviceProperties device_properties_;

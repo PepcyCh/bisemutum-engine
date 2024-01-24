@@ -18,6 +18,7 @@ QueueVulkan::~QueueVulkan() {
 
 void QueueVulkan::wait_idle() const {
     vkQueueWaitIdle(queue_);
+    device_->destroy_acceleration_structure_query_pools();
 }
 
 auto QueueVulkan::submit_command_buffer(

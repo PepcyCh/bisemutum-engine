@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include <bisemutum/rhi/resource.hpp>
+#include <bisemutum/prelude/ref.hpp>
 #include <d3d12.h>
 #include <D3D12MemAlloc.h>
 #include <wrl.h>

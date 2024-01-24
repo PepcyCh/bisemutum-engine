@@ -1,9 +1,7 @@
 #pragma once
 
-#include <variant>
-
 #include "resource.hpp"
-#include "sampler.hpp"
+#include "accel.hpp"
 #include "descriptor.hpp"
 #include "../prelude/box.hpp"
 #include "../prelude/span.hpp"
@@ -160,6 +158,24 @@ struct CommandEncoder : public CommandEncoderBase {
         CRef<Texture> src_texture,
         Ref<Buffer> dst_buffer,
         BufferTextureCopyDesc const& region
+    ) -> void = 0;
+
+    virtual auto build_bottom_level_acceleration_structure(
+        CSpan<AccelerationStructureGeometryBuildDesc> build_infos
+    ) -> void = 0;
+
+    virtual auto build_top_level_acceleration_structure(
+        CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+    ) -> void = 0;
+
+    virtual auto copy_acceleration_structure(
+        CRef<AccelerationStructure> src_acceleration_structure,
+        Ref<AccelerationStructure> dst_acceleration_structure
+    ) -> void = 0;
+
+    virtual auto compact_acceleration_structure(
+        CRef<AccelerationStructure> src_acceleration_structure,
+        Ref<AccelerationStructure> dst_acceleration_structure
     ) -> void = 0;
 
     virtual auto resource_barriers(

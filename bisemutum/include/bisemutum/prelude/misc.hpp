@@ -1,10 +1,11 @@
 #pragma once
 
 #include <utility>
+#include <cstdlib>
 
 namespace bi {
 
-[[noreturn]] inline void unreachable() { abort(); }
+[[noreturn]] inline void unreachable() { std::abort(); }
 
 template <typename... Ts>
 struct FunctorsHelper final : Ts... {

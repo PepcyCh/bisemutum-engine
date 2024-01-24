@@ -17,6 +17,13 @@ struct DescriptorSetLayoutHashHelper final {
     auto operator()(BindGroupLayout const& a, BindGroupLayout const& b) const noexcept -> bool;
 };
 
+struct AccelerationStructureQueryPoolSizes final {
+    uint32_t num_compacted_size = 0;
+};
+struct AccelerationStructureQueryPools final {
+    VkQueryPool compacted_size = VK_NULL_HANDLE;
+};
+
 struct DeviceVulkan final : Device {
     DeviceVulkan(DeviceDesc const& desc);
     ~DeviceVulkan() override;
@@ -43,6 +50,8 @@ struct DeviceVulkan final : Device {
 
     auto create_sampler(SamplerDesc const& desc) -> Box<Sampler> override;
 
+    auto create_acceleration_structure(AccelerationStructureDesc const& desc) -> Box<AccelerationStructure> override;
+
     auto create_descriptor_heap(DescriptorHeapDesc const& desc) -> Box<DescriptorHeap> override;
 
     auto create_shader_module(ShaderModuleDesc const& desc) -> Box<ShaderModule> override;
@@ -50,6 +59,8 @@ struct DeviceVulkan final : Device {
     auto create_graphics_pipeline(GraphicsPipelineDesc const& desc) -> Box<GraphicsPipeline> override;
 
     auto create_compute_pipeline(ComputePipelineDesc const& desc) -> Box<ComputePipeline> override;
+
+    auto create_raytracing_pipeline(RaytracingPipelineDesc const& desc) -> Box<RaytracingPipeline> override;
 
     auto create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void override;
     auto create_descriptor(TextureDescriptorDesc const& texture_desc, DescriptorHandle handle) -> void override;
@@ -62,6 +73,13 @@ struct DeviceVulkan final : Device {
     ) -> void override;
 
     auto initialize_pipeline_cache_from(std::string_view cache_file_path) -> void override;
+
+    auto get_acceleration_structure_memory_size(
+        AccelerationStructureGeometryBuildInput const& build_info
+    ) -> AccelerationStructureMemoryInfo override;
+    auto get_acceleration_structure_memory_size(
+        AccelerationStructureInstanceBuildInput const& build_info
+    ) -> AccelerationStructureMemoryInfo override;
 
     auto raw() const -> VkDevice { return device_; }
     auto raw_physical_device() const -> VkPhysicalDevice { return physical_device_; }
@@ -81,6 +99,11 @@ struct DeviceVulkan final : Device {
     auto require_descriptor_set_layout(BindGroupLayout const& layout) -> VkDescriptorSetLayout;
 
     auto immutable_samplers_heap() -> Ptr<DescriptorHeapVulkanLegacy>;
+
+    auto require_acceleration_structure_query_pools(
+        AccelerationStructureQueryPoolSizes const& sizes
+    ) -> AccelerationStructureQueryPools const&;
+    auto destroy_acceleration_structure_query_pools() -> void;
 
 private:
     auto initialize_device_properties() -> void;
@@ -116,6 +139,8 @@ private:
         DescriptorSetLayoutHashHelper, DescriptorSetLayoutHashHelper
     > cached_desc_set_layouts_;
     Box<DescriptorHeapVulkanLegacy> immutable_samplers_heap_;
+
+    std::list<AccelerationStructureQueryPools> accel_query_pools_;
 };
 
 }

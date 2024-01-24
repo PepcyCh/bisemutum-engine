@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 #include <bisemutum/rhi/resource.hpp>
+#include <bisemutum/prelude/ref.hpp>
 
 namespace bi::rhi {
 

@@ -70,6 +70,24 @@ struct CommandEncoderD3D12 final : CommandEncoder {
         BufferTextureCopyDesc const& region
     ) -> void override;
 
+    auto build_bottom_level_acceleration_structure(
+        CSpan<AccelerationStructureGeometryBuildDesc> build_infos
+    ) -> void override;
+
+    auto build_top_level_acceleration_structure(
+        CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+    ) -> void override;
+
+    auto copy_acceleration_structure(
+        CRef<AccelerationStructure> src_acceleration_structure,
+        Ref<AccelerationStructure> dst_acceleration_structure
+    ) -> void override;
+
+    auto compact_acceleration_structure(
+        CRef<AccelerationStructure> src_acceleration_structure,
+        Ref<AccelerationStructure> dst_acceleration_structure
+    ) -> void override;
+
     auto resource_barriers(
         CSpan<BufferBarrier> buffer_barriers, CSpan<TextureBarrier> texture_barriers
     ) -> void override;

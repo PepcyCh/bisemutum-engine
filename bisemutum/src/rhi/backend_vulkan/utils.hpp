@@ -1,13 +1,16 @@
 #pragma once
 
+#include <vector>
+
 #include <vulkan/vulkan.h>
 #include <bisemutum/prelude/bitflags.hpp>
 #include <bisemutum/rhi/defines.hpp>
 #include <bisemutum/rhi/shader.hpp>
+#include <bisemutum/rhi/accel.hpp>
 
 namespace bi::rhi {
 
-struct VkStructHeader {
+struct VkStructHeader final {
     VkStructureType sType;
     VkStructHeader *pNext;
 };
@@ -54,5 +57,19 @@ inline auto to_vk_shader_stages(BitFlags<ShaderStage> stage) -> VkShaderStageFla
     if (stage.contains_any(ShaderStage::mesh)) { ret |= VK_SHADER_STAGE_MESH_BIT_EXT; }
     return ret;
 }
+
+auto to_vk_accel_build_info(
+    AccelerationStructureGeometryBuildInput const& build_info,
+    VkAccelerationStructureBuildGeometryInfoKHR& vk_build_info,
+    std::vector<VkAccelerationStructureGeometryKHR>& vk_geometries,
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR>& vk_range_infos
+) -> void;
+
+auto to_vk_accel_build_info(
+    AccelerationStructureInstanceBuildInput const& build_info,
+    VkAccelerationStructureBuildGeometryInfoKHR& vk_build_info,
+    VkAccelerationStructureGeometryKHR& vk_geometry,
+    VkAccelerationStructureBuildRangeInfoKHR& vk_range_info
+) -> void;
 
 }

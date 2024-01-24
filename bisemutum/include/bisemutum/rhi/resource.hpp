@@ -1,10 +1,7 @@
 #pragma once
 
-#include <string>
-
 #include "defines.hpp"
 #include "../prelude/bitflags.hpp"
-#include "../prelude/ref.hpp"
 
 namespace bi::rhi {
 
@@ -25,7 +22,10 @@ enum class ResourceAccessType : uint32_t {
     transfer_write = 0x10000,
     resolve_read = 0x20000,
     resolve_write = 0x40000,
-    present = 0x80000,
+    acceleration_structure_read = 0x80000,
+    acceleration_structure_write = 0x100000,
+    acceleration_structure_build_emit_data_write = 0x200000,
+    present = 0x400000,
 };
 
 enum class BufferUsage : uint8_t {
@@ -61,7 +61,7 @@ struct Buffer {
 
     virtual auto map() -> void* = 0;
     template <typename T>
-    auto typed_map() -> T* { return reinterpret_cast<T*>(map()); }
+    auto typed_map() -> T* { return static_cast<T*>(map()); }
 
     virtual auto unmap() -> void = 0;
 

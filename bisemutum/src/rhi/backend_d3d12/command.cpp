@@ -7,6 +7,7 @@
 
 #include "device.hpp"
 #include "resource.hpp"
+#include "accel.hpp"
 #include "pipeline.hpp"
 #include "utils.hpp"
 
@@ -60,6 +61,15 @@ auto to_dx_buffer_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_STA
     if (type.contains_any(ResourceAccessType::transfer_write)) {
         states |= D3D12_RESOURCE_STATE_COPY_DEST;
     }
+    if (type.contains_any(ResourceAccessType::acceleration_structure_read)) {
+        states |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
+    if (type.contains_any(ResourceAccessType::acceleration_structure_write)) {
+        states |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
+    if (type.contains_any(ResourceAccessType::acceleration_structure_build_emit_data_write)) {
+        states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
     return states;
 }
 
@@ -102,6 +112,17 @@ auto to_dx_texture_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_ST
         states |= D3D12_RESOURCE_STATE_PRESENT;
     }
     return states;
+}
+
+auto to_dx_postbuild_info_type(
+    AccelerationStructureBuildEmitDataType type
+) -> D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_TYPE {
+    switch (type) {
+        case AccelerationStructureBuildEmitDataType::compacted_size:
+            return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
+        default:
+            unreachable();
+    }
 }
 
 } // namespace
@@ -307,6 +328,91 @@ auto CommandEncoderD3D12::copy_texture_to_buffer(
         };
         cmd_list_->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, &copy_box);
     }
+}
+
+auto CommandEncoderD3D12::build_bottom_level_acceleration_structure(
+    CSpan<AccelerationStructureGeometryBuildDesc> build_infos
+) -> void {
+    for (size_t i = 0; i < build_infos.size(); i++) {
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc;
+        std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> dx_geometries;
+        to_dx_accel_build_input(build_infos[i].build_input, build_desc.Inputs, dx_geometries);
+
+        build_desc.SourceAccelerationStructureData = build_infos[i].src_acceleration_structure.has_value()
+            ? build_infos[i].src_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference()
+            : 0;
+        build_desc.DestAccelerationStructureData =
+            build_infos[i].dst_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference();
+        build_desc.ScratchAccelerationStructureData =
+            build_infos[i].scratch_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
+                + build_infos[i].scratch_buffer_offset;
+
+        std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC> postbuild_infos(
+            build_infos[i].emit_data.size()
+        );
+        for (size_t j = 0; j < build_infos[i].emit_data.size(); j++) {
+            auto& emit_data = build_infos[i].emit_data[j];
+            postbuild_infos[j].InfoType = to_dx_postbuild_info_type(emit_data.type);
+            postbuild_infos[j].DestBuffer =
+                emit_data.dst_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
+                    + emit_data.dst_buffer_offset;
+        }
+
+        cmd_list_->BuildRaytracingAccelerationStructure(&build_desc, postbuild_infos.size(), postbuild_infos.data());
+    }
+}
+
+auto CommandEncoderD3D12::build_top_level_acceleration_structure(
+    CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+) -> void {
+    for (size_t i = 0; i < build_infos.size(); i++) {
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc;
+        to_dx_accel_build_input(build_infos[i].build_input, build_desc.Inputs);
+
+        build_desc.SourceAccelerationStructureData = build_infos[i].src_acceleration_structure.has_value()
+            ? build_infos[i].src_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference()
+            : 0;
+        build_desc.DestAccelerationStructureData =
+            build_infos[i].dst_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference();
+        build_desc.ScratchAccelerationStructureData =
+            build_infos[i].scratch_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
+                + build_infos[i].scratch_buffer_offset;
+
+        std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC> postbuild_infos(
+            build_infos[i].emit_data.size()
+        );
+        for (size_t j = 0; j < build_infos[i].emit_data.size(); j++) {
+            auto& emit_data = build_infos[i].emit_data[j];
+            postbuild_infos[j].InfoType = to_dx_postbuild_info_type(emit_data.type);
+            postbuild_infos[j].DestBuffer =
+                emit_data.dst_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
+                    + emit_data.dst_buffer_offset;
+        }
+
+        cmd_list_->BuildRaytracingAccelerationStructure(&build_desc, postbuild_infos.size(), postbuild_infos.data());
+    }
+}
+
+auto CommandEncoderD3D12::copy_acceleration_structure(
+    CRef<AccelerationStructure> src_acceleration_structure,
+    Ref<AccelerationStructure> dst_acceleration_structure
+) -> void {
+    auto src_accel = src_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference();
+    auto dst_accel = dst_acceleration_structure.cast_to<AccelerationStructureD3D12>()->gpu_reference();
+    cmd_list_->CopyRaytracingAccelerationStructure(
+        dst_accel, src_accel, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_CLONE
+    );
+}
+
+auto CommandEncoderD3D12::compact_acceleration_structure(
+    CRef<AccelerationStructure> src_acceleration_structure,
+    Ref<AccelerationStructure> dst_acceleration_structure
+) -> void {
+    auto src_accel = src_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference();
+    auto dst_accel = dst_acceleration_structure.cast_to<AccelerationStructureD3D12>()->gpu_reference();
+    cmd_list_->CopyRaytracingAccelerationStructure(
+        dst_accel, src_accel, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT
+    );
 }
 
 auto CommandEncoderD3D12::resource_barriers(

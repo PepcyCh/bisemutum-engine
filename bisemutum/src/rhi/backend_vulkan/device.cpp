@@ -18,6 +18,7 @@
 #include "swapchain.hpp"
 #include "sync.hpp"
 #include "resource.hpp"
+#include "accel.hpp"
 #include "sampler.hpp"
 #include "descriptor.hpp"
 #include "shader.hpp"
@@ -173,6 +174,8 @@ DeviceVulkan::DeviceVulkan(DeviceDesc const& desc) {
 DeviceVulkan::~DeviceVulkan() {
     auto ret = vkDeviceWaitIdle(device_);
     BI_ASSERT_MSG(ret == VK_SUCCESS, fmt::format("Device error: {}", static_cast<uint32_t>(ret)));
+
+    destroy_acceleration_structure_query_pools();
 
     save_pipeline_cache(true);
 
@@ -545,6 +548,10 @@ auto DeviceVulkan::create_sampler(SamplerDesc const& desc) -> Box<Sampler> {
     return Box<SamplerVulkan>::make(unsafe_make_ref(this), desc);
 }
 
+auto DeviceVulkan::create_acceleration_structure(AccelerationStructureDesc const& desc) -> Box<AccelerationStructure> {
+    return Box<AccelerationStructureVulkan>::make(unsafe_make_ref(this), desc);
+}
+
 auto DeviceVulkan::create_descriptor_heap(DescriptorHeapDesc const& desc) -> Box<DescriptorHeap> {
     if (support_descriptor_buffer_) {
         return Box<DescriptorHeapVulkan>::make(unsafe_make_ref(this), desc);
@@ -563,6 +570,10 @@ auto DeviceVulkan::create_graphics_pipeline(GraphicsPipelineDesc const& desc) ->
 
 auto DeviceVulkan::create_compute_pipeline(ComputePipelineDesc const& desc) -> Box<ComputePipeline> {
     return Box<ComputePipelineVulkan>::make(unsafe_make_ref(this), desc);
+}
+
+auto DeviceVulkan::create_raytracing_pipeline(RaytracingPipelineDesc const& desc) -> Box<RaytracingPipeline> {
+    return Box<RaytracingPipelineVulkan>::make(unsafe_make_ref(this), desc);
 }
 
 auto DeviceVulkan::create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void {
@@ -780,6 +791,86 @@ auto DeviceVulkan::initialize_pipeline_cache_from(std::string_view cache_file_pa
         .pInitialData = pipeline_cache_data.data(),
     };
     vkCreatePipelineCache(device_, &pipeline_cache_ci, nullptr, &pipeline_cache_);
+}
+
+auto DeviceVulkan::get_acceleration_structure_memory_size(
+    AccelerationStructureGeometryBuildInput const& build_info
+) -> AccelerationStructureMemoryInfo {
+    VkAccelerationStructureBuildGeometryInfoKHR vk_build_info;
+    std::vector<VkAccelerationStructureGeometryKHR> vk_geometries;
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> vk_range_infos;
+    to_vk_accel_build_info(build_info, vk_build_info, vk_geometries, vk_range_infos);
+    std::vector<uint32_t> primitive_counts(vk_range_infos.size());
+    for (size_t i = 0; i < vk_range_infos.size(); i++) {
+        primitive_counts[i] = vk_range_infos[i].primitiveCount;
+    }
+
+    VkAccelerationStructureBuildSizesInfoKHR size_info{
+        .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+        .pNext = nullptr,
+    };
+    vkGetAccelerationStructureBuildSizesKHR(
+        device_, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+        &vk_build_info, primitive_counts.data(), &size_info
+    );
+    return AccelerationStructureMemoryInfo{
+        .acceleration_structure_size = size_info.accelerationStructureSize,
+        .build_scratch_size = size_info.buildScratchSize,
+        .update_scratch_size = size_info.updateScratchSize,
+    };
+}
+
+auto DeviceVulkan::get_acceleration_structure_memory_size(
+    AccelerationStructureInstanceBuildInput const& build_info
+) -> AccelerationStructureMemoryInfo {
+    VkAccelerationStructureBuildGeometryInfoKHR vk_build_info;
+    VkAccelerationStructureGeometryKHR vk_geometry;
+    VkAccelerationStructureBuildRangeInfoKHR vk_range_info;
+    to_vk_accel_build_info(build_info, vk_build_info, vk_geometry, vk_range_info);
+
+    VkAccelerationStructureBuildSizesInfoKHR size_info{
+        .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+        .pNext = nullptr,
+    };
+    vkGetAccelerationStructureBuildSizesKHR(
+        device_, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+        &vk_build_info, &vk_range_info.primitiveCount, &size_info
+    );
+    return AccelerationStructureMemoryInfo{
+        .acceleration_structure_size = size_info.accelerationStructureSize,
+        .build_scratch_size = size_info.buildScratchSize,
+        .update_scratch_size = size_info.updateScratchSize,
+    };
+}
+
+auto DeviceVulkan::require_acceleration_structure_query_pools(
+    AccelerationStructureQueryPoolSizes const& sizes
+) -> AccelerationStructureQueryPools const& {
+    auto& pools = accel_query_pools_.emplace_back();
+
+    VkQueryPoolCreateInfo query_pool_ci{
+        .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .pipelineStatistics = 0,
+    };
+
+    query_pool_ci.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+    query_pool_ci.queryCount = sizes.num_compacted_size;
+    if (query_pool_ci.queryCount > 0) {
+        vkCreateQueryPool(device_, &query_pool_ci, nullptr, &pools.compacted_size);
+    }
+
+    return pools;
+}
+
+auto DeviceVulkan::destroy_acceleration_structure_query_pools() -> void {
+    for (auto& pools : accel_query_pools_) {
+        if (pools.compacted_size) {
+            vkDestroyQueryPool(device_, pools.compacted_size, nullptr);
+        }
+    }
+    accel_query_pools_.clear();
 }
 
 }

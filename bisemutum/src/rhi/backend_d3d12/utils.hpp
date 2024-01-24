@@ -1,6 +1,9 @@
 #pragma once
 
+#include <vector>
+
 #include <bisemutum/rhi/defines.hpp>
+#include <bisemutum/rhi/accel.hpp>
 #include <bisemutum/prelude/misc.hpp>
 
 #include <wrl.h>
@@ -115,5 +118,16 @@ inline auto to_dx_format(ResourceFormat format) -> DXGI_FORMAT {
 inline auto to_dx_index_format(IndexType type) -> DXGI_FORMAT {
     return type == IndexType::uint16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 }
+
+auto to_dx_accel_build_input(
+    AccelerationStructureGeometryBuildInput const& build_info,
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& dx_build_info,
+    std::vector<D3D12_RAYTRACING_GEOMETRY_DESC>& dx_geometries
+) -> void;
+
+auto to_dx_accel_build_input(
+    AccelerationStructureInstanceBuildInput const& build_info,
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& dx_build_info
+) -> void;
 
 }

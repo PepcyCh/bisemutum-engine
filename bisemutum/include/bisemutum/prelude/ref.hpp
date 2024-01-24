@@ -40,7 +40,7 @@ struct Ref final {
 
     template <typename T2> requires requires { dynamic_cast<T2*>(std::declval<T*>()); }
     auto dyn_cast_to() const -> bi::Option<Ref<T2>> {
-        T2 *ptr2 = dynamic_cast<T2*>(ptr_);
+        auto ptr2 = dynamic_cast<T2*>(ptr_);
         return ptr2 ? Ref<T2>(ptr2) : bi::Option<Ref<T2>>{};
     }
 
@@ -52,7 +52,7 @@ private:
     Ref(T* ptr) noexcept : ptr_(ptr) {}
 
     template <typename T2>
-    friend class Ref;
+    friend struct Ref;
 
     T* ptr_ = nullptr;
 };
@@ -114,17 +114,18 @@ struct Option<Ref<T>> final {
 
     template <typename T2> requires requires { static_cast<T2*>(std::declval<T*>()); }
     auto cast_to() const -> Option<Ref<T2>> {
-        return ptr_ ? Ref<T2>(static_cast<T2*>(ptr_)) : Option{};
+        return Option<Ref<T2>>{ptr_ ? static_cast<T2*>(ptr_) : nullptr};
     }
 
     template <typename T2> requires requires { dynamic_cast<T2*>(std::declval<T*>()); }
     auto dyn_cast_to() const -> Option<Ref<T2>> {
-        T2 *ptr2 = ptr_ ? dynamic_cast<T2*>(ptr_) : nullptr;
-        return ptr2 ? Ref<T2>(ptr2) : Option<Ref<T2>>{};
+        return Option<Ref<T2>>{ptr_ ? dynamic_cast<T2*>(ptr_) : nullptr};
     }
 
     auto remove_const() const -> Option<Ref<std::remove_const_t<T>>> {
-        return ptr_ ? Ref<std::remove_const_t<T>>(const_cast<std::remove_const_t<T>*>(ptr_)) : Option{};
+        return Option<Ref<std::remove_const_t<T>>>{
+            ptr_ ? unsafe_make_ref(const_cast<std::remove_const_t<T>*>(ptr_)) : nullptr
+        };
     }
 
     auto value() -> Ref<T> { return unsafe_make_ref(ptr_); }

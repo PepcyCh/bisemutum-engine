@@ -5,6 +5,7 @@
 #include "device.hpp"
 #include "descriptor.hpp"
 #include "resource.hpp"
+#include "accel.hpp"
 #include "pipeline.hpp"
 #include "queue.hpp"
 
@@ -68,6 +69,21 @@ auto to_vk_buffer_access_type(
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
     if (type.contains_any(ResourceAccessType::transfer_write)) {
+        type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    }
+    if (type.contains_any(ResourceAccessType::acceleration_structure_read)) {
+        type_vk |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        stage_vk |= VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+            | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR
+            | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
+    }
+    if (type.contains_any(ResourceAccessType::acceleration_structure_write)) {
+        type_vk |= VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        stage_vk |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+            | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
+    }
+    if (type.contains_any(ResourceAccessType::acceleration_structure_build_emit_data_write)) {
         type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
@@ -360,6 +376,156 @@ auto CommandEncoderVulkan::copy_texture_to_buffer(
         dst_buffer_vk->raw(),
         1, &region_vk
     );
+}
+
+auto CommandEncoderVulkan::build_bottom_level_acceleration_structure(
+    CSpan<AccelerationStructureGeometryBuildDesc> build_infos
+) -> void {
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> vk_build_infos(build_infos.size());
+    std::vector<std::vector<VkAccelerationStructureGeometryKHR>> vk_geometries(build_infos.size());
+    std::vector<std::vector<VkAccelerationStructureBuildRangeInfoKHR>> vk_range_infos(build_infos.size());
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR const*> p_range_infos(build_infos.size());
+
+    AccelerationStructureQueryPoolSizes query_pool_sizes{};
+    std::vector<VkAccelerationStructureKHR> query_accels_compactes_size;
+
+    for (size_t i = 0; i < build_infos.size(); i++) {
+        to_vk_accel_build_info(build_infos[i].build_input, vk_build_infos[i], vk_geometries[i], vk_range_infos[i]);
+        vk_build_infos[i].srcAccelerationStructure = build_infos[i].src_acceleration_structure.has_value()
+            ? build_infos[i].src_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw()
+            : VK_NULL_HANDLE;
+        vk_build_infos[i].dstAccelerationStructure =
+            build_infos[i].dst_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw();
+        vk_build_infos[i].scratchData.deviceAddress =
+            build_infos[i].scratch_buffer.cast_to<const BufferVulkan>()->address() + build_infos[i].scratch_buffer_offset;
+        p_range_infos[i] = vk_range_infos[i].data();
+
+        for (auto& emit_data : build_infos[i].emit_data) {
+            switch (emit_data.type) {
+                case AccelerationStructureBuildEmitDataType::compacted_size:
+                    ++query_pool_sizes.num_compacted_size;
+                    query_accels_compactes_size.push_back(vk_build_infos[i].dstAccelerationStructure);
+                    break;
+            }
+        }
+    }
+    vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, vk_build_infos.size(), vk_build_infos.data(), p_range_infos.data());
+
+    auto query_pools = device_->require_acceleration_structure_query_pools(query_pool_sizes);
+    if (!query_accels_compactes_size.empty()) {
+        vkCmdWriteAccelerationStructuresPropertiesKHR(
+            cmd_buffer_, query_accels_compactes_size.size(), query_accels_compactes_size.data(),
+            VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, query_pools.compacted_size, 0
+        );
+    }
+
+    query_pool_sizes.num_compacted_size = 0;
+    for (size_t i = 0; i < build_infos.size(); i++) {
+        for (auto& emit_data : build_infos[i].emit_data) {
+            switch (emit_data.type) {
+                case AccelerationStructureBuildEmitDataType::compacted_size:
+                    vkCmdCopyQueryPoolResults(
+                        cmd_buffer_, query_pools.compacted_size,
+                        query_pool_sizes.num_compacted_size, 1,
+                        emit_data.dst_buffer.cast_to<BufferVulkan>()->raw(), emit_data.dst_buffer_offset,
+                        sizeof(VkDeviceSize), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
+                    );
+                    ++query_pool_sizes.num_compacted_size;
+                    break;
+            }
+        }
+    }
+}
+
+auto CommandEncoderVulkan::build_top_level_acceleration_structure(
+    CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+) -> void {
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> vk_build_infos(build_infos.size());
+    std::vector<VkAccelerationStructureGeometryKHR> vk_geometries(build_infos.size());
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> vk_range_infos(build_infos.size());
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR const*> p_range_infos(build_infos.size());
+
+    AccelerationStructureQueryPoolSizes query_pool_sizes{};
+    std::vector<VkAccelerationStructureKHR> query_accels_compactes_size;
+
+    for (size_t i = 0; i < build_infos.size(); i++) {
+        to_vk_accel_build_info(build_infos[i].build_input, vk_build_infos[i], vk_geometries[i], vk_range_infos[i]);
+        vk_build_infos[i].srcAccelerationStructure = build_infos[i].src_acceleration_structure.has_value()
+            ? build_infos[i].src_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw()
+            : VK_NULL_HANDLE;
+        vk_build_infos[i].dstAccelerationStructure =
+            build_infos[i].dst_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw();
+        vk_build_infos[i].scratchData.deviceAddress =
+            build_infos[i].scratch_buffer.cast_to<const BufferVulkan>()->address() + build_infos[i].scratch_buffer_offset;
+        p_range_infos[i] = &vk_range_infos[i];
+
+        for (auto& emit_data : build_infos[i].emit_data) {
+            switch (emit_data.type) {
+                case AccelerationStructureBuildEmitDataType::compacted_size:
+                    ++query_pool_sizes.num_compacted_size;
+                    query_accels_compactes_size.push_back(vk_build_infos[i].dstAccelerationStructure);
+                    break;
+            }
+        }
+    }
+    vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, vk_build_infos.size(), vk_build_infos.data(), p_range_infos.data());
+
+    auto query_pools = device_->require_acceleration_structure_query_pools(query_pool_sizes);
+    if (!query_accels_compactes_size.empty()) {
+        vkCmdWriteAccelerationStructuresPropertiesKHR(
+            cmd_buffer_, query_accels_compactes_size.size(), query_accels_compactes_size.data(),
+            VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, query_pools.compacted_size, 0
+        );
+    }
+
+    query_pool_sizes.num_compacted_size = 0;
+    for (size_t i = 0; i < build_infos.size(); i++) {
+        for (auto& emit_data : build_infos[i].emit_data) {
+            switch (emit_data.type) {
+                case AccelerationStructureBuildEmitDataType::compacted_size:
+                    vkCmdCopyQueryPoolResults(
+                        cmd_buffer_, query_pools.compacted_size,
+                        query_pool_sizes.num_compacted_size, 1,
+                        emit_data.dst_buffer.cast_to<BufferVulkan>()->raw(), emit_data.dst_buffer_offset,
+                        sizeof(VkDeviceSize), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
+                    );
+                    ++query_pool_sizes.num_compacted_size;
+                    break;
+            }
+        }
+    }
+}
+
+auto CommandEncoderVulkan::copy_acceleration_structure(
+    CRef<AccelerationStructure> src_acceleration_structure,
+    Ref<AccelerationStructure> dst_acceleration_structure
+) -> void {
+    auto src_accel = src_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw();
+    auto dst_accel = dst_acceleration_structure.cast_to<AccelerationStructureVulkan>()->raw();
+    VkCopyAccelerationStructureInfoKHR copy_info{
+        .sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
+        .pNext = nullptr,
+        .src = src_accel,
+        .dst = dst_accel,
+        .mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR,
+    };
+    vkCmdCopyAccelerationStructureKHR(cmd_buffer_, &copy_info);
+}
+
+auto CommandEncoderVulkan::compact_acceleration_structure(
+    CRef<AccelerationStructure> src_acceleration_structure,
+    Ref<AccelerationStructure> dst_acceleration_structure
+) -> void {
+    auto src_accel = src_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw();
+    auto dst_accel = dst_acceleration_structure.cast_to<AccelerationStructureVulkan>()->raw();
+    VkCopyAccelerationStructureInfoKHR copy_info{
+        .sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
+        .pNext = nullptr,
+        .src = src_accel,
+        .dst = dst_accel,
+        .mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR,
+    };
+    vkCmdCopyAccelerationStructureKHR(cmd_buffer_, &copy_info);
 }
 
 auto CommandEncoderVulkan::resource_barriers(

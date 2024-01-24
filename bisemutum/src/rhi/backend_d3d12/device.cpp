@@ -16,6 +16,7 @@
 #include "swapchain.hpp"
 #include "sync.hpp"
 #include "resource.hpp"
+#include "accel.hpp"
 #include "pipeline.hpp"
 #include "utils.hpp"
 
@@ -220,6 +221,10 @@ auto DeviceD3D12::create_sampler(SamplerDesc const& desc) -> Box<Sampler> {
     return Box<SamplerD3D12>::make(unsafe_make_ref(this), desc);
 }
 
+auto DeviceD3D12::create_acceleration_structure(AccelerationStructureDesc const& desc) -> Box<AccelerationStructure> {
+    return Box<AccelerationStructureD3D12>::make(unsafe_make_ref(this), desc);
+}
+
 auto DeviceD3D12::create_descriptor_heap(DescriptorHeapDesc const& desc) -> Box<DescriptorHeap> {
     return Box<DescriptorHeapD3D12>::make(unsafe_make_ref(this), desc);
 }
@@ -234,6 +239,10 @@ auto DeviceD3D12::create_graphics_pipeline(GraphicsPipelineDesc const& desc) -> 
 
 auto DeviceD3D12::create_compute_pipeline(ComputePipelineDesc const& desc) -> Box<ComputePipeline> {
     return Box<ComputePipelineD3D12>::make(unsafe_make_ref(this), desc);
+}
+
+auto DeviceD3D12::create_raytracing_pipeline(RaytracingPipelineDesc const& desc) -> Box<RaytracingPipeline> {
+    return Box<RaytracingPipelineD3D12>::make(unsafe_make_ref(this), desc);
 }
 
 auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void {
@@ -437,6 +446,37 @@ auto DeviceD3D12::copy_descriptors(
     for (size_t i = 0; i < src_descriptors.size(); i++) {
         device_->CopyDescriptorsSimple(1, {dst_desciptor.cpu + stride * i}, {src_descriptors[i].cpu}, heap_type);
     }
+}
+
+auto DeviceD3D12::get_acceleration_structure_memory_size(
+    AccelerationStructureGeometryBuildInput const& build_info
+) -> AccelerationStructureMemoryInfo {
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS dx_build_info;
+    std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> dx_geometries;
+    to_dx_accel_build_input(build_info, dx_build_info, dx_geometries);
+
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild_info{};
+    device_->GetRaytracingAccelerationStructurePrebuildInfo(&dx_build_info, &prebuild_info);
+    return AccelerationStructureMemoryInfo{
+        .acceleration_structure_size = prebuild_info.ResultDataMaxSizeInBytes,
+        .build_scratch_size = prebuild_info.ScratchDataSizeInBytes,
+        .update_scratch_size = prebuild_info.UpdateScratchDataSizeInBytes,
+    };
+}
+
+auto DeviceD3D12::get_acceleration_structure_memory_size(
+    AccelerationStructureInstanceBuildInput const& build_info
+) -> AccelerationStructureMemoryInfo {
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS dx_build_info;
+    to_dx_accel_build_input(build_info, dx_build_info);
+
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild_info{};
+    device_->GetRaytracingAccelerationStructurePrebuildInfo(&dx_build_info, &prebuild_info);
+    return AccelerationStructureMemoryInfo{
+        .acceleration_structure_size = prebuild_info.ResultDataMaxSizeInBytes,
+        .build_scratch_size = prebuild_info.ScratchDataSizeInBytes,
+        .update_scratch_size = prebuild_info.UpdateScratchDataSizeInBytes,
+    };
 }
 
 auto DeviceD3D12::get_local_root_signature(uint32_t size_in_bytes, uint32_t space, uint32_t register_) -> ID3D12RootSignature* {
