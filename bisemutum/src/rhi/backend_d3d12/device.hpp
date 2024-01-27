@@ -59,6 +59,7 @@ struct DeviceD3D12 final : Device {
     auto create_descriptor(BufferDescriptorDesc const& buffer_desc, DescriptorHandle handle) -> void override;
     auto create_descriptor(TextureDescriptorDesc const& texture_desc, DescriptorHandle handle) -> void override;
     auto create_descriptor(Ref<Sampler> sampler, DescriptorHandle handle) -> void override;
+    auto create_descriptor(Ref<AccelerationStructure> accel, DescriptorHandle handle) -> void override;
 
     auto copy_descriptors(
         DescriptorHandle dst_desciptor,

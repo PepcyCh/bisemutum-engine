@@ -732,6 +732,46 @@ auto DeviceVulkan::create_descriptor(Ref<Sampler> sampler, DescriptorHandle hand
     }
 }
 
+auto DeviceVulkan::create_descriptor(Ref<AccelerationStructure> accel, DescriptorHandle handle) -> void {
+    auto accel_vk = accel.cast_to<AccelerationStructureVulkan>();
+    if (support_descriptor_buffer_) {
+        VkDescriptorGetInfoEXT get_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+            .pNext = nullptr,
+            .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .data = {
+                .accelerationStructure = accel_vk->gpu_reference(),
+            },
+        };
+        vkGetDescriptorEXT(
+            device_, &get_info, size_of_descriptor(DescriptorType::acceleration_structure),
+            reinterpret_cast<void*>(handle.cpu)
+        );
+    } else {
+        auto desc_set = *reinterpret_cast<VkDescriptorSet*>(handle.cpu);
+        auto accel_raw = accel_vk->raw();
+        VkWriteDescriptorSetAccelerationStructureKHR desc_accel_write{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+            .pNext = nullptr,
+            .accelerationStructureCount = 1,
+            .pAccelerationStructures = &accel_raw,
+        };
+        VkWriteDescriptorSet desc_write{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = &desc_accel_write,
+            .dstSet = desc_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .pImageInfo = nullptr,
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr,
+        };
+        vkUpdateDescriptorSets(device_, 1, &desc_write, 0, nullptr);
+    }
+}
+
 auto DeviceVulkan::copy_descriptors(
     DescriptorHandle dst_desciptor,
     CSpan<DescriptorHandle> src_descriptors,

@@ -433,6 +433,19 @@ auto DeviceD3D12::create_descriptor(Ref<Sampler> sampler, DescriptorHandle handl
     device_->CreateSampler(&sampler_dx->sampler_desc(), {handle.cpu});
 }
 
+auto DeviceD3D12::create_descriptor(Ref<AccelerationStructure> accel, DescriptorHandle handle) -> void {
+    auto accel_dx = accel.cast_to<AccelerationStructureD3D12>();
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
+        .Format = DXGI_FORMAT_UNKNOWN,
+        .ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE,
+        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+        .RaytracingAccelerationStructure = {
+            .Location = accel_dx->gpu_reference(),
+        },
+    };
+    device_->CreateShaderResourceView(accel_dx->raw_base_buffer(), &srv_desc, {handle.cpu});
+}
+
 auto DeviceD3D12::copy_descriptors(
     DescriptorHandle dst_desciptor,
     CSpan<DescriptorHandle> src_descriptors,

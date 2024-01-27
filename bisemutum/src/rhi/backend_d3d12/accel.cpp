@@ -11,6 +11,7 @@ AccelerationStructureD3D12::AccelerationStructureD3D12(
 {
     desc_ = desc;
     auto buffer_dx = desc_.buffer.cast_to<const BufferD3D12>();
+    base_buffer_ = buffer_dx->raw();
     gpu_address_ = buffer_dx->raw()->GetGPUVirtualAddress() + desc_.buffer_offset;
 }
 

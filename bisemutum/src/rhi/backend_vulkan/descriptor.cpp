@@ -1,15 +1,10 @@
 #include "descriptor.hpp"
 
-#include <format>
-
 #include <bisemutum/prelude/misc.hpp>
 #include <bisemutum/prelude/math.hpp>
 
 #include "volk.h"
 #include "device.hpp"
-#include "utils.hpp"
-#include "resource.hpp"
-#include "sampler.hpp"
 
 namespace bi::rhi {
 
@@ -58,9 +53,8 @@ DescriptorHeapVulkan::DescriptorHeapVulkan(Ref<DeviceVulkan> device, DescriptorH
         };
         VmaAllocationInfo allocation_info{};
         vmaCreateBuffer(device_->allocator(), &buffer_ci, &allocation_ci, &gpu_buffer_, &allocation_, &allocation_info);
-        mapped_cpu_buffer_ = reinterpret_cast<std::byte*>(allocation_info.pMappedData);
 
-        start_handle_.cpu = reinterpret_cast<uint64_t>(mapped_cpu_buffer_);
+        start_handle_.cpu = reinterpret_cast<uint64_t>(allocation_info.pMappedData);
         start_handle_.gpu = base_gpu_address();
     } else {
         cpu_buffer_ = Box<std::byte[]>::make(buffer_size);
@@ -119,6 +113,7 @@ DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> 
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, desc.max_count},
         {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, desc.max_count},
         {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, desc.max_count},
+        {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 8},
     };
     VkDescriptorPoolCreateInfo desc_pool_ci{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -160,6 +155,7 @@ DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> 
         create_single_descriptor_layout(DescriptorType::read_write_storage_buffer);
         create_single_descriptor_layout(DescriptorType::sampled_texture);
         create_single_descriptor_layout(DescriptorType::read_write_storage_texture);
+        create_single_descriptor_layout(DescriptorType::acceleration_structure);
     }
 }
 

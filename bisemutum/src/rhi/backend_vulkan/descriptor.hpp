@@ -37,7 +37,6 @@ private:
     VkBuffer gpu_buffer_ = VK_NULL_HANDLE;
     VmaAllocation allocation_ = VK_NULL_HANDLE;
     Box<std::byte[]> cpu_buffer_;
-    std::byte* mapped_cpu_buffer_ = nullptr;
 
     DescriptorHandle start_handle_{};
     uint64_t top_pos_ = 0;
