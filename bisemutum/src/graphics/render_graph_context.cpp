@@ -120,7 +120,7 @@ auto set_shader_params_helper(
             } else if constexpr (std::is_same_v<CommandBuffer, rhi::ComputeCommandEncoder>) {
                 resource_binding_ctx.temp_set_samplers[set].layout.back().visibility = rhi::ShaderStage::compute;
             } else {
-                static_assert(false, "Invalid template parameter value 'CommandBuffer'.");
+                static_assert(traits::AlwaysFalse<CommandBuffer>, "Invalid template parameter value 'CommandBuffer'.");
             }
         } else {
             layout.push_back(std::move(layout_entry));

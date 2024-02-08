@@ -105,7 +105,7 @@ auto DescriptorHeapVulkan::base_gpu_address() const -> uint64_t {
 DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> device, DescriptorHeapDesc const& desc)
     : device_(device)
 {
-    VkDescriptorPoolSize pool_sizes[]{
+    std::vector<VkDescriptorPoolSize> pool_sizes{
         {VK_DESCRIPTOR_TYPE_SAMPLER, desc.max_count},
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, desc.max_count},
         {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, desc.max_count},
@@ -113,8 +113,12 @@ DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> 
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, desc.max_count},
         {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, desc.max_count},
         {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, desc.max_count},
-        {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 8},
     };
+    if (device_->properties().raytracing_pipeline) {
+        pool_sizes.push_back(
+            {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 8}
+        );
+    }
     VkDescriptorPoolCreateInfo desc_pool_ci{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext = nullptr,
@@ -122,8 +126,8 @@ DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> 
         .maxSets = desc.max_count,
         .poolSizeCount = desc.type == DescriptorHeapType::sampler
             ? 1u
-            : static_cast<uint32_t>(sizeof(pool_sizes) / sizeof(pool_sizes[0])),
-        .pPoolSizes = pool_sizes,
+            : static_cast<uint32_t>(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data(),
     };
     vkCreateDescriptorPool(device_->raw(), &desc_pool_ci, nullptr, &desc_pool_);
 
@@ -155,7 +159,9 @@ DescriptorHeapVulkanLegacy::DescriptorHeapVulkanLegacy(Ref<struct DeviceVulkan> 
         create_single_descriptor_layout(DescriptorType::read_write_storage_buffer);
         create_single_descriptor_layout(DescriptorType::sampled_texture);
         create_single_descriptor_layout(DescriptorType::read_write_storage_texture);
-        create_single_descriptor_layout(DescriptorType::acceleration_structure);
+        if (device_->properties().raytracing_pipeline) {
+            create_single_descriptor_layout(DescriptorType::acceleration_structure);
+        }
     }
 }
 
