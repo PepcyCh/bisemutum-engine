@@ -7,9 +7,11 @@
 namespace bi::gfx {
 
 struct Drawable final {
-    auto bounding_box() const -> BoundingBox { return transform.transform_bounding_box(mesh->bounding_box()); }
+    auto bounding_box() const -> BoundingBox;
+    auto submesh_desc() const -> SubmeshDesc const&;
 
     Dyn<IMesh>::Ptr mesh;
+    uint32_t submesh_index = 0;
     // `material` can be a nullptr in some special cases.
     Ptr<Material> material;
     Transform transform;

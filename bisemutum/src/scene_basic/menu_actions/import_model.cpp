@@ -126,9 +126,6 @@ surface.roughness = roughness;
                     mesh->set_index_at(3 * i + 2, ai_face.mIndices[2]);
                 }
                 mesh->calculate_tspace();
-                auto& aabb = ai_mesh->mAABB;
-                mesh->set_bouding_box_raw({aabb.mMin.x, aabb.mMin.y, aabb.mMin.z}, {aabb.mMax.x, aabb.mMax.y, aabb.mMax.z});
-                mesh->update_gpu_buffer();
 
                 curr_object->attach_component(StaticMeshComponent{
                     .static_mesh = {mesh_asset_id},

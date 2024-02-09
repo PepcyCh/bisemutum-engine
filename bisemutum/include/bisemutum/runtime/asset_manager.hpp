@@ -55,7 +55,7 @@ struct AssetManager final : PImpl<AssetManager> {
         return {id, Ptr<Asset>{aa::any_cast<Asset>(asset_ptr)}.value()};
     }
 
-    auto save_all_assets(Dyn<IFile>::Ref metadata_file) -> void;
+    auto save_all_assets(Dyn<IFile>::Ref metadata_file, bool force) -> void;
 
 private:
     auto register_asset(std::string_view type, AssetFunctions&& functions) -> void;

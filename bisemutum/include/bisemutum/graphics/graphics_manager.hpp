@@ -48,6 +48,7 @@ struct ComputeShader;
 
 struct Camera;
 struct Drawable;
+struct MeshData;
 
 enum class DefaultTexture : uint8_t {
     white_1x1,
@@ -143,7 +144,16 @@ private:
     auto free_cpu_resource_descriptor(rhi::DescriptorHandle descriptor) -> void;
     auto free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void;
 
+    friend RenderGraph;
+    auto update_mesh_buffers(CRef<MeshData> mesh) -> void;
+
     friend GraphicsPassContext;
+    auto bind_mesh_buffers(
+        Ref<rhi::GraphicsCommandEncoder> cmd_encoder, CRef<MeshData> mesh
+    ) -> void;
+    auto draw_drawable(
+        Ref<rhi::GraphicsCommandEncoder> cmd_encoder, Ref<Drawable> drawable
+    ) -> void;
     auto compile_pipeline_for_drawable(
         GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
     ) -> Ref<rhi::GraphicsPipeline>;

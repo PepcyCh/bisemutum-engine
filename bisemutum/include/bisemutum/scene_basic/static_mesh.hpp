@@ -27,10 +27,8 @@ struct StaticMesh final {
     BI_SHADER_PARAMETERS_END(ShaderParams)
 
     auto mesh_type_name() const -> std::string_view { return asset_type_name; }
-    auto bounding_box() const -> BoundingBox { return bbox_; }
-    auto vertex_input_desc(gfx::VertexAttributesType attributes_type) const -> std::vector<rhi::VertexInputBufferDesc>;
-    auto num_indices() const -> uint32_t { return indices_.size(); }
-    auto bind_buffers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder) -> void;
+    auto get_mesh_data() const -> gfx::MeshData const& { return mesh_; }
+    auto get_mutable_mesh_data() -> gfx::MeshData& { return mesh_; }
     auto fill_shader_params(Ref<gfx::Drawable> drawable) const -> void;
     auto shader_params_metadata() const -> gfx::ShaderParameterMetadataList const& {
         return ShaderParams::metadata_list();
@@ -50,17 +48,17 @@ struct StaticMesh final {
         }
     }
 
-    auto positions() const -> CSpan<float3> { return positions_; }
-    auto normals() const -> CSpan<float3> { return normals_; }
-    auto tangents() const -> CSpan<float4> { return tangents_; }
-    auto texcoords() const -> CSpan<float2> { return texcoords_; }
-    auto indices() const -> CSpan<uint32_t> { return indices_; }
+    auto positions() const -> CSpan<float3> { return mesh_.positions(); }
+    auto normals() const -> CSpan<float3> { return mesh_.normals(); }
+    auto tangents() const -> CSpan<float4> { return mesh_.tangents(); }
+    auto texcoords() const -> CSpan<float2> { return mesh_.texcoords(); }
+    auto indices() const -> CSpan<uint32_t> { return mesh_.indices(); }
 
-    auto position_at(size_t index) const -> float3 const& { return positions_[index]; }
-    auto normal_at(size_t index) const -> float3 const& { return normals_[index]; }
-    auto tangent_at(size_t index) const -> float4 const& { return tangents_[index]; }
-    auto texcoord_at(size_t index) const -> float2 const& { return texcoords_[index]; }
-    auto index_at(size_t index) const -> uint32_t { return indices_[index]; }
+    auto position_at(size_t index) const -> float3 const& { return mesh_.positions()[index]; }
+    auto normal_at(size_t index) const -> float3 const& { return mesh_.normals()[index]; }
+    auto tangent_at(size_t index) const -> float4 const& { return mesh_.tangents()[index]; }
+    auto texcoord_at(size_t index) const -> float2 const& { return mesh_.texcoords()[index]; }
+    auto index_at(size_t index) const -> uint32_t { return mesh_.indices()[index]; }
 
     auto resize(size_t num_vertices, size_t num_indices) -> void;
     auto set_position_at(size_t index, float3 const& data) -> void;
@@ -74,30 +72,11 @@ struct StaticMesh final {
     auto set_tangents_raw(float4 const* data) -> void;
     auto set_texcoords_raw(float2 const* data) -> void;
     auto set_indices_raw(uint32_t const* data) -> void;
-    auto set_bouding_box_raw(float3 const& p_min, float3 const& p_max) -> void;
 
     auto calculate_tspace() -> void;
 
-    auto update_gpu_buffer() -> void;
-
 private:
-    std::vector<float3> positions_;
-    std::vector<float3> normals_;
-    std::vector<float4> tangents_;
-    std::vector<float2> texcoords_;
-    std::vector<uint32_t> indices_;
-    BoundingBox bbox_;
-
-    gfx::Buffer positions_buffer_;
-    gfx::Buffer normals_buffer_;
-    gfx::Buffer tangents_buffer_;
-    gfx::Buffer texcoords_buffer_;
-    gfx::Buffer indices_buffer_;
-    bool positions_dirty_ = true;
-    bool normals_dirty_ = true;
-    bool tangents_dirty_ = true;
-    bool texcoords_dirty_ = true;
-    bool indices_dirty_ = true;
+    gfx::MeshData mesh_;
 };
 
 struct StaticMeshComponent final {

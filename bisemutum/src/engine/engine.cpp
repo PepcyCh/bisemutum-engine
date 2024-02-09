@@ -201,12 +201,12 @@ struct Engine::Impl final {
         });
     }
 
-    auto save_all() -> void {
+    auto save_all(bool force) -> void {
         auto current_scene_file = file_system.create_file(project_info.scene_file).value();
         world.save_currnet_scene(*&current_scene_file);
 
         auto asset_metadata_file = file_system.create_file(project_info.asset_metadata_file).value();
-        asset_manager.save_all_assets(*&asset_metadata_file);
+        asset_manager.save_all_assets(*&asset_metadata_file, force);
     }
 
     rt::LoggerManager logger_manager;
@@ -295,8 +295,8 @@ auto Engine::menu_manager() -> Ref<editor::MenuManager> {
     return impl()->menu_manager;
 }
 
-auto Engine::save_all() -> void {
-    impl()->save_all();
+auto Engine::save_all(bool force) -> void {
+    impl()->save_all(force);
 }
 
 

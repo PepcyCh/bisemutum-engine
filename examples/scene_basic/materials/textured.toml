@@ -6,6 +6,10 @@ surface.roughness = roughness;
 surface_model = 'lit'
 
 [[params]]
+name = 'roughness'
+value = 0.20000000298023224
+
+[[params]]
 name = 'base_color_tex'
 
     [params.value]
@@ -16,7 +20,3 @@ name = 'normal_map'
 
     [params.value]
     asset_id = 7
-
-[[params]]
-name = 'roughness'
-value = 0.2

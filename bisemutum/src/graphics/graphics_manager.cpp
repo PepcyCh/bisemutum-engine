@@ -382,6 +382,93 @@ struct GraphicsManager::Impl final {
         cpu_sampler_descriptor_allocator->free(descriptor);
     }
 
+    auto update_mesh_buffers(CRef<MeshData> mesh) -> void {
+        auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
+        if (mesh_buffers.version < mesh->version_) {
+            mesh_buffers.positions_buffer.reset();
+
+            auto update_buffer = [](
+                gfx::Buffer& buffer, auto const& cpu_data,
+                BitFlags<rhi::BufferUsage> usage = rhi::BufferUsage::vertex
+            ) {
+                if (!cpu_data.empty()) {
+                    auto desired_size = cpu_data.size() * sizeof(cpu_data[0]);
+                    if (
+                        !buffer.has_value()
+                        || buffer.desc().size < desired_size
+                        || buffer.desc().size > 2 * desired_size
+                    ) {
+                        buffer = gfx::Buffer(
+                            gfx::BufferBuilder()
+                                .size(cpu_data.size() * sizeof(cpu_data[0]))
+                                .usage(usage)
+                        );
+                    }
+                    buffer.set_data(cpu_data.data(), cpu_data.size());
+                }
+            };
+            update_buffer(mesh_buffers.positions_buffer, mesh->positions_);
+            update_buffer(mesh_buffers.normals_buffer, mesh->normals_);
+            update_buffer(mesh_buffers.tangents_buffer, mesh->tangents_);
+            update_buffer(mesh_buffers.colors_buffer, mesh->colors_);
+            update_buffer(mesh_buffers.texcoords_buffer, mesh->texcoords_);
+            update_buffer(mesh_buffers.texcoords2_buffer, mesh->texcoords2_);
+            update_buffer(mesh_buffers.indices_buffer, mesh->indices_, rhi::BufferUsage::index);
+
+            mesh_buffers.version = mesh->version_;
+        }
+    }
+
+    auto bind_mesh_buffers(
+        Ref<rhi::GraphicsCommandEncoder> cmd_encoder, CRef<MeshData> mesh
+    ) -> void {
+        auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
+
+        std::vector<Ref<rhi::Buffer>> vertex_buffers;
+        if (!mesh->positions_.empty()) {
+            vertex_buffers.push_back(mesh_buffers.positions_buffer.rhi_buffer());
+        }
+        if (!mesh->normals_.empty()) {
+            vertex_buffers.push_back(mesh_buffers.normals_buffer.rhi_buffer());
+        }
+        if (!mesh->tangents_.empty()) {
+            vertex_buffers.push_back(mesh_buffers.tangents_buffer.rhi_buffer());
+        }
+        if (!mesh->colors_.empty()) {
+            vertex_buffers.push_back(mesh_buffers.colors_buffer.rhi_buffer());
+        }
+        if (!mesh->texcoords_.empty()) {
+            vertex_buffers.push_back(mesh_buffers.texcoords_buffer.rhi_buffer());
+        }
+        if (!mesh->texcoords2_.empty()) {
+            vertex_buffers.push_back(mesh_buffers.texcoords2_buffer.rhi_buffer());
+        }
+        if (!vertex_buffers.empty()) {
+            cmd_encoder->set_vertex_buffer(vertex_buffers);
+        }
+
+        if (!mesh->indices_.empty()) {
+            cmd_encoder->set_index_buffer(mesh_buffers.indices_buffer.rhi_buffer(), 0, rhi::IndexType::uint32);
+        }
+    }
+    auto draw_drawable(
+        Ref<rhi::GraphicsCommandEncoder> cmd_encoder, Ref<Drawable> drawable
+    ) -> void {
+        auto& mesh_data = drawable->mesh->get_mesh_data();
+        auto& submesh = drawable->submesh_desc();
+
+        auto num_indices = submesh.num_indices;
+        if (submesh.num_indices == ~0u) {
+            num_indices = mesh_data.indices_.size() - submesh.index_offset;
+        }
+
+        if (mesh_data.indices_.empty()) {
+            cmd_encoder->draw(num_indices, 1, submesh.base_vertex, 0);
+        } else {
+            cmd_encoder->draw_indexed(num_indices, 1, submesh.index_offset, submesh.base_vertex, 0);
+        }
+    }
+
     auto compile_pipeline_for_drawable(
         GraphicsPassContext const* graphics_context, CRef<Camera> camera, Ref<Drawable> drawable, CRef<FragmentShader> fs
     ) -> Ref<rhi::GraphicsPipeline> {
@@ -395,7 +482,52 @@ struct GraphicsManager::Impl final {
         fs->modify_compiler_environment(shader_env);
         auto shader_env_id = shader_env.get_config_identifier();
 
-        auto mesh_shaders_id = fmt::format("MESH {} {} ", drawable->mesh->mesh_type_name(), shader_env_id);
+        std::vector<rhi::VertexInputBufferDesc> vertex_input_desc{};
+        std::string vertex_attributes_id{};
+        {
+            vertex_attributes_id += "VA-";
+            auto& mesh_data = drawable->mesh->get_mesh_data();
+            auto add_vertex_attribute = [&vertex_input_desc, &vertex_attributes_id](
+                auto const& attribute_data, rhi::VertexSemantics semantics, std::string_view attribute_id
+            ) {
+                if (!attribute_data.empty()) {
+                    using attribute_type = typename std::remove_reference_t<decltype(attribute_data)>::value_type;
+                    rhi::ResourceFormat format;
+                    if constexpr (std::is_same_v<attribute_type, float2>) {
+                        format = rhi::ResourceFormat::rg32_sfloat;
+                    } else if constexpr (std::is_same_v<attribute_type, float3>) {
+                        format = rhi::ResourceFormat::rgb32_sfloat;
+                    } else if constexpr (std::is_same_v<attribute_type, float4>) {
+                        format = rhi::ResourceFormat::rgba32_sfloat;
+                    } else {
+                        static_assert(traits::AlwaysFalse<attribute_type>, "Invalid vertex attribute type");
+                    }
+                    vertex_input_desc.push_back(rhi::VertexInputBufferDesc{
+                        .stride = sizeof(attribute_type),
+                        .attributes = {
+                            rhi::VertexInputAttribute{
+                                .semantics = semantics,
+                                .format = format,
+                            }
+                        },
+                    });
+                    vertex_attributes_id += attribute_id;
+                }
+            };
+            add_vertex_attribute(mesh_data.positions_, rhi::VertexSemantics::position, "P");
+            add_vertex_attribute(mesh_data.normals_, rhi::VertexSemantics::normal, "N");
+            add_vertex_attribute(mesh_data.tangents_, rhi::VertexSemantics::tangent, "T");
+            add_vertex_attribute(mesh_data.colors_, rhi::VertexSemantics::color, "C");
+            add_vertex_attribute(mesh_data.texcoords_, rhi::VertexSemantics::texcoord0, "U1");
+            add_vertex_attribute(mesh_data.texcoords2_, rhi::VertexSemantics::texcoord0, "U2");
+        }
+
+        auto mesh_shaders_id = fmt::format(
+            "MESH {} {} {} ",
+            drawable->mesh->mesh_type_name(),
+            vertex_attributes_id,
+            shader_env_id
+        );
         auto fs_id = fmt::format(
             "FS '{}' {} {} {}",
             fs->source_path,
@@ -495,10 +627,10 @@ struct GraphicsManager::Impl final {
         rhi::PipelineShader pipeline_fs{fs_it->second, fs->source_entry};
 
         rhi::GraphicsPipelineDesc pipeline_desc{
-            .vertex_input_buffers = drawable->mesh->vertex_input_desc(fs->needed_vertex_attributes),
+            .vertex_input_buffers = std::move(vertex_input_desc),
             .tessellation_state = drawable->mesh->tessellation_desc(),
             .rasterization_state = {
-                .topology = drawable->mesh->primitive_topology(),
+                .topology = drawable->submesh_desc().topology,
                 .front_face = fs->front_face,
                 .cull_mode = fs->cull_mode,
                 .polygon_mode = fs->polygon_mode,
@@ -771,6 +903,18 @@ struct GraphicsManager::Impl final {
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;
     StringHashMap<Box<rhi::GraphicsPipeline>> graphics_pipelines;
     StringHashMap<Box<rhi::ComputePipeline>> compute_pipelines;
+
+    struct MeshBuffers final {
+        uint64_t version = 0;
+        Buffer positions_buffer;
+        Buffer normals_buffer;
+        Buffer tangents_buffer;
+        Buffer colors_buffer;
+        Buffer texcoords_buffer;
+        Buffer texcoords2_buffer;
+        Buffer indices_buffer;
+    };
+    std::unordered_map<uint64_t, MeshBuffers> meshes_buffers;
 };
 
 GraphicsManager::GraphicsManager() = default;
@@ -881,6 +1025,21 @@ auto GraphicsManager::free_cpu_resource_descriptor(rhi::DescriptorHandle descrip
 }
 auto GraphicsManager::free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void {
     impl()->free_cpu_sampler_descriptor(descriptor);
+}
+
+auto GraphicsManager::update_mesh_buffers(CRef<MeshData> mesh) -> void {
+    impl()->update_mesh_buffers(mesh);
+}
+
+auto GraphicsManager::bind_mesh_buffers(
+    Ref<rhi::GraphicsCommandEncoder> cmd_encoder, CRef<MeshData> mesh
+) -> void {
+    impl()->bind_mesh_buffers(cmd_encoder, mesh);
+}
+auto GraphicsManager::draw_drawable(
+    Ref<rhi::GraphicsCommandEncoder> cmd_encoder, Ref<Drawable> drawable
+) -> void {
+    impl()->draw_drawable(cmd_encoder, drawable);
 }
 
 auto GraphicsManager::compile_pipeline_for_drawable(

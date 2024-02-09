@@ -14,8 +14,8 @@ namespace bi::editor {
 
 namespace {
 
-auto menu_action_save_project(MenuActionContext const& ctx) -> void {
-    g_engine->save_all();
+auto menu_action_save_project(MenuActionContext const& ctx, bool force) -> void {
+    g_engine->save_all(force);
 }
 
 auto menu_action_add_prefab_to_scene(MenuActionContext const& ctx) -> void {
@@ -44,7 +44,15 @@ auto menu_action_add_renderer_override(MenuActionContext const& ctx) -> void {
 } // namespace
 
 auto register_menu_actions_runtime(Ref<editor::MenuManager> mgr) -> void {
-    mgr->register_action("Project/Save All", {}, menu_action_save_project);
+    mgr->register_action(
+        "Project/Save All", {},
+        std::bind(menu_action_save_project, std::placeholders::_1, false)
+    );
+    mgr->register_action(
+        "Project/Save All (Force)", {},
+        std::bind(menu_action_save_project, std::placeholders::_1, true)
+    );
+
     mgr->register_action("Scene/Add/Prefab", {}, menu_action_add_prefab_to_scene);
     mgr->register_action("Scene/Add/Volume/Renderer Override", {}, menu_action_add_renderer_override);
 }

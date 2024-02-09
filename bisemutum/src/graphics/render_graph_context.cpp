@@ -212,6 +212,8 @@ auto GraphicsPassContext::render_list(RenderedObjectListHandle handle, ShaderPar
             this, list->camera, item.drawables[0], list->fragment_shader
         );
         cmd_encoder->set_pipeline(pipeline);
+        g_engine->graphics_manager()->bind_mesh_buffers(cmd_encoder, item.drawables[0]->mesh->get_mesh_data());
+
         resource_binding_ctx_->set_shader_params(
             cmd_encoder, graphics_set_camera, graphics_set_visibility_camera,
             list->camera.remove_const()->shader_params()
@@ -230,8 +232,7 @@ auto GraphicsPassContext::render_list(RenderedObjectListHandle handle, ShaderPar
             );
             resource_binding_ctx_->set_samplers(cmd_encoder, graphics_set_samplers);
 
-            drawable->mesh->bind_buffers(cmd_encoder);
-            cmd_encoder->draw_indexed(drawable->mesh->num_indices());
+            g_engine->graphics_manager()->draw_drawable(cmd_encoder, drawable);
         }
     }
 }

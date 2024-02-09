@@ -105,9 +105,9 @@ struct AssetManager::Impl final {
         return {id, std::addressof(it->second.content)};
     }
 
-    auto save_all_assets(Dyn<IFile>::Ref metadata_file) -> void {
+    auto save_all_assets(Dyn<IFile>::Ref metadata_file, bool force) -> void {
         for (auto& [_, asset] : assets) {
-            if (!asset.dirty || !asset.content.has_value()) { continue; }
+            if ((!force && !asset.dirty) || !asset.content.has_value()) { continue; }
             auto asset_file = g_engine->file_system()->create_file(asset.metadata.path).value();
             auto& saver = asset_functions[asset.metadata.type].saver;
             saver(*&asset_file, asset.content);
@@ -175,8 +175,8 @@ auto AssetManager::create_asset(
     return impl()->create_asset(asset_type_name, asset_path, std::move(asset));
 }
 
-auto AssetManager::save_all_assets(Dyn<IFile>::Ref metadata_file) -> void {
-    impl()->save_all_assets(metadata_file);
+auto AssetManager::save_all_assets(Dyn<IFile>::Ref metadata_file, bool force) -> void {
+    impl()->save_all_assets(metadata_file, force);
 }
 
 }

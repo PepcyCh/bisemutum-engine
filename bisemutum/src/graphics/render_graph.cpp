@@ -331,6 +331,8 @@ struct RenderGraph::Impl final {
         std::vector<Ref<Drawable>> drawables;
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
         gpu_scene->for_each_drawable([this, &drawables, &desc](Drawable& drawable) {
+            if (drawable.submesh_desc().num_indices == 0) { return; }
+
             auto mat_is_opaque = drawable.material->blend_mode == BlendMode::opaque
                 || drawable.material->blend_mode == BlendMode::alpha_test;
             if (
@@ -338,6 +340,7 @@ struct RenderGraph::Impl final {
                 || (desc.type.contains_any(RenderedObjectType::transparent) && !mat_is_opaque)
             ) {
                 drawables.push_back(drawable);
+                g_engine->graphics_manager()->update_mesh_buffers(drawable.mesh->get_mesh_data());
             }
         });
         std::sort(drawables.begin(), drawables.end(), [](Ref<Drawable> a, Ref<Drawable> b) {
@@ -351,14 +354,17 @@ struct RenderGraph::Impl final {
         auto& list = rendered_object_lists_.emplace_back(desc.camera, desc.fragment_shader);
         void* curr_mesh;
         Ptr<Material> curr_mat;
+        rhi::PrimitiveTopology curr_topology;
         for (size_t i = 0, j = 0; j < drawables.size(); j++) {
             curr_mesh = drawables[j]->mesh.raw();
             curr_mat = drawables[j]->material->base_material();
+            curr_topology = drawables[j]->submesh_desc().topology;
 
             if (
                 j + 1 == drawables.size()
                 || curr_mesh != drawables[j + 1]->mesh.raw()
                 || curr_mat != drawables[j + 1]->material->base_material()
+                || curr_topology != drawables[j + 1]->submesh_desc().topology
             ) {
                 RenderedObjectListItem item{};
                 item.drawables.reserve(j - i + 1);

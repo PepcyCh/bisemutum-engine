@@ -17,6 +17,7 @@ struct RenderedObjectListDesc final {
     BitFlags<RenderedObjectType> type = {RenderedObjectType::all};
 };
 
+// Drawables those can use the same pipline state and vertex buffer.
 struct RenderedObjectListItem final {
     std::vector<Ref<Drawable>> drawables;
 };

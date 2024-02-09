@@ -23,14 +23,7 @@ struct ReadByteStream final {
 
     template <typename T> requires can_be_used_for_byte_stream<T>
     auto read(T& value) -> ReadByteStream& {
-        if constexpr (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t)) {
-            uint64_t sz = 0;
-            read_raw(reinterpret_cast<std::byte*>(&sz), sizeof(T));
-            value = sz;
-            return *this;
-        } else {
-            return read_raw(reinterpret_cast<std::byte*>(&value), sizeof(T));
-        }
+        return read_raw(reinterpret_cast<std::byte*>(&value), sizeof(T));
     }
 
     auto read(std::string& str) -> ReadByteStream&;
@@ -40,10 +33,7 @@ struct ReadByteStream final {
         uint64_t length = 0;
         read(length);
         vector.resize(length);
-        if constexpr (
-            can_be_used_for_byte_stream<T>
-            && (!std::is_same_v<T, size_t> || sizeof(size_t) == sizeof(uint64_t))
-        ) {
+        if constexpr (can_be_used_for_byte_stream<T>) {
             read_raw(reinterpret_cast<std::byte*>(vector.data()), length * sizeof(T));
         } else {
             for (uint64_t i = 0; i < length; i++) { read(vector[i]); }
@@ -69,12 +59,7 @@ struct WriteByteStream final {
 
     template <typename T> requires can_be_used_for_byte_stream<T>
     auto write(T const& value) -> WriteByteStream& {
-        if constexpr (std::is_same_v<T, size_t> && sizeof(size_t) != sizeof(uint64_t)) {
-            uint64_t sz = value;
-            return write_raw(reinterpret_cast<std::byte const*>(&sz), sizeof(T));
-        } else {
-            return write_raw(reinterpret_cast<std::byte const*>(&value), sizeof(T));
-        }
+        return write_raw(reinterpret_cast<std::byte const*>(&value), sizeof(T));
     }
 
     auto write(std::string_view str) -> WriteByteStream&;
@@ -83,11 +68,8 @@ struct WriteByteStream final {
 
     template <typename T>
     auto write(std::vector<T> const& vector) -> WriteByteStream& {
-        write(vector.size());
-        if constexpr (
-            can_be_used_for_byte_stream<T>
-            && (!std::is_same_v<T, size_t> || sizeof(size_t) == sizeof(uint64_t))
-        ) {
+        write(static_cast<uint64_t>(vector.size()));
+        if constexpr (can_be_used_for_byte_stream<T>) {
             write_raw(reinterpret_cast<std::byte const*>(vector.data()), vector.size() * sizeof(T));
         } else {
             for (auto const& elem : vector) { write(elem); }

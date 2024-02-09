@@ -60,7 +60,7 @@ struct Engine final : PImpl<Engine> {
 
     auto menu_manager() -> Ref<editor::MenuManager>;
 
-    auto save_all() -> void;
+    auto save_all(bool force) -> void;
 };
 
 extern Engine* g_engine;

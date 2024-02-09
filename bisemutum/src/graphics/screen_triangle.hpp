@@ -13,7 +13,13 @@ struct ScreenTriangle final {
     BI_SHADER_PARAMETERS_BEGIN(ShaderParams)
     BI_SHADER_PARAMETERS_END(ShaderParams)
 
+    ScreenTriangle() {
+        mesh_.set_submesh(0, {.num_indices = 3});
+    }
+
     auto mesh_type_name() const -> std::string_view { return "ScreenTriangle"; }
+    auto get_mesh_data() const -> gfx::MeshData const& { return mesh_; }
+    auto get_mutable_mesh_data() -> gfx::MeshData& { return mesh_; }
     auto bounding_box() const -> BoundingBox { return {}; }
     auto vertex_input_desc(VertexAttributesType attributes_type) const -> std::vector<rhi::VertexInputBufferDesc> {
         return {};
@@ -36,6 +42,9 @@ struct ScreenTriangle final {
             return "";
         }
     }
+
+private:
+    MeshData mesh_;
 };
 
 }
