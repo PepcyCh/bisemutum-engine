@@ -24,7 +24,7 @@
 #include "shader.hpp"
 #include "pipeline.hpp"
 
-#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 0
+#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 1
 
 namespace bi::rhi {
 
@@ -778,11 +778,13 @@ auto DeviceVulkan::copy_descriptors(
     BindGroupLayout const& bind_group_layout
 ) -> void {
     if (support_descriptor_buffer_) {
+        auto vk_layout = require_descriptor_set_layout(bind_group_layout);
         auto p_dst = reinterpret_cast<std::byte*>(dst_desciptor.cpu);
-        size_t offset = 0, index = 0;
+        size_t index = 0;
         for (auto& entry : bind_group_layout) {
             auto size = size_of_descriptor(entry.type);
-            offset = aligned_size<size_t>(offset, size);
+            VkDeviceSize offset;
+            vkGetDescriptorSetLayoutBindingOffsetEXT(device_, vk_layout, entry.binding_or_register, &offset);
             for (uint32_t i = 0; i < entry.count; i++) {
                 std::memcpy(p_dst + offset, reinterpret_cast<void const*>(src_descriptors[index].cpu), size);
                 offset += size;
