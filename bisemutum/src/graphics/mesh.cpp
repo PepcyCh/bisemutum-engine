@@ -71,10 +71,10 @@ auto MeshData::submesh_bounding_box(uint32_t index) const -> BoundingBox const& 
     if (index >= submeshes_.size()) {
         return BoundingBox::empty;
     }
-    if (index >= submeh_bboxes_.size()) {
-        submeh_bboxes_.resize(index + 1);
+    if (index >= submesh_bboxes_.size()) {
+        submesh_bboxes_.resize(index + 1);
     }
-    auto& bbox_ = submeh_bboxes_[index];
+    auto& bbox_ = submesh_bboxes_[index];
     if (bbox_.is_empty()) {
         auto& submesh = submeshes_[index];
         auto submesh_num_indices = submesh.num_indices;
@@ -102,8 +102,8 @@ auto MeshData::data_dirty() -> void {
 }
 
 auto MeshData::submesh_dirty(uint32_t index) -> void {
-    if (index < submeh_bboxes_.size()) {
-        submeh_bboxes_[index].reset();
+    if (index < submesh_bboxes_.size()) {
+        submesh_bboxes_[index].reset();
     }
 }
 

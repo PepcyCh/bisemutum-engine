@@ -27,7 +27,9 @@ struct ScreenTriangle final {
     auto num_indices() const -> uint32_t { return 3; }
     auto bind_buffers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder) -> void {}
     auto fill_shader_params(Ref<Drawable> drawable) const -> void {}
-    auto shader_params_metadata() const -> ShaderParameterMetadataList const& { return ShaderParams::metadata_list(); }
+    auto shader_params_metadata(uint32_t submesh_index) const -> ShaderParameterMetadataList const& {
+        return ShaderParams::metadata_list();
+    }
     auto source_path(rhi::ShaderStage stage) const -> std::string_view {
         if (stage == rhi::ShaderStage::vertex) {
             return "/bisemutum/shaders/core/screen_triangle.hlsl";

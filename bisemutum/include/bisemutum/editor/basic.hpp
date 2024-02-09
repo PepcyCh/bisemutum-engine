@@ -1,10 +1,13 @@
 #pragma once
 
 #include <imgui.h>
+#include <imgui_stdlib.h>
+#include <fmt/format.h>
 
 #include "../utils/srefl.hpp"
 #include "../math/math.hpp"
 #include "../prelude/traits.hpp"
+#include "../prelude/container_check.hpp"
 
 namespace bi::editor {
 
@@ -46,9 +49,72 @@ auto edit_bool(std::string_view name, bool& value) -> bool;
 
 
 template <typename T>
+auto edit(T& o) -> bool;
+
+template <typename T>
+requires std::is_default_constructible_v<T>
+auto edit_std_vector(std::vector<T>& vec) -> bool {
+    auto ret = false;
+    auto index_to_remove = static_cast<size_t>(-1);
+    for (size_t i = 0; i < vec.size(); i++) {
+        auto erase_label = fmt::format("-##{}-{}", reinterpret_cast<size_t>(&vec), i);
+        if (ImGui::Button(erase_label.c_str())) {
+            index_to_remove = i;
+            ret = true;
+            continue;
+        }
+        ImGui::SameLine();
+        ImGui::Text("[%d]", i);
+        ImGui::SameLine();
+        ret |= edit(vec[i]);
+    }
+    auto append_label = fmt::format("+##{}", reinterpret_cast<size_t>(&vec));
+    if (ImGui::Button(append_label.c_str())) {
+        vec.emplace_back();
+        ret = true;
+    }
+    if (index_to_remove < vec.size()) {
+        vec.erase(vec.begin() + index_to_remove);
+    }
+    return ret;
+}
+
+template <typename T>
 auto edit(T& o) -> bool {
     if constexpr (requires { o.edit(); }) {
         return o.edit();
+    } else if constexpr (std::is_enum_v<T>) {
+        return edit_enum("", o);
+    } else if constexpr (std::is_same_v<T, bool>) {
+        return edit_bool("", o);
+    } else if constexpr (std::is_same_v<T, float>) {
+        return edit_float("", o);
+    } else if constexpr (std::is_same_v<T, float2>) {
+        return edit_float2("", o);
+    } else if constexpr (std::is_same_v<T, float3>) {
+        return edit_float3("", o);
+    } else if constexpr (std::is_same_v<T, float4>) {
+        return edit_float4("", o);
+    } else if constexpr (std::is_same_v<T, int>) {
+        return edit_int("", o);
+    } else if constexpr (std::is_same_v<T, int2>) {
+        return edit_int2("", o);
+    } else if constexpr (std::is_same_v<T, int3>) {
+        return edit_int3("", o);
+    } else if constexpr (std::is_same_v<T, int4>) {
+        return edit_int4("", o);
+    } else if constexpr (std::is_same_v<T, uint>) {
+        return edit_uint("", o);
+    } else if constexpr (std::is_same_v<T, uint2>) {
+        return edit_uint2("", o);
+    } else if constexpr (std::is_same_v<T, uint3>) {
+        return edit_uint3("", o);
+    } else if constexpr (std::is_same_v<T, uint4>) {
+        return edit_uint4("", o);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+        return ImGui::InputText("", &o);
+    } else if constexpr (traits::is_std_vector_v<T>) {
+        return edit_std_vector(o);
     } else if constexpr (srefl::is_reflectable<T>) {
         constexpr auto info = srefl::refl<T>();
         auto edited = false;

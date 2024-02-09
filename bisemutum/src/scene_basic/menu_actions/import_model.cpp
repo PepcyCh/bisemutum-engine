@@ -131,7 +131,7 @@ surface.roughness = roughness;
                     .static_mesh = {mesh_asset_id},
                 });
                 curr_object->attach_component(MeshRendererComponent{
-                    .material = {mat_ids[ai_mesh->mMaterialIndex]},
+                    .materials = {{mat_ids[ai_mesh->mMaterialIndex]}},
                 });
             }
 

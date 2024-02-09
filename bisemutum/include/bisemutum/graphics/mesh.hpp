@@ -81,7 +81,7 @@ private:
     std::vector<SubmeshDesc> submeshes_;
 
     mutable BoundingBox bbox_;
-    mutable std::vector<BoundingBox> submeh_bboxes_;
+    mutable std::vector<BoundingBox> submesh_bboxes_;
 
     friend GraphicsManager;
     static uint64_t curr_id_;
@@ -121,7 +121,8 @@ BI_TRAIT_BEGIN(IMesh, move)
         (const& self, Ref<Drawable> drawable) requires (self.fill_shader_params(drawable)) -> void
     )
     BI_TRAIT_METHOD(shader_params_metadata,
-        (const& self) requires (self.shader_params_metadata()) -> ShaderParameterMetadataList const&
+        (const& self, uint32_t submesh_index)
+            requires (self.shader_params_metadata(submesh_index)) -> ShaderParameterMetadataList const&
     )
 
     BI_TRAIT_METHOD(source_path,

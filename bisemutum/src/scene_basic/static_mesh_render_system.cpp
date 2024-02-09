@@ -30,7 +30,9 @@ struct StaticMeshRenderSystem::Impl final {
         for (auto entity : destroyed_entities) {
             auto handle_it = drawable_handles.find(entity);
             if (handle_it != drawable_handles.end()) {
-                gpu_scene->remove_drawable(handle_it->second);
+                for (auto handle : handle_it->second) {
+                    gpu_scene->remove_drawable(handle);
+                }
                 drawable_handles.erase(handle_it);
             }
             if (auto it = dirty_entities.find(entity); it != dirty_entities.end()) {
@@ -46,29 +48,51 @@ struct StaticMeshRenderSystem::Impl final {
             }
             auto handle_it = drawable_handles.find(entity);
             if (handle_it == drawable_handles.end()) {
-                handle_it = drawable_handles.insert({entity, gpu_scene->add_drawable()}).first;
+                handle_it = drawable_handles.insert({entity, {}}).first;
             }
-            auto drawable = gpu_scene->get_drawable(handle_it->second);
             auto mesh = object->get_component<StaticMeshComponent>();
             auto renderer = object->get_component<MeshRendererComponent>();
             mesh->static_mesh.load();
-            renderer->material.load();
-            drawable->mesh = mesh->static_mesh.asset().get();
-            drawable->material = &renderer->material.asset()->material;
-            if (dirty_meshes.contains(entity)) {
-                drawable->shader_params.reset();
+            auto num_submehes = std::min<uint32_t>(
+                renderer->materials.size(),
+                mesh->static_mesh.asset()->get_mesh_data().num_submehes() - renderer->submesh_start_index
+            );
+            if (handle_it->second.size() < num_submehes) {
+                auto new_count = num_submehes - handle_it->second.size();
+                for (size_t i = 0; i < new_count; i++) {
+                    handle_it->second.push_back(gpu_scene->add_drawable());
+                }
             }
-            if (!drawable->shader_params) {
-                drawable->shader_params.initialize(drawable->mesh->shader_params_metadata());
+            if (handle_it->second.size() > num_submehes) {
+                auto delete_count = num_submehes - handle_it->second.size();
+                for (size_t i = 0; i < delete_count; i++) {
+                    gpu_scene->remove_drawable(handle_it->second.back());
+                    handle_it->second.pop_back();
+                }
+            }
+            for (uint32_t i = 0; i < num_submehes; i++) {
+                auto drawable = gpu_scene->get_drawable(handle_it->second[i]);
+                renderer->materials[i].load();
+                drawable->mesh = mesh->static_mesh.asset().get();
+                drawable->material = &renderer->materials[i].asset()->material;
+                drawable->submesh_index = renderer->submesh_start_index + i;
+                if (dirty_meshes.contains(entity)) {
+                    drawable->shader_params.reset();
+                }
+                if (!drawable->shader_params) {
+                    drawable->shader_params.initialize(drawable->mesh->shader_params_metadata(drawable->submesh_index));
+                }
             }
         }
         dirty_entities.clear();
         dirty_meshes.clear();
 
-        for (auto& [entity, handle] : drawable_handles) {
+        for (auto& [entity, handles] : drawable_handles) {
             auto object = scene->object_of(entity);
-            auto drawable = gpu_scene->get_drawable(handle);
-            drawable->transform = object->world_transform();
+            for (auto handle : handles) {
+                auto drawable = gpu_scene->get_drawable(handle);
+                drawable->transform = object->world_transform();
+            }
         }
     }
 
@@ -88,7 +112,7 @@ struct StaticMeshRenderSystem::Impl final {
 
     Ptr<rt::Scene> scene;
 
-    std::unordered_map<entt::entity, gfx::DrawableHandle> drawable_handles;
+    std::unordered_map<entt::entity, std::vector<gfx::DrawableHandle>> drawable_handles;
     std::unordered_set<entt::entity> dirty_entities;
     std::unordered_set<entt::entity> dirty_meshes;
     std::unordered_set<entt::entity> destroyed_entities;

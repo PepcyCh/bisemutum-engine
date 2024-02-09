@@ -548,7 +548,7 @@ struct GraphicsManager::Impl final {
             return pipeline_it->second.ref();
         }
 
-        auto& mesh_shader_params = drawable->mesh->shader_params_metadata();
+        auto& mesh_shader_params = drawable->mesh->shader_params_metadata(drawable->submesh_index);
         auto& camera_shader_params = camera->shader_params_metadata();
         shader_env.set_replace_arg(
             "GRAPHICS_MESH_SHADER_PARAMS",

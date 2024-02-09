@@ -30,7 +30,7 @@ struct StaticMesh final {
     auto get_mesh_data() const -> gfx::MeshData const& { return mesh_; }
     auto get_mutable_mesh_data() -> gfx::MeshData& { return mesh_; }
     auto fill_shader_params(Ref<gfx::Drawable> drawable) const -> void;
-    auto shader_params_metadata() const -> gfx::ShaderParameterMetadataList const& {
+    auto shader_params_metadata(uint32_t submesh_index) const -> gfx::ShaderParameterMetadataList const& {
         return ShaderParams::metadata_list();
     }
     auto source_path(rhi::ShaderStage stage) const -> std::string_view {
