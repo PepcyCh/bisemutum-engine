@@ -10,25 +10,6 @@
 
 namespace bi {
 
-namespace {
-
-template <typename Container>
-auto update_buffer(gfx::Buffer& buffer, Container const& container) -> void {
-    auto need_buffer_size = std::max<size_t>(container.size(), 1) * sizeof(container[0]);
-    if (!buffer.has_value() || buffer.desc().size < need_buffer_size) {
-        buffer = gfx::Buffer(
-            gfx::BufferBuilder()
-                .size(need_buffer_size)
-                .usage(rhi::BufferUsage::storage_read)
-        );
-    }
-    if (!container.empty()) {
-        buffer.set_data(container.data(), container.size());
-    }
-}
-
-}
-
 LightsContext::LightsContext() {
     shadow_map_sampler = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
         .mag_filter = rhi::SamplerFilterMode::linear,
@@ -88,7 +69,7 @@ auto LightsContext::collect_all_lights() -> void {
         }
         dir_lights.push_back(data);
     }
-    update_buffer(dir_lights_buffer, dir_lights);
+    gfx::Buffer::update_with_container<true>(dir_lights_buffer, dir_lights);
 
     dir_lights_shadow_transform.resize(dir_lights_with_shadow.size());
     auto dir_lights_shadow_map_layers = std::max<uint32_t>(1, dir_lights_with_shadow.size());
@@ -128,8 +109,8 @@ auto LightsContext::collect_all_lights() -> void {
             default: break;
         }
     }
-    update_buffer(point_lights_buffer, point_lights);
-    update_buffer(spot_lights_buffer, spot_lights);
+    gfx::Buffer::update_with_container<true>(point_lights_buffer, point_lights);
+    gfx::Buffer::update_with_container<true>(spot_lights_buffer, spot_lights);
 }
 
 auto LightsContext::prepare_dir_lights_per_camera(gfx::Camera const& camera) -> void {
@@ -139,7 +120,7 @@ auto LightsContext::prepare_dir_lights_per_camera(gfx::Camera const& camera) -> 
         dir_lights_shadow_transform[i] = l.camera.matrix_proj_view();
         ++i;
     }
-    update_buffer(dir_lights_shadow_transform_buffer, dir_lights_shadow_transform);
+    gfx::Buffer::update_with_container<true>(dir_lights_shadow_transform_buffer, dir_lights_shadow_transform);
 }
 
 }

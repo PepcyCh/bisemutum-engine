@@ -85,6 +85,29 @@ struct Buffer final {
         uint64_t offset = 0, uint64_t size = ~0ull
     ) -> rhi::DescriptorHandle;
 
+    template <bool force_non_empty = false, typename Container>
+    requires requires (Container c) { c.data(); c.size(); c.empty(); }
+    static auto update_with_container(
+        Buffer& buffer, Container const& container,
+        BitFlags<rhi::BufferUsage> usages = rhi::BufferUsage::storage_read
+    ) -> void {
+        auto desired_size = container.size() * sizeof(container[0]);
+        if constexpr (force_non_empty) {
+            if (container.empty()) {
+                desired_size = sizeof(container[0]);
+            }
+        }
+        if (!buffer.has_value() || buffer.desc().size < desired_size || buffer.desc().size > 2 * desired_size) {
+            buffer = Buffer(rhi::BufferDesc{
+                .size = desired_size,
+                .usages = usages,
+            });
+        }
+        if (!container.empty()) {
+            buffer.set_data(container.data(), container.size());
+        }
+    }
+
 private:
     auto rhi_staging_buffer() -> Ref<rhi::Buffer>;
     auto rhi_staging_buffer() const -> CRef<rhi::Buffer>;

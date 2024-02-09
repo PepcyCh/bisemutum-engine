@@ -387,33 +387,13 @@ struct GraphicsManager::Impl final {
         if (mesh_buffers.version < mesh->version_) {
             mesh_buffers.positions_buffer.reset();
 
-            auto update_buffer = [](
-                gfx::Buffer& buffer, auto const& cpu_data,
-                BitFlags<rhi::BufferUsage> usage = rhi::BufferUsage::vertex
-            ) {
-                if (!cpu_data.empty()) {
-                    auto desired_size = cpu_data.size() * sizeof(cpu_data[0]);
-                    if (
-                        !buffer.has_value()
-                        || buffer.desc().size < desired_size
-                        || buffer.desc().size > 2 * desired_size
-                    ) {
-                        buffer = gfx::Buffer(
-                            gfx::BufferBuilder()
-                                .size(cpu_data.size() * sizeof(cpu_data[0]))
-                                .usage(usage)
-                        );
-                    }
-                    buffer.set_data(cpu_data.data(), cpu_data.size());
-                }
-            };
-            update_buffer(mesh_buffers.positions_buffer, mesh->positions_);
-            update_buffer(mesh_buffers.normals_buffer, mesh->normals_);
-            update_buffer(mesh_buffers.tangents_buffer, mesh->tangents_);
-            update_buffer(mesh_buffers.colors_buffer, mesh->colors_);
-            update_buffer(mesh_buffers.texcoords_buffer, mesh->texcoords_);
-            update_buffer(mesh_buffers.texcoords2_buffer, mesh->texcoords2_);
-            update_buffer(mesh_buffers.indices_buffer, mesh->indices_, rhi::BufferUsage::index);
+            Buffer::update_with_container(mesh_buffers.positions_buffer, mesh->positions_, rhi::BufferUsage::vertex);
+            Buffer::update_with_container(mesh_buffers.normals_buffer, mesh->normals_, rhi::BufferUsage::vertex);
+            Buffer::update_with_container(mesh_buffers.tangents_buffer, mesh->tangents_, rhi::BufferUsage::vertex);
+            Buffer::update_with_container(mesh_buffers.colors_buffer, mesh->colors_, rhi::BufferUsage::vertex);
+            Buffer::update_with_container(mesh_buffers.texcoords_buffer, mesh->texcoords_, rhi::BufferUsage::vertex);
+            Buffer::update_with_container(mesh_buffers.texcoords2_buffer, mesh->texcoords2_, rhi::BufferUsage::vertex);
+            Buffer::update_with_container(mesh_buffers.indices_buffer, mesh->indices_, rhi::BufferUsage::index);
 
             mesh_buffers.version = mesh->version_;
         }

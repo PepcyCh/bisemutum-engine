@@ -255,7 +255,7 @@ auto GraphicsPassContext::render_full_screen(
         cmd_encoder, graphics_set_fragment, graphics_set_visibility_fragment, params
     );
     resource_binding_ctx_->set_samplers(cmd_encoder, graphics_set_samplers);
-    cmd_encoder->draw_indexed(screen_triangle.num_indices());
+    cmd_encoder->draw(screen_triangle.get_mesh_data().get_submesh(0).num_indices);
 }
 
 

@@ -20,12 +20,6 @@ struct ScreenTriangle final {
     auto mesh_type_name() const -> std::string_view { return "ScreenTriangle"; }
     auto get_mesh_data() const -> gfx::MeshData const& { return mesh_; }
     auto get_mutable_mesh_data() -> gfx::MeshData& { return mesh_; }
-    auto bounding_box() const -> BoundingBox { return {}; }
-    auto vertex_input_desc(VertexAttributesType attributes_type) const -> std::vector<rhi::VertexInputBufferDesc> {
-        return {};
-    }
-    auto num_indices() const -> uint32_t { return 3; }
-    auto bind_buffers(Ref<rhi::GraphicsCommandEncoder> cmd_encoder) -> void {}
     auto fill_shader_params(Ref<Drawable> drawable) const -> void {}
     auto shader_params_metadata(uint32_t submesh_index) const -> ShaderParameterMetadataList const& {
         return ShaderParams::metadata_list();
