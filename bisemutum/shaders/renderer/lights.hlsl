@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../core/math.hlsl"
 #include "lights_struct.hlsl"
 
 float3 dir_light_eval(DirLightData light, float3 pos, out float3 light_dir) {
@@ -7,22 +8,16 @@ float3 dir_light_eval(DirLightData light, float3 pos, out float3 light_dir) {
     return light.emission;
 }
 
-float3 point_light_eval(LightData light, float3 position, out float3 light_dir) {
+float3 point_light_eval(PointLightData light, float3 position, out float3 light_dir) {
     float3 light_vec = light.position - position;
     float light_dist_sqr = dot(light_vec, light_vec);
     light_dir = light_vec / sqrt(light_dist_sqr);
-    float attenuation = light_dist_sqr < light.range_sqr ? 1.0 / light_dist_sqr : 0.0;
+    float attenuation = saturate(1.0 - pow2(light_dist_sqr * light.range_sqr_inv)) / max(light_dist_sqr, 0.001);
+    if (light.cos_inner > light.cos_outer) {
+        float cos_theta = clamp(dot(light_dir, light.direction), light.cos_outer, light.cos_inner);
+        attenuation *= (cos_theta - light.cos_outer) / max(light.cos_inner - light.cos_outer, 0.001);
+    }
     return light.emission * attenuation;
-}
-
-float3 spot_light_eval(LightData light, float3 position, out float3 light_dir) {
-    float3 light_vec = light.position - position;
-    float light_dist_sqr = dot(light_vec, light_vec);
-    light_dir = light_vec / sqrt(light_dist_sqr);
-    float cos_theta = clamp(dot(light_dir, light.direction), light.cos_outer, light.cos_inner);
-    float dist_attenuation = light_dist_sqr < light.range_sqr ? 1.0 / light_dist_sqr : 0.0;
-    float angle_attenuation = (cos_theta - light.cos_outer) / max(light.cos_inner - light.cos_outer, 0.001);
-    return light.emission * angle_attenuation * dist_attenuation;
 }
 
 float dir_light_shadow_factor(

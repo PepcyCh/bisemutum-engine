@@ -24,7 +24,6 @@ LightsContext::LightsContext() {
 auto LightsContext::collect_all_lights() -> void {
     dir_lights.clear();
     point_lights.clear();
-    spot_lights.clear();
 
     dir_lights_with_shadow.clear();
 
@@ -85,32 +84,26 @@ auto LightsContext::collect_all_lights() -> void {
         );
     }
 
-    auto lights_view = scene->ecs_registry().view<LightComponent>();
-    for (auto entity : lights_view) {
+    auto point_lights_view = scene->ecs_registry().view<PointLightComponent>();
+    for (auto entity : point_lights_view) {
         auto object = scene->object_of(entity);
         auto& transform = object->world_transform();
-        auto& light = lights_view.get<LightComponent>(entity);
-        LightData data{};
+        auto& light = point_lights_view.get<PointLightComponent>(entity);
+        PointLightData data{};
         data.emission = light.color * light.strength;
-        switch (light.type) {
-            case LightType::point:
-                data.position = transform.transform_position({0.0f, 0.0f, 0.0f});
-                data.range_sqr = light.range * light.range;
-                point_lights.push_back(data);
-                break;
-            case LightType::spot:
-                data.position = transform.transform_position({0.0f, 0.0f, 0.0f});
-                data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
-                data.cos_outer = std::cos(math::radians(light.spot_outer_angle));
-                data.cos_inner = std::cos(math::radians(light.spot_inner_angle));
-                data.range_sqr = light.range * light.range;
-                spot_lights.push_back(data);
-                break;
-            default: break;
+        data.position = transform.transform_position({0.0f, 0.0f, 0.0f});
+        data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
+        if (light.spot) {
+            data.cos_outer = std::cos(math::radians(light.spot_outer_angle));
+            data.cos_inner = std::cos(math::radians(light.spot_inner_angle));
+        } else {
+            data.cos_outer = 0.0f;
+            data.cos_inner = 0.0f;
         }
+        data.range_sqr_inv = 1.0f / (light.range * light.range);
+        point_lights.push_back(data);
     }
     gfx::Buffer::update_with_container<true>(point_lights_buffer, point_lights);
-    gfx::Buffer::update_with_container<true>(spot_lights_buffer, spot_lights);
 }
 
 auto LightsContext::prepare_dir_lights_per_camera(gfx::Camera const& camera) -> void {

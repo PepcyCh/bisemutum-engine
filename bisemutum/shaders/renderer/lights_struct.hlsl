@@ -1,14 +1,5 @@
 #pragma once
 
-struct LightData {
-    float3 emission;
-    float range_sqr;
-    float3 position;
-    float cos_inner;
-    float3 direction;
-    float cos_outer;
-};
-
 struct DirLightData {
     float3 emission;
     int sm_index;
@@ -19,4 +10,17 @@ struct DirLightData {
 
     float _pad1;
     float2 _pad2;
+};
+
+struct PointLightData {
+    float3 emission;
+    float range_sqr_inv;
+    float3 position;
+    float cos_inner;
+    float3 direction;
+    float cos_outer;
+    int sm_index;
+    float shadow_bias_factor;
+
+    float2 _pad1;
 };

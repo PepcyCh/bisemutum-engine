@@ -19,8 +19,8 @@ auto register_components(Ref<rt::ComponentManager> mgr) -> void {
     mgr->register_component<Transform>();
 
     mgr->register_component<CameraComponent>();
-    mgr->register_component<LightComponent>();
     mgr->register_component<DirectionalLightComponent>();
+    mgr->register_component<PointLightComponent>();
     mgr->register_component<SkyboxComponent>();
     mgr->register_component<StaticMeshComponent>();
     mgr->register_component<MeshRendererComponent>();

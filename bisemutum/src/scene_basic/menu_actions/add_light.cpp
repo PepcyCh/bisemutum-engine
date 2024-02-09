@@ -16,6 +16,20 @@ auto menu_action_scene_add_dir_light(MenuActionContext const& ctx) -> void {
     object->attach_component(DirectionalLightComponent{});
 }
 
+auto menu_action_scene_add_point_light(MenuActionContext const& ctx) -> void {
+    auto scene = g_engine->world()->current_scene();
+    auto object = scene->create_scene_object();
+    object->set_name("Point Light");
+    object->attach_component(PointLightComponent{});
+}
+
+auto menu_action_scene_add_spot_light(MenuActionContext const& ctx) -> void {
+    auto scene = g_engine->world()->current_scene();
+    auto object = scene->create_scene_object();
+    object->set_name("Spot Light");
+    object->attach_component(PointLightComponent{.spot = true});
+}
+
 auto menu_action_scene_add_skybox(MenuActionContext const& ctx) -> void {
     auto scene = g_engine->world()->current_scene();
     auto object = scene->create_scene_object();

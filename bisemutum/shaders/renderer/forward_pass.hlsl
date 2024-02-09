@@ -33,13 +33,8 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface);
     }
     for (i = 0; i < num_point_lights; i++) {
-        LightData light = point_lights[i];
+        PointLightData light = point_lights[i];
         float3 le = point_light_eval(light, fin.position_world, light_dir);
-        color += le * surface_eval(N, T, B, V, light_dir, surface);
-    }
-    for (i = 0; i < num_spot_lights; i++) {
-        LightData light = spot_lights[i];
-        float3 le = spot_light_eval(light, fin.position_world, light_dir);
         color += le * surface_eval(N, T, B, V, light_dir, surface);
     }
 

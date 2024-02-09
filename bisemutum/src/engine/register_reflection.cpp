@@ -15,7 +15,6 @@ auto register_reflections(Ref<drefl::ReflectionManager> mgr) -> void {
     mgr->register_type<Transform>();
 
     mgr->register_type<CameraComponent>();
-    mgr->register_type<LightComponent>();
     mgr->register_type<StaticMeshComponent>();
     mgr->register_type<MeshRendererComponent>();
 }

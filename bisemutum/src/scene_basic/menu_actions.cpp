@@ -10,6 +10,8 @@ namespace bi::editor {
 
 auto register_menu_actions_scene_basic(Ref<editor::MenuManager> mgr) -> void {
     mgr->register_action("Scene/Add/Light/Dir Light", {}, menu_action_scene_add_dir_light);
+    mgr->register_action("Scene/Add/Light/Point Light", {}, menu_action_scene_add_point_light);
+    mgr->register_action("Scene/Add/Light/Spot Light", {}, menu_action_scene_add_spot_light);
     mgr->register_action("Scene/Add/Light/Skybox", {}, menu_action_scene_add_skybox);
 
     mgr->register_action("Scene/Add/Volume/Post Process", {}, menu_action_scene_add_post_process_volume);
