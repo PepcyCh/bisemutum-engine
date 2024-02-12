@@ -65,6 +65,9 @@ struct LightsContext final {
     gfx::Buffer point_lights_shadow_transform_buffer;
 
     Ptr<gfx::Sampler> shadow_map_sampler;
+
+    uint32_t dir_light_shadow_map_resolution;
+    uint32_t point_light_shadow_map_resolution;
 };
 
 }

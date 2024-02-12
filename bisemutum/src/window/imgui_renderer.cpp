@@ -103,10 +103,6 @@ struct ImGuiRenderer::Impl final {
         create_pipeline(gfx_mgr);
     }
     auto create_pipeline(gfx::GraphicsManager& gfx_mgr) -> void {
-        if (imgui_pipeline) {
-            imgui_pipeline.reset();
-        }
-
         auto source_path = "/bisemutum/shaders/imgui/imgui.hlsl";
         gfx::ShaderCompilationEnvironment shader_env;
         auto imgui_vs = gfx_mgr.shader_compiler()->compile_shader(
@@ -187,15 +183,11 @@ struct ImGuiRenderer::Impl final {
         imgui_pipeline = gfx_mgr.device()->create_graphics_pipeline(pipeline_desc);
     }
     auto create_font_texture(gfx::GraphicsManager& gfx_mgr) -> void {
-        if (font_texture.has_value()) {
-            font_texture.reset();
-        }
-
         auto& io = ImGui::GetIO();
         unsigned char* pixels;
         int width, height;
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        size_t upload_size = width * height * 4 * sizeof(char);
+        size_t upload_size = width * height * 4 * sizeof(*pixels);
 
         rhi::TextureDesc texture_desc{
             .extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},

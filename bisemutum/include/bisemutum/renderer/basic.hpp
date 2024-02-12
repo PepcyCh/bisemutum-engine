@@ -9,13 +9,25 @@ namespace bi {
 struct BasicRenderer final : PImpl<BasicRenderer> {
     struct Impl;
 
-    enum class Mode {
+    enum class Mode : uint8_t {
         forward,
         deferred,
     };
 
+    enum class ShadowMapResolution : uint32_t {
+        _128 = 128,
+        _256 = 256,
+        _512 = 512,
+        _1024 = 1024,
+        _2048 = 2048,
+        _4096 = 4096,
+    };
+
     struct Settings final {
         Mode mode = Mode::deferred;
+
+        ShadowMapResolution dir_light_shadow_map_resolution = ShadowMapResolution::_2048;
+        ShadowMapResolution point_light_shadow_map_resolution = ShadowMapResolution::_512;
     };
 
     BasicRenderer();
@@ -34,6 +46,8 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
 
 BI_SREFL(
     type(BasicRenderer::Settings),
+    field(dir_light_shadow_map_resolution),
+    field(point_light_shadow_map_resolution),
     field(mode),
 )
 

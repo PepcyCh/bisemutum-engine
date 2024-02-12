@@ -66,7 +66,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         static_cast<float>(target_texture->desc().extent.width),
         static_cast<float>(target_texture->desc().extent.height),
     });
-    ImGui::SetNextWindowPos({0.0f, 20.0f});
+    ImGui::SetNextWindowPos({0.0f, 20.0f * g_engine->window()->dpi_scale()});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0f, 0.0f});
     ImGui::Begin(
         "##Global", nullptr,

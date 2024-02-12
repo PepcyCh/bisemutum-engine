@@ -21,6 +21,7 @@ target("bisemutum-lib")
     add_deps("imgui-file-dialog")
 
     add_packages("fmt", "spdlog", "glm", "entt", "magic_enum", "imgui", {public = true})
+    add_defines("MAGIC_ENUM_RANGE_MAX=8192")
     add_packages("glfw", "directxshadercompiler", "crypto-algorithms")
     add_packages("vulkan-headers", "vulkan-memory-allocator")
     add_defines("VK_NO_PROTOTYPES")

@@ -11,13 +11,6 @@
 
 namespace bi {
 
-namespace {
-
-constexpr uint32_t dir_light_shadow_map_resolution = 1024;
-constexpr uint32_t point_light_shadow_map_resolution = 512;
-
-}
-
 LightsContext::LightsContext() {
     shadow_map_sampler = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
         .mag_filter = rhi::SamplerFilterMode::linear,
@@ -83,6 +76,7 @@ auto LightsContext::collect_all_lights() -> void {
     auto dir_lights_shadow_map_layers = std::max<uint32_t>(1, dir_lights_with_shadow.size());
     if (
         !dir_lights_shadow_map.has_value()
+        || dir_lights_shadow_map.desc().extent.width != dir_light_shadow_map_resolution
         || dir_lights_shadow_map.desc().extent.depth_or_layers < dir_lights_shadow_map_layers
         || dir_lights_shadow_map.desc().extent.depth_or_layers > 2 * dir_lights_shadow_map_layers
     ) {
@@ -166,6 +160,7 @@ auto LightsContext::collect_all_lights() -> void {
     auto point_lights_shadow_map_layers = std::max<uint32_t>(1, point_lights_with_shadow.size());
     if (
         !point_lights_shadow_map.has_value()
+        || point_lights_shadow_map.desc().extent.width != point_light_shadow_map_resolution
         || point_lights_shadow_map.desc().extent.depth_or_layers < point_lights_shadow_map_layers
         || point_lights_shadow_map.desc().extent.depth_or_layers > 2 * point_lights_shadow_map_layers
     ) {

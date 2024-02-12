@@ -33,7 +33,8 @@ float test_shadow_pcf9(
     float cos_theta = abs(dot(normal, light_direction));
     float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
     float tan_theta = min(sin_theta / max(cos_theta, 0.001), 4.0);
-    float4 light_pos = mul(light_transform, float4(position + normal * shadow_normal_bias * sin_theta, 1.0));
+    shadow_normal_bias = max(shadow_normal_bias * sin_theta, 0.001);
+    float4 light_pos = mul(light_transform, float4(position + normal * shadow_normal_bias, 1.0));
     light_pos.xyz /= light_pos.w;
     float2 sm_uv = float2((light_pos.x + 1.0) * 0.5, (1.0 - light_pos.y) * 0.5);
     float delta = 0.001;

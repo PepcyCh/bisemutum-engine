@@ -16,6 +16,10 @@ namespace bi {
 
 struct BasicRenderer::Impl final {
     auto prepare_renderer_per_frame_data() -> void {
+        auto& settings = rt::find_volume_component_for(float3(0.0f), default_settings).settings;
+
+        lights_ctx.dir_light_shadow_map_resolution = static_cast<uint32_t>(settings.dir_light_shadow_map_resolution);
+        lights_ctx.point_light_shadow_map_resolution = static_cast<uint32_t>(settings.point_light_shadow_map_resolution);
         lights_ctx.collect_all_lights();
 
         forward_pass.update_params(lights_ctx, skybox_ctx);
