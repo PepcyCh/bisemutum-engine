@@ -23,6 +23,8 @@ BI_SHADER_PARAMETERS_BEGIN(DeferredLightingPassParams)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<PointLightData>, point_lights)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, dir_lights_shadow_transform)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, dir_lights_shadow_map)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, point_lights_shadow_transform)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, point_lights_shadow_map)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, shadow_map_sampler)
 
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox_diffuse_irradiance)
@@ -63,6 +65,8 @@ auto DeferredLightingPass::update_params(LightsContext& lights_ctx, SkyboxContex
     params->point_lights = {&lights_ctx.point_lights_buffer, 0};
     params->dir_lights_shadow_transform = {&lights_ctx.dir_lights_shadow_transform_buffer, 0};
     params->dir_lights_shadow_map = {&lights_ctx.dir_lights_shadow_map};
+    params->point_lights_shadow_transform = {&lights_ctx.point_lights_shadow_transform_buffer, 0};
+    params->point_lights_shadow_map = {&lights_ctx.point_lights_shadow_map};
     params->shadow_map_sampler = {lights_ctx.shadow_map_sampler};
 
     params->skybox_diffuse_irradiance = {&skybox_ctx.diffuse_irradiance};
@@ -92,7 +96,8 @@ auto DeferredLightingPass::render(gfx::Camera const& camera, gfx::RenderGraph& r
         gfx::GraphicsPassColorTargetBuilder{pass_data->output}.clear_color()
     );
 
-    builder.read(input.dir_lighst_shadow_map);
+    builder.read(input.shadow_maps.dir_lights_shadow_map);
+    builder.read(input.shadow_maps.point_lights_shadow_map);
 
     builder.read(input.skybox.skybox);
     builder.read(input.skybox.diffuse_irradiance);

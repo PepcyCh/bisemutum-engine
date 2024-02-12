@@ -191,6 +191,7 @@ struct RenderGraph::Impl final {
         return static_cast<BufferHandle>(graph_nodes_.size() - 1);
     }
     auto import_buffer(Ref<Buffer> buffer) -> BufferHandle {
+        BI_ASSERT(buffer->has_value());
         auto node = Box<BufferNode>::make();
         node->index = graph_nodes_.size();
         node->buffer = PoolBuffer{
@@ -216,6 +217,7 @@ struct RenderGraph::Impl final {
         return static_cast<TextureHandle>(graph_nodes_.size() - 1);
     }
     auto import_texture(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> TextureHandle {
+        BI_ASSERT(texture->has_value());
         auto node = Box<TextureNode>::make();
         node->index = graph_nodes_.size();
         node->texture = PoolTexture{

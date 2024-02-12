@@ -48,7 +48,12 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     for (i = 0; i < num_point_lights; i++) {
         PointLightData light = point_lights[i];
         float3 le = point_light_eval(light, position_world, light_dir);
-        color += le * surface_eval(N, T, B, V, light_dir, surface, surface_model);
+        float shadow_factor = point_light_shadow_factor(
+            light, position_world, N,
+            camera_position_world(),
+            point_lights_shadow_transform, point_lights_shadow_map, shadow_map_sampler
+        );
+        color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);
     }
 
     float3 skybox_N = mul((float3x3) skybox_transform, N);

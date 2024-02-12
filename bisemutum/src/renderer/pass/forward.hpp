@@ -10,7 +10,7 @@ namespace bi {
 
 struct ForwardPass final {
     struct InputData final {
-        gfx::TextureHandle dir_lighst_shadow_map;
+        ShadowMapTextures shadow_maps;
         PrecomputedSkybox skybox;
     };
 

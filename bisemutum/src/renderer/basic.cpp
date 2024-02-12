@@ -34,7 +34,7 @@ struct BasicRenderer::Impl final {
             .skybox_ctx = skybox_ctx,
         });
 
-        auto dir_lighst_shadow_map = shadow_mapping_pass.render(camera, rg, {
+        auto shadow_maps = shadow_mapping_pass.render(camera, rg, {
             .lights_ctx = lights_ctx,
         });
 
@@ -42,7 +42,7 @@ struct BasicRenderer::Impl final {
         gfx::TextureHandle depth;
         if (settings.mode == Mode::forward) {
             auto forward_output_data = forward_pass.render(camera, rg, {
-                .dir_lighst_shadow_map = dir_lighst_shadow_map,
+                .shadow_maps = shadow_maps,
                 .skybox = skybox,
             });
             color = forward_output_data.output;
@@ -52,7 +52,7 @@ struct BasicRenderer::Impl final {
             auto lighting_output = deferred_lighting_pass.render(camera, rg, {
                 .depth = gbuffer_output.depth,
                 .gbuffer = gbuffer_output.gbuffer,
-                .dir_lighst_shadow_map = dir_lighst_shadow_map,
+                .shadow_maps = shadow_maps,
                 .skybox = skybox,
             });
             color = lighting_output.output;

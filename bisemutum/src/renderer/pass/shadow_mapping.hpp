@@ -13,7 +13,7 @@ struct ShadowMappingPass final {
 
     ShadowMappingPass();
 
-    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> gfx::TextureHandle;
+    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> ShadowMapTextures;
 
     gfx::FragmentShader fragment_shader;
     gfx::ShaderParameter fragment_shader_params;

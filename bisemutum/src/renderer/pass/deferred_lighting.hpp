@@ -14,7 +14,7 @@ struct DeferredLightingPass final {
         gfx::TextureHandle depth;
         GBufferTextures gbuffer;
 
-        gfx::TextureHandle dir_lighst_shadow_map;
+        ShadowMapTextures shadow_maps;
         PrecomputedSkybox skybox;
     };
 

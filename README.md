@@ -8,34 +8,34 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 * Graphics
   * RHI on Vulkan and D3D12
-  * ImGui Integration on RHI
-  * Render Graph
+  * ImGui integration on RHI
+  * Render graph
   * Generate shader resources definition and pipeline layout from C++ structs
 * Rendering
   * Basic PBR
-  * Forward and Deferred Rendering
-  * CSM for Directional Lights
+  * Forward and deferred rendering
+  * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
   * Skybox & IBL
   * Bloom
 * Core
-  * Custom Static Reflection
+  * Custom static reflection
     * Reflection on `enum` is based on Magic Enum
   * Polymorphism using AnyAny
 * Runtime
-  * ECS using EnTT & Scene Hierarchy & Prefab
-  * Basic Asset Manager
-  * Basic Virtual File System
+  * ECS using EnTT & scene hierarchy & prefab
+  * Basic asset manager
+  * Basic virtual file system
   * Saving & Loading
 * Editor
-  * Component Editor based on Reflection
-  * Scene Objects
-  * Import Model via Assimp
+  * Component editor based on reflection
+  * Scene objects
+  * Import model via Assimp
 
 ### Features to be Developed Next
 
-* Raytracing Pipeline in RHI
-* Shadow Mapping for Point & Spot Light
-* Basic Resource Browser
+* Raytracing pipeline in RHI and helpers
+* Screen space & raytraced ambient occlusion, reflection
+* Basic resource browser
 
 ## Gallary
 

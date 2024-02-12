@@ -3,13 +3,14 @@
 struct DirLightData {
     float3 emission;
     int sm_index;
+    // direction that points to the light
     float3 direction;
     float shadow_strength;
     float4 cascade_shadow_radius_sqr;
-    float shadow_bias_factor;
+    float shadow_depth_bias;
+    float shadow_normal_bias;
 
-    float _pad1;
-    float2 _pad2;
+    float2 _pad1;
 };
 
 struct PointLightData {
@@ -17,10 +18,11 @@ struct PointLightData {
     float range_sqr_inv;
     float3 position;
     float cos_inner;
+    // direction that points to the light
     float3 direction;
     float cos_outer;
     int sm_index;
-    float shadow_bias_factor;
-
-    float2 _pad1;
+    float shadow_strength;
+    float shadow_depth_bias;
+    float shadow_normal_bias;
 };
