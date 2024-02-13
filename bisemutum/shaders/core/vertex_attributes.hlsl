@@ -23,7 +23,7 @@ struct VertexAttributes {
 };
 
 struct VertexAttributesOutput {
-    float4 sv_position : SV_POSITION;
+    float4 sv_position : SV_Position;
 #if VERTEX_ATTRIBUTES_TYPE >= VERTEX_ATTRIBUTES_TYPE_POSITION_ONLY
     float3 position_world : TEXCOORD0;
 #endif

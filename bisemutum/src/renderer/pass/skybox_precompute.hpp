@@ -22,18 +22,19 @@ struct SkyboxPrecomputePass final {
 
     auto render(gfx::RenderGraph& rg, InputData const& input) -> PrecomputedSkybox;
 
-    gfx::ComputeShader precompute_brdf_lut;
-    gfx::ShaderParameter precompute_brdf_lut_params;
+private:
+    gfx::ComputeShader precompute_brdf_lut_;
+    gfx::ShaderParameter precompute_brdf_lut_params_;
 
-    gfx::ComputeShader precompute_diffuse;
-    gfx::ShaderParameter precompute_diffuse_params;
+    gfx::ComputeShader precompute_diffuse_;
+    gfx::ShaderParameter precompute_diffuse_params_;
 
-    gfx::ComputeShader precompute_specular;
+    gfx::ComputeShader precompute_specular_;
     // TODO - support push constants in shader params
-    std::vector<gfx::ShaderParameter> precompute_specular_params;
+    std::vector<gfx::ShaderParameter> precompute_specular_params_;
 
-    Ptr<gfx::Texture> last_precomputed_skybox;
-    bool brdf_lut_valid = false;
+    Ptr<gfx::Texture> last_precomputed_skybox_;
+    bool brdf_lut_valid_ = false;
 };
 
 }

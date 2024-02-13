@@ -18,12 +18,12 @@ struct PassData final {
 }
 
 GBufferdPass::GBufferdPass() {
-    fragment_shader_params.initialize<GBufferPassParams>();
+    fragment_shader_params_.initialize<GBufferPassParams>();
 
-    fragment_shader.source_path = "/bisemutum/shaders/renderer/gbuffer_pass.hlsl";
-    fragment_shader.source_entry = "gbuffer_pass_fs";
-    fragment_shader.set_shader_params_struct<GBufferPassParams>();
-    fragment_shader.cull_mode = rhi::CullMode::back_face;
+    fragment_shader_.source_path = "/bisemutum/shaders/renderer/gbuffer_pass.hlsl";
+    fragment_shader_.source_entry = "gbuffer_pass_fs";
+    fragment_shader_.set_shader_params_struct<GBufferPassParams>();
+    fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }
 
 auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> OutputData {
@@ -54,15 +54,15 @@ auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ou
 
     pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
         .camera = camera,
-        .fragment_shader = fragment_shader,
+        .fragment_shader = fragment_shader_,
         .type = gfx::RenderedObjectType::opaque,
     });
 
-    fragment_shader_params.update_uniform_buffer();
+    fragment_shader_params_.update_uniform_buffer();
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-            ctx.render_list(pass_data->list, fragment_shader_params);
+            ctx.render_list(pass_data->list, fragment_shader_params_);
         }
     );
 

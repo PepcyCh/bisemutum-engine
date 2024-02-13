@@ -41,18 +41,18 @@ struct PassData final {
 }
 
 ForwardPass::ForwardPass() {
-    fragment_shader_params.initialize<ForwardPassParams>();
+    fragment_shader_params_.initialize<ForwardPassParams>();
 
-    fragment_shader.source_path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
-    fragment_shader.source_entry = "forward_pass_fs";
-    fragment_shader.set_shader_params_struct<ForwardPassParams>();
-    fragment_shader.cull_mode = rhi::CullMode::back_face;
+    fragment_shader_.source_path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
+    fragment_shader_.source_entry = "forward_pass_fs";
+    fragment_shader_.set_shader_params_struct<ForwardPassParams>();
+    fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }
 
 auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
     auto& current_skybox = g_engine->system_manager()->get_system_for_current_scene<SkyboxSystem>()->current_skybox();
 
-    auto params = fragment_shader_params.mutable_typed_data<ForwardPassParams>();
+    auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
     params->num_dir_lights = lights_ctx.dir_lights.size();
     params->num_point_lights = lights_ctx.point_lights.size();
     params->skybox_diffuse_color = current_skybox.color * current_skybox.diffuse_strength;
@@ -110,15 +110,15 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
 
     pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
         .camera = camera,
-        .fragment_shader = fragment_shader,
+        .fragment_shader = fragment_shader_,
         .type = gfx::RenderedObjectType::all,
     });
 
-    fragment_shader_params.update_uniform_buffer();
+    fragment_shader_params_.update_uniform_buffer();
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-            ctx.render_list(pass_data->list, fragment_shader_params);
+            ctx.render_list(pass_data->list, fragment_shader_params_);
         }
     );
 

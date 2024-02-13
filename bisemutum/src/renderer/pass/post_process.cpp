@@ -58,39 +58,39 @@ struct BloomCombinePassData final {
 }
 
 PostProcessPass::PostProcessPass() {
-    bloom_pre_shader_params.initialize<BloomPrePassParams>();
-    bloom_pre_shader.source_path = "/bisemutum/shaders/renderer/bloom_pre.hlsl";
-    bloom_pre_shader.source_entry = "bloom_pre_fs";
-    bloom_pre_shader.set_shader_params_struct<BloomPrePassParams>();
-    bloom_pre_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
-    bloom_pre_shader.depth_test = false;
+    bloom_pre_shader_params_.initialize<BloomPrePassParams>();
+    bloom_pre_shader_.source_path = "/bisemutum/shaders/renderer/bloom_pre.hlsl";
+    bloom_pre_shader_.source_entry = "bloom_pre_fs";
+    bloom_pre_shader_.set_shader_params_struct<BloomPrePassParams>();
+    bloom_pre_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    bloom_pre_shader_.depth_test = false;
 
-    bloom_filter_shader[0].source_path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
-    bloom_filter_shader[0].source_entry = "bloom_horizontal_fs";
-    bloom_filter_shader[0].set_shader_params_struct<BloomFilterPassParams>();
-    bloom_filter_shader[0].needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
-    bloom_filter_shader[0].depth_test = false;
+    bloom_filter_shader_[0].source_path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
+    bloom_filter_shader_[0].source_entry = "bloom_horizontal_fs";
+    bloom_filter_shader_[0].set_shader_params_struct<BloomFilterPassParams>();
+    bloom_filter_shader_[0].needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    bloom_filter_shader_[0].depth_test = false;
 
-    bloom_filter_shader[1].source_path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
-    bloom_filter_shader[1].source_entry = "bloom_vertical_fs";
-    bloom_filter_shader[1].set_shader_params_struct<BloomFilterPassParams>();
-    bloom_filter_shader[1].needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
-    bloom_filter_shader[1].depth_test = false;
+    bloom_filter_shader_[1].source_path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
+    bloom_filter_shader_[1].source_entry = "bloom_vertical_fs";
+    bloom_filter_shader_[1].set_shader_params_struct<BloomFilterPassParams>();
+    bloom_filter_shader_[1].needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    bloom_filter_shader_[1].depth_test = false;
 
-    bloom_combine_shader.source_path = "/bisemutum/shaders/renderer/bloom_combine.hlsl";
-    bloom_combine_shader.source_entry = "bloom_combine_fs";
-    bloom_combine_shader.set_shader_params_struct<BloomCombinePassParams>();
-    bloom_combine_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
-    bloom_combine_shader.depth_test = false;
+    bloom_combine_shader_.source_path = "/bisemutum/shaders/renderer/bloom_combine.hlsl";
+    bloom_combine_shader_.source_entry = "bloom_combine_fs";
+    bloom_combine_shader_.set_shader_params_struct<BloomCombinePassParams>();
+    bloom_combine_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    bloom_combine_shader_.depth_test = false;
 
-    fragment_shader_params.initialize<PostProcessPassParams>();
-    fragment_shader.source_path = "/bisemutum/shaders/renderer/post_process.hlsl";
-    fragment_shader.source_entry = "post_process_pass_fs";
-    fragment_shader.set_shader_params_struct<PostProcessPassParams>();
-    fragment_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
-    fragment_shader.depth_test = false;
+    fragment_shader_params_.initialize<PostProcessPassParams>();
+    fragment_shader_.source_path = "/bisemutum/shaders/renderer/post_process.hlsl";
+    fragment_shader_.source_entry = "post_process_pass_fs";
+    fragment_shader_.set_shader_params_struct<PostProcessPassParams>();
+    fragment_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    fragment_shader_.depth_test = false;
 
-    sampler = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
+    sampler_ = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
         .mag_filter = rhi::SamplerFilterMode::linear,
         .min_filter = rhi::SamplerFilterMode::linear,
         .address_mode_u = rhi::SamplerAddressMode::clamp_to_edge,
@@ -100,7 +100,7 @@ PostProcessPass::PostProcessPass() {
 }
 
 auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void {
-    auto& volume = rt::find_volume_component_for(camera.position, default_volume);
+    auto& volume = rt::find_volume_component_for(camera.position, default_volume_);
 
     gfx::TextureHandle color_after_bloom;
     if (volume.bloom) {
@@ -118,7 +118,7 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
             pd->input_color = builder.read(input.color);
             pd->output_color = builder.use_color(0, color_before_bloom);
             builder.set_execution_function<BloomPrePassData>(
-                [&camera, &volume, this, &shader_params = bloom_pre_shader_params]
+                [&camera, &volume, this, &shader_params = bloom_pre_shader_params_]
                 (CRef<BloomPrePassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                     auto soft_threshold = volume.bloom_threshold_softness * (volume.bloom_threshold * 0.9f + 0.1f);
                     auto params = shader_params.mutable_typed_data<BloomPrePassParams>();
@@ -128,9 +128,9 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
                     params->bloom_weight.w = 0.25f / (params->bloom_weight.y + 0.00001f);
                     params->bloom_weight.y -= volume.bloom_threshold;
                     params->input_color = {ctx.rg->texture(pass_data->input_color)};
-                    params->sampler_input = {sampler.value()};
+                    params->sampler_input = {sampler_.value()};
                     shader_params.update_uniform_buffer();
-                    ctx.render_full_screen(camera, bloom_pre_shader, shader_params);
+                    ctx.render_full_screen(camera, bloom_pre_shader_, shader_params);
                 }
             );
         }
@@ -142,9 +142,9 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
         });
 
         std::vector<gfx::TextureHandle> temp_textures;
-        if (bloom_filter_shader_params.empty()) {
-            bloom_filter_shader_params.resize(bloom_num_iterations * 2);
-            for (auto& params : bloom_filter_shader_params) {
+        if (bloom_filter_shader_params_.empty()) {
+            bloom_filter_shader_params_.resize(bloom_num_iterations * 2);
+            for (auto& params : bloom_filter_shader_params_) {
                 params.initialize<BloomFilterPassParams>();
             }
         }
@@ -162,14 +162,14 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
             pd_h->input_color = builder_h.read(i == 0 ? color_before_bloom : temp_textures[2 * i - 1]);
             pd_h->output_color = builder_h.use_color(0, temp_textures[2 * i]);
             builder_h.set_execution_function<BloomFilterPassData>(
-                [&camera, i, this, dst_width, dst_height, &shader_params = bloom_filter_shader_params[2 * i]]
+                [&camera, i, this, dst_width, dst_height, &shader_params = bloom_filter_shader_params_[2 * i]]
                 (CRef<BloomFilterPassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                     auto params = shader_params.mutable_typed_data<BloomFilterPassParams>();
                     params->input_color = {ctx.rg->texture(pass_data->input_color)};
-                    params->sampler_input = {sampler.value()};
+                    params->sampler_input = {sampler_.value()};
                     params->texel_size = float2{1.0f / dst_width, 1.0f / dst_height};
                     shader_params.update_uniform_buffer();
-                    ctx.render_full_screen(camera, bloom_filter_shader[0], shader_params);
+                    ctx.render_full_screen(camera, bloom_filter_shader_[0], shader_params);
                 }
             );
 
@@ -183,20 +183,20 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
             pd_v->input_color = builder_v.read(temp_textures[2 * i]);
             pd_v->output_color = builder_v.use_color(0, temp_textures[2 * i + 1]);
             builder_v.set_execution_function<BloomFilterPassData>(
-                [&camera, this, dst_width, dst_height, &shader_params = bloom_filter_shader_params[2 * i + 1]]
+                [&camera, this, dst_width, dst_height, &shader_params = bloom_filter_shader_params_[2 * i + 1]]
                 (CRef<BloomFilterPassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                     auto params = shader_params.mutable_typed_data<BloomFilterPassParams>();
                     params->input_color = {ctx.rg->texture(pass_data->input_color)};
-                    params->sampler_input = {sampler.value()};
+                    params->sampler_input = {sampler_.value()};
                     params->texel_size = float2{1.0f / dst_width, 1.0f / dst_height};
                     shader_params.update_uniform_buffer();
-                    ctx.render_full_screen(camera, bloom_filter_shader[1], shader_params);
+                    ctx.render_full_screen(camera, bloom_filter_shader_[1], shader_params);
                 }
             );
         }
-        if (bloom_combine_shader_params.empty()) {
-            bloom_combine_shader_params.resize(bloom_num_iterations);
-            for (auto& params : bloom_combine_shader_params) {
+        if (bloom_combine_shader_params_.empty()) {
+            bloom_combine_shader_params_.resize(bloom_num_iterations);
+            for (auto& params : bloom_combine_shader_params_) {
                 params.initialize<BloomCombinePassParams>();
             }
         }
@@ -217,14 +217,14 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
             );
             pd->output_color = builder.use_color(0, temp_textures[3 * bloom_num_iterations - i - 1]);
             builder.set_execution_function<BloomCombinePassData>(
-                [&camera, this, &shader_params = bloom_combine_shader_params[i]]
+                [&camera, this, &shader_params = bloom_combine_shader_params_[i]]
                 (CRef<BloomCombinePassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                     auto params = shader_params.mutable_typed_data<BloomCombinePassParams>();
                     params->input_color1 = {ctx.rg->texture(pass_data->input_color1)};
                     params->input_color2 = {ctx.rg->texture(pass_data->input_color2)};
-                    params->sampler_input = {sampler.value()};
+                    params->sampler_input = {sampler_.value()};
                     shader_params.update_uniform_buffer();
-                    ctx.render_full_screen(camera, bloom_combine_shader, shader_params);
+                    ctx.render_full_screen(camera, bloom_combine_shader_, shader_params);
                 }
             );
         }
@@ -233,14 +233,14 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
         pd->input_color2 = builder.read(temp_textures.back());
         pd->output_color = builder.use_color(0, color_after_bloom);
         builder.set_execution_function<BloomCombinePassData>(
-            [&camera, this, &shader_params = bloom_combine_shader_params[0]]
+            [&camera, this, &shader_params = bloom_combine_shader_params_[0]]
             (CRef<BloomCombinePassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                 auto params = shader_params.mutable_typed_data<BloomCombinePassParams>();
                 params->input_color1 = {ctx.rg->texture(pass_data->input_color1)};
                 params->input_color2 = {ctx.rg->texture(pass_data->input_color2)};
-                params->sampler_input = {sampler.value()};
+                params->sampler_input = {sampler_.value()};
                 shader_params.update_uniform_buffer();
-                ctx.render_full_screen(camera, bloom_combine_shader, shader_params);
+                ctx.render_full_screen(camera, bloom_combine_shader_, shader_params);
             }
         );
     } else {
@@ -258,13 +258,13 @@ auto PostProcessPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, In
 
         builder.set_execution_function<PostProcessPassData>(
             [this, &camera](CRef<PostProcessPassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-                auto params = fragment_shader_params.mutable_typed_data<PostProcessPassParams>();
+                auto params = fragment_shader_params_.mutable_typed_data<PostProcessPassParams>();
                 params->input_color = {ctx.rg->texture(pass_data->input_color)};
                 params->input_depth = {ctx.rg->texture(pass_data->input_depth)};
-                params->sampler_input = {sampler.value()};
-                fragment_shader_params.update_uniform_buffer();
+                params->sampler_input = {sampler_.value()};
+                fragment_shader_params_.update_uniform_buffer();
 
-                ctx.render_full_screen(camera, fragment_shader, fragment_shader_params);
+                ctx.render_full_screen(camera, fragment_shader_, fragment_shader_params_);
             }
         );
     }

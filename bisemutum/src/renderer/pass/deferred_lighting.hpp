@@ -28,8 +28,9 @@ struct DeferredLightingPass final {
 
     auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData;
 
-    gfx::FragmentShader fragment_shader;
-    gfx::ShaderParameter fragment_shader_params;
+private:
+    gfx::FragmentShader fragment_shader_;
+    gfx::ShaderParameter fragment_shader_params_;
 };
 
 }

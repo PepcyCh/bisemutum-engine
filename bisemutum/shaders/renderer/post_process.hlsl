@@ -1,5 +1,4 @@
 #include "../core/vertex_attributes.hlsl"
-#include "lights.hlsl"
 
 #include "../core/shader_params/camera.hlsl"
 #include "../core/shader_params/material.hlsl"

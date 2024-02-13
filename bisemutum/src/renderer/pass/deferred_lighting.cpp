@@ -42,19 +42,19 @@ struct PassData final {
 }
 
 DeferredLightingPass::DeferredLightingPass() {
-    fragment_shader_params.initialize<DeferredLightingPassParams>();
+    fragment_shader_params_.initialize<DeferredLightingPassParams>();
 
-    fragment_shader.source_path = "/bisemutum/shaders/renderer/deferred_lighting.hlsl";
-    fragment_shader.source_entry = "deferred_lighting_pass_fs";
-    fragment_shader.set_shader_params_struct<DeferredLightingPassParams>();
-    fragment_shader.depth_test = false;
-    fragment_shader.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    fragment_shader_.source_path = "/bisemutum/shaders/renderer/deferred_lighting.hlsl";
+    fragment_shader_.source_entry = "deferred_lighting_pass_fs";
+    fragment_shader_.set_shader_params_struct<DeferredLightingPassParams>();
+    fragment_shader_.depth_test = false;
+    fragment_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
 }
 
 auto DeferredLightingPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
     auto& current_skybox = g_engine->system_manager()->get_system_for_current_scene<SkyboxSystem>()->current_skybox();
 
-    auto params = fragment_shader_params.mutable_typed_data<DeferredLightingPassParams>();
+    auto params = fragment_shader_params_.mutable_typed_data<DeferredLightingPassParams>();
     params->num_dir_lights = lights_ctx.dir_lights.size();
     params->num_point_lights = lights_ctx.point_lights.size();
     params->skybox_diffuse_color = current_skybox.color * current_skybox.diffuse_strength;
@@ -106,15 +106,15 @@ auto DeferredLightingPass::render(gfx::Camera const& camera, gfx::RenderGraph& r
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-            auto params = fragment_shader_params.mutable_typed_data<DeferredLightingPassParams>();
+            auto params = fragment_shader_params_.mutable_typed_data<DeferredLightingPassParams>();
             params->gbuffer_textures[0] = {ctx.rg->texture(pass_data->gbuffer.base_color)};
             params->gbuffer_textures[1] = {ctx.rg->texture(pass_data->gbuffer.normal_roughness)};
             params->gbuffer_textures[2] = {ctx.rg->texture(pass_data->gbuffer.fresnel)};
             params->gbuffer_textures[3] = {ctx.rg->texture(pass_data->gbuffer.material_0)};
             params->depth_texture = {ctx.rg->texture(pass_data->depth)};
             params->gbuffer_sampler = {pass_data->gbuffer.get_sampler()};
-            fragment_shader_params.update_uniform_buffer();
-            ctx.render_full_screen(camera, fragment_shader, fragment_shader_params);
+            fragment_shader_params_.update_uniform_buffer();
+            ctx.render_full_screen(camera, fragment_shader_, fragment_shader_params_);
         }
     );
 

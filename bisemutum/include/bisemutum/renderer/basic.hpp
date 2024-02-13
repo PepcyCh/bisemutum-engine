@@ -9,25 +9,47 @@ namespace bi {
 struct BasicRenderer final : PImpl<BasicRenderer> {
     struct Impl;
 
-    enum class Mode : uint8_t {
+    enum class PipelineMode : uint8_t {
         forward,
         deferred,
     };
 
-    enum class ShadowMapResolution : uint32_t {
-        _128 = 128,
-        _256 = 256,
-        _512 = 512,
-        _1024 = 1024,
-        _2048 = 2048,
-        _4096 = 4096,
+    enum class ShadowMapResolution : uint8_t {
+        _128 = 7,
+        _256,
+        _512,
+        _1024,
+        _2048,
+        _4096,
+    };
+
+    struct ShadowSettings final {
+        enum class Resolution : uint8_t {
+            _128 = 7,
+            _256,
+            _512,
+            _1024,
+            _2048,
+            _4096,
+        };
+        Resolution dir_light_resolution = Resolution::_2048;
+        Resolution point_light_resolution = Resolution::_512;
+    };
+
+    struct AmbientOcclusionSettings final {
+        enum class Mode : uint8_t {
+            none,
+            screen_space,
+            raytraced,
+        };
+        Mode mode = Mode::none;
+        float strength = 0.5f;
     };
 
     struct Settings final {
-        Mode mode = Mode::deferred;
-
-        ShadowMapResolution dir_light_shadow_map_resolution = ShadowMapResolution::_2048;
-        ShadowMapResolution point_light_shadow_map_resolution = ShadowMapResolution::_512;
+        PipelineMode pipeline_mode = PipelineMode::deferred;
+        ShadowSettings shadow;
+        AmbientOcclusionSettings ambient_occlusion;
     };
 
     BasicRenderer();
@@ -45,10 +67,20 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
 };
 
 BI_SREFL(
-    type(BasicRenderer::Settings),
-    field(dir_light_shadow_map_resolution),
-    field(point_light_shadow_map_resolution),
+    type(BasicRenderer::ShadowSettings),
+    field(dir_light_resolution),
+    field(point_light_resolution),
+)
+BI_SREFL(
+    type(BasicRenderer::AmbientOcclusionSettings),
     field(mode),
+    field(strength),
+)
+BI_SREFL(
+    type(BasicRenderer::Settings),
+    field(pipeline_mode),
+    field(shadow),
+    field(ambient_occlusion),
 )
 
 struct BasicRendererOverrideVolume final {

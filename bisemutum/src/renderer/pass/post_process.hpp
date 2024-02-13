@@ -15,19 +15,20 @@ struct PostProcessPass final {
 
     auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
 
-    gfx::FragmentShader fragment_shader;
-    gfx::ShaderParameter fragment_shader_params;
+private:
+    gfx::FragmentShader fragment_shader_;
+    gfx::ShaderParameter fragment_shader_params_;
 
-    gfx::FragmentShader bloom_pre_shader;
-    gfx::ShaderParameter bloom_pre_shader_params;
-    gfx::FragmentShader bloom_filter_shader[2];
-    std::vector<gfx::ShaderParameter> bloom_filter_shader_params;
-    gfx::FragmentShader bloom_combine_shader;
-    std::vector<gfx::ShaderParameter> bloom_combine_shader_params;
+    gfx::FragmentShader bloom_pre_shader_;
+    gfx::ShaderParameter bloom_pre_shader_params_;
+    gfx::FragmentShader bloom_filter_shader_[2];
+    std::vector<gfx::ShaderParameter> bloom_filter_shader_params_;
+    gfx::FragmentShader bloom_combine_shader_;
+    std::vector<gfx::ShaderParameter> bloom_combine_shader_params_;
 
-    Ptr<gfx::Sampler> sampler;
+    Ptr<gfx::Sampler> sampler_;
 
-    PostProcessVolumeComponent default_volume;
+    PostProcessVolumeComponent default_volume_;
 };
 
 }

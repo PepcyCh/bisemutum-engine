@@ -10,6 +10,7 @@
 #include "pass/forward.hpp"
 #include "pass/gbuffer.hpp"
 #include "pass/deferred_lighting.hpp"
+#include "pass/ambient_occlusion.hpp"
 #include "pass/post_process.hpp"
 
 namespace bi {
@@ -18,8 +19,8 @@ struct BasicRenderer::Impl final {
     auto prepare_renderer_per_frame_data() -> void {
         auto& settings = rt::find_volume_component_for(float3(0.0f), default_settings).settings;
 
-        lights_ctx.dir_light_shadow_map_resolution = static_cast<uint32_t>(settings.dir_light_shadow_map_resolution);
-        lights_ctx.point_light_shadow_map_resolution = static_cast<uint32_t>(settings.point_light_shadow_map_resolution);
+        lights_ctx.dir_light_shadow_map_resolution = 1u << static_cast<uint32_t>(settings.shadow.dir_light_resolution);
+        lights_ctx.point_light_shadow_map_resolution = 1u << static_cast<uint32_t>(settings.shadow.point_light_resolution);
         lights_ctx.collect_all_lights();
 
         forward_pass.update_params(lights_ctx, skybox_ctx);
@@ -44,7 +45,8 @@ struct BasicRenderer::Impl final {
 
         gfx::TextureHandle color;
         gfx::TextureHandle depth;
-        if (settings.mode == Mode::forward) {
+        GBufferTextures gbuffer;
+        if (settings.pipeline_mode == PipelineMode::forward) {
             auto forward_output_data = forward_pass.render(camera, rg, {
                 .shadow_maps = shadow_maps,
                 .skybox = skybox,
@@ -53,6 +55,7 @@ struct BasicRenderer::Impl final {
             depth = forward_output_data.depth;
         } else {
             auto gbuffer_output = gbuffer_pass.render(camera, rg);
+            gbuffer = gbuffer_output.gbuffer;
             auto lighting_output = deferred_lighting_pass.render(camera, rg, {
                 .depth = gbuffer_output.depth,
                 .gbuffer = gbuffer_output.gbuffer,
@@ -69,6 +72,17 @@ struct BasicRenderer::Impl final {
         });
         color = skybox_output.color;
         depth = skybox_output.depth;
+
+        if (
+            settings.ambient_occlusion.mode != AmbientOcclusionSettings::Mode::none
+            && settings.pipeline_mode == PipelineMode::deferred
+        ) {
+            color = ambient_occlusion_pass.render(camera, rg, {
+                .color = color,
+                .depth = depth,
+                .normal_roughness = gbuffer.normal_roughness,
+            }, settings.ambient_occlusion);
+        }
 
         post_process_pass.render(camera, rg, {
             .color = color,
@@ -89,6 +103,7 @@ struct BasicRenderer::Impl final {
     DeferredLightingPass deferred_lighting_pass;
     SkyboxPass skybox_pass;
 
+    AmbientOcclusionPass ambient_occlusion_pass;
     PostProcessPass post_process_pass;
 };
 

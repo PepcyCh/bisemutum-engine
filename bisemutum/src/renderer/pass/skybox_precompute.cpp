@@ -49,19 +49,19 @@ struct SkyboxPrecomputeSpecularPassData final {
 }
 
 SkyboxPrecomputePass::SkyboxPrecomputePass() {
-    precompute_brdf_lut_params.initialize<SkyboxPrecomputeBrdfParams>();
-    precompute_brdf_lut.source_path = "/bisemutum/shaders/renderer/ibl_brdf_lut.hlsl";
-    precompute_brdf_lut.source_entry = "ibl_brdf_lut_cs";
-    precompute_brdf_lut.set_shader_params_struct<SkyboxPrecomputeBrdfParams>();
+    precompute_brdf_lut_params_.initialize<SkyboxPrecomputeBrdfParams>();
+    precompute_brdf_lut_.source_path = "/bisemutum/shaders/renderer/ibl_brdf_lut.hlsl";
+    precompute_brdf_lut_.source_entry = "ibl_brdf_lut_cs";
+    precompute_brdf_lut_.set_shader_params_struct<SkyboxPrecomputeBrdfParams>();
 
-    precompute_diffuse_params.initialize<SkyboxPrecomputeDiffuseParams>();
-    precompute_diffuse.source_path = "/bisemutum/shaders/renderer/skybox_precompute_diffuse.hlsl";
-    precompute_diffuse.source_entry = "skybox_precompute_diffuse_cs";
-    precompute_diffuse.set_shader_params_struct<SkyboxPrecomputeDiffuseParams>();
+    precompute_diffuse_params_.initialize<SkyboxPrecomputeDiffuseParams>();
+    precompute_diffuse_.source_path = "/bisemutum/shaders/renderer/skybox_precompute_diffuse.hlsl";
+    precompute_diffuse_.source_entry = "skybox_precompute_diffuse_cs";
+    precompute_diffuse_.set_shader_params_struct<SkyboxPrecomputeDiffuseParams>();
 
-    precompute_specular.source_path = "/bisemutum/shaders/renderer/skybox_precompute_specular.hlsl";
-    precompute_specular.source_entry = "skybox_precompute_specular_cs";
-    precompute_specular.set_shader_params_struct<SkyboxPrecomputeSpecularParams>();
+    precompute_specular_.source_path = "/bisemutum/shaders/renderer/skybox_precompute_specular.hlsl";
+    precompute_specular_.source_entry = "skybox_precompute_specular_cs";
+    precompute_specular_.set_shader_params_struct<SkyboxPrecomputeSpecularParams>();
 }
 
 auto SkyboxPrecomputePass::render(gfx::RenderGraph& rg, InputData const& input) -> PrecomputedSkybox {
@@ -74,28 +74,28 @@ auto SkyboxPrecomputePass::render(gfx::RenderGraph& rg, InputData const& input) 
         .brdf_lut = rg.import_texture(input.skybox_ctx.brdf_lut),
     };
 
-    if (!brdf_lut_valid) {
+    if (!brdf_lut_valid_) {
         auto [builder, pd] = rg.add_compute_pass<SkyboxPrecomputeBrdfPassData>("IBL BRDF LUT");
 
         pd->brdf_lut = builder.write(skybox.brdf_lut);
 
         builder.set_execution_function<SkyboxPrecomputeBrdfPassData>(
             [this, input](CRef<SkyboxPrecomputeBrdfPassData> pass_data, gfx::ComputePassContext const& ctx) {
-                auto params = precompute_brdf_lut_params.mutable_typed_data<SkyboxPrecomputeBrdfParams>();
+                auto params = precompute_brdf_lut_params_.mutable_typed_data<SkyboxPrecomputeBrdfParams>();
                 params->brdf_lut = {ctx.rg->texture(pass_data->brdf_lut)};
                 params->resolution = input.skybox_ctx.brdf_lut.desc().extent.width;
                 params->inv_resolution = 1.0f / params->resolution;
-                precompute_brdf_lut_params.update_uniform_buffer();
+                precompute_brdf_lut_params_.update_uniform_buffer();
 
                 auto num_groups = (params->resolution + 15) / 16;
-                ctx.dispatch(precompute_brdf_lut, precompute_brdf_lut_params, num_groups, num_groups, 1);
+                ctx.dispatch(precompute_brdf_lut_, precompute_brdf_lut_params_, num_groups, num_groups, 1);
             }
         );
 
-        brdf_lut_valid = true;
+        brdf_lut_valid_ = true;
     }
 
-    if (last_precomputed_skybox != current_skybox.tex) {
+    if (last_precomputed_skybox_ != current_skybox.tex) {
         auto [builder_diffuse, pd_diffuse] =
             rg.add_compute_pass<SkyboxPrecomputeDiffusePassData>("Skybox Precompute Diffuse");
 
@@ -105,24 +105,24 @@ auto SkyboxPrecomputePass::render(gfx::RenderGraph& rg, InputData const& input) 
 
         builder_diffuse.set_execution_function<SkyboxPrecomputeDiffusePassData>(
             [this, input](CRef<SkyboxPrecomputeDiffusePassData> pass_data, gfx::ComputePassContext const& ctx) {
-                auto params = precompute_diffuse_params.mutable_typed_data<SkyboxPrecomputeDiffuseParams>();
+                auto params = precompute_diffuse_params_.mutable_typed_data<SkyboxPrecomputeDiffuseParams>();
                 params->skybox = {ctx.rg->texture(pass_data->skybox)};
                 params->diffuse_irradiance = {ctx.rg->texture(pass_data->diffuse_irradiance)};
                 params->skybox_sampler = {input.skybox_ctx.skybox_sampler.value()};
                 params->tex_size = input.skybox_ctx.diffuse_irradiance.desc().extent.width;
                 params->inv_tex_size = 1.0f / params->tex_size;
-                precompute_diffuse_params.update_uniform_buffer();
+                precompute_diffuse_params_.update_uniform_buffer();
 
                 auto num_groups = (params->tex_size + 15) / 16;
-                ctx.dispatch(precompute_diffuse, precompute_diffuse_params, num_groups, num_groups, 6);
+                ctx.dispatch(precompute_diffuse_, precompute_diffuse_params_, num_groups, num_groups, 6);
             }
         );
 
         auto num_specular_levels = input.skybox_ctx.specular_filtered.desc().levels;
-        if (precompute_specular_params.empty()) {
-            precompute_specular_params.resize(num_specular_levels);
+        if (precompute_specular_params_.empty()) {
+            precompute_specular_params_.resize(num_specular_levels);
             for (uint32_t i = 0; i < num_specular_levels; i++) {
-                precompute_specular_params[i].initialize<SkyboxPrecomputeSpecularParams>();
+                precompute_specular_params_[i].initialize<SkyboxPrecomputeSpecularParams>();
             }
         }
         for (uint32_t i = 0; i < num_specular_levels; i++) {
@@ -137,22 +137,22 @@ auto SkyboxPrecomputePass::render(gfx::RenderGraph& rg, InputData const& input) 
                 [this, i, num_specular_levels, input](
                     CRef<SkyboxPrecomputeSpecularPassData> pass_data, gfx::ComputePassContext const& ctx
                 ) {
-                    auto params = precompute_specular_params[i].mutable_typed_data<SkyboxPrecomputeSpecularParams>();
+                    auto params = precompute_specular_params_[i].mutable_typed_data<SkyboxPrecomputeSpecularParams>();
                     params->skybox = {ctx.rg->texture(pass_data->skybox)};
                     params->specular_filtered = {ctx.rg->texture(pass_data->specular_filtered), i};
                     params->skybox_sampler = {input.skybox_ctx.skybox_sampler.value()};
                     params->tex_size = input.skybox_ctx.specular_filtered.desc().extent.width >> i;
                     params->inv_tex_size = 1.0f / params->tex_size;
                     params->roughness = static_cast<float>(i) / (num_specular_levels - 1);
-                    precompute_specular_params[i].update_uniform_buffer();
+                    precompute_specular_params_[i].update_uniform_buffer();
 
                     auto num_groups = (params->tex_size + 15) / 16;
-                    ctx.dispatch(precompute_specular, precompute_specular_params[i], num_groups, num_groups, 6);
+                    ctx.dispatch(precompute_specular_, precompute_specular_params_[i], num_groups, num_groups, 6);
                 }
             );
         }
 
-        last_precomputed_skybox = current_skybox.tex;
+        last_precomputed_skybox_ = current_skybox.tex;
     }
 
     return skybox;
