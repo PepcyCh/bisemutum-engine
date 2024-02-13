@@ -44,8 +44,8 @@ auto LightsContext::collect_all_lights() -> void {
             light.cascade_shadow_ratio.x = std::min(light.cascade_shadow_ratio.x, light.cascade_shadow_ratio.y);
             data.cascade_shadow_radius_sqr = float4{light.cascade_shadow_ratio, 1.0f} * light.shadow_range;
             data.shadow_depth_bias = light.shadow_depth_bias_factor;
-            data.shadow_normal_bias = 0.5f * data.cascade_shadow_radius_sqr.w / dir_light_shadow_map_resolution
-                * light.shadow_normal_bias_factor;
+            data.shadow_normal_bias = data.cascade_shadow_radius_sqr.w / dir_light_shadow_map_resolution
+                * light.shadow_normal_bias_factor * 2.0f;
 
             auto up_dir = float3{0.0f, 1.0f, 0.0f};
             if (std::abs(data.direction.y) > 0.99f) {
