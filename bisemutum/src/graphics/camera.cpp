@@ -2,6 +2,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/render_graph.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/runtime/frame_timer.hpp>
 
@@ -108,6 +110,36 @@ auto Camera::update_shader_params() -> void {
     shader_parameter_.update_uniform_buffer();
 
     uniform_data->camera.history_matrix_proj_view = uniform_data->camera.matrix_proj_view;
+}
+
+auto Camera::add_history_buffer(std::string key, BufferHandle handle) const -> void {
+    auto& rg = g_engine->graphics_manager()->render_graph();
+    history_buffers_[history_index_].insert({std::move(key), rg.take_buffer(handle)});
+}
+auto Camera::add_history_texture(std::string key, TextureHandle handle) const -> void {
+    auto& rg = g_engine->graphics_manager()->render_graph();
+    history_textures_[history_index_].insert({std::move(key), rg.take_texture(handle)});
+}
+auto Camera::get_history_buffer(std::string_view key) const -> BufferHandle {
+    auto& rg = g_engine->graphics_manager()->render_graph();
+    if (auto it = history_buffers_[history_index_ ^ 1].find(key); it != history_buffers_[history_index_ ^ 1].end()) {
+        return rg.import_buffer(it->second.ref());
+    } else {
+        return BufferHandle::invalid;
+    }
+}
+auto Camera::get_history_texture(std::string_view key) const -> TextureHandle {
+    auto& rg = g_engine->graphics_manager()->render_graph();
+    if (auto it = history_textures_[history_index_ ^ 1].find(key); it != history_textures_[history_index_ ^ 1].end()) {
+        return rg.import_texture(it->second.ref());
+    } else {
+        return TextureHandle::invalid;
+    }
+}
+auto Camera::clear_history_resources() -> void {
+    history_index_ ^= 1;
+    history_buffers_[history_index_].clear();
+    history_textures_[history_index_].clear();
 }
 
 }

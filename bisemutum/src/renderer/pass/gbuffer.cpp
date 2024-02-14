@@ -8,7 +8,7 @@ BI_SHADER_PARAMETERS_BEGIN(GBufferPassParams)
 BI_SHADER_PARAMETERS_END(GBufferPassParams)
 
 struct PassData final {
-    gfx::TextureHandle output;
+    gfx::TextureHandle velocity;
     gfx::TextureHandle depth;
     GBufferTextures gbuffer;
 
@@ -31,16 +31,10 @@ auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ou
 
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("GBuffer Pass");
 
-    pass_data->output = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
-        builder
-            .dim_2d(
-                rhi::ResourceFormat::rgba16_sfloat,
-                camera_target.desc().extent.width, camera_target.desc().extent.height
-            )
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
-    });
     pass_data->gbuffer.add_textures(rg, camera_target.desc().extent.width, camera_target.desc().extent.height);
-    pass_data->depth = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
+    pass_data->gbuffer.use_color(builder);
+
+    auto depth = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(
                 rhi::ResourceFormat::d24_unorm_s8_uint,
@@ -48,9 +42,22 @@ auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ou
             )
             .usage({rhi::TextureUsage::depth_stencil_attachment, rhi::TextureUsage::sampled});
     });
+    pass_data->depth = builder.use_depth_stencil(
+        gfx::GraphicsPassDepthStencilTargetBuilder{depth}.clear_depth_stencil()
+    );
 
-    pass_data->gbuffer.use_color(builder);
-    builder.use_depth_stencil(gfx::GraphicsPassDepthStencilTargetBuilder{pass_data->depth}.clear_depth_stencil());
+    auto velocity = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(
+                rhi::ResourceFormat::rg16_sfloat,
+                camera_target.desc().extent.width, camera_target.desc().extent.height
+            )
+            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+    });
+    pass_data->velocity = builder.use_color(
+        GBufferTextures::count,
+        gfx::GraphicsPassColorTargetBuilder{velocity}.clear_color()
+    );
 
     pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
         .camera = camera,
@@ -67,6 +74,7 @@ auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ou
     );
 
     return OutputData{
+        .velocity = pass_data->velocity,
         .depth = pass_data->depth,
         .gbuffer = pass_data->gbuffer,
     };

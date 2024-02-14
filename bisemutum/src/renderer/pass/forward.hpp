@@ -16,6 +16,7 @@ struct ForwardPass final {
 
     struct OutputData final {
         gfx::TextureHandle output;
+        gfx::TextureHandle velocity;
         gfx::TextureHandle depth;
     };
 

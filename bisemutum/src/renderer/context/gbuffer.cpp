@@ -29,10 +29,10 @@ auto GBufferTextures::add_textures(gfx::RenderGraph& rg, uint32_t width, uint32_
 }
 
 auto GBufferTextures::use_color(gfx::GraphicsPassBuilder& builder) -> void {
-    builder.use_color(0, gfx::GraphicsPassColorTargetBuilder{base_color}.clear_color());
-    builder.use_color(1, gfx::GraphicsPassColorTargetBuilder{normal_roughness}.clear_color());
-    builder.use_color(2, gfx::GraphicsPassColorTargetBuilder{fresnel}.clear_color());
-    builder.use_color(3, gfx::GraphicsPassColorTargetBuilder{material_0}.clear_color());
+    base_color = builder.use_color(0, gfx::GraphicsPassColorTargetBuilder{base_color}.clear_color());
+    normal_roughness = builder.use_color(1, gfx::GraphicsPassColorTargetBuilder{normal_roughness}.clear_color());
+    fresnel = builder.use_color(2, gfx::GraphicsPassColorTargetBuilder{fresnel}.clear_color());
+    material_0 = builder.use_color(3, gfx::GraphicsPassColorTargetBuilder{material_0}.clear_color());
 }
 
 auto GBufferTextures::read(gfx::GraphicsPassBuilder& builder) const -> GBufferTextures {

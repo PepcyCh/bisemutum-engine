@@ -10,6 +10,7 @@ struct AmbientOcclusionPass final {
         gfx::TextureHandle color;
         gfx::TextureHandle depth;
         gfx::TextureHandle normal_roughness;
+        gfx::TextureHandle velocity;
     };
 
     AmbientOcclusionPass();
@@ -44,6 +45,9 @@ private:
     gfx::FragmentShader screen_space_shader_;
     gfx::ShaderParameter screen_space_shader_params_;
 
+    gfx::ComputeShader temporal_accumulate_shader_;
+    gfx::ShaderParameter temporal_accumulate_shader_params_;
+
     gfx::ComputeShader spatial_filter_shader_;
     gfx::ShaderParameter spatial_filter_shader_params_;
 
@@ -51,6 +55,8 @@ private:
     gfx::ShaderParameter merge_ao_shader_params_;
 
     Ptr<gfx::Sampler> sampler_;
+
+    std::unordered_map<gfx::Camera const*, uint64_t> last_frame_counts_;
 };
 
 }

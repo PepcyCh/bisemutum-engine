@@ -9,18 +9,18 @@
 #include "../../core/shader_params/fragment.hlsl"
 
 float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
-    float depth = depth_tex.Sample(input_sampler, fin.texcoord0).x;
+    float depth = depth_tex.Sample(input_sampler, fin.texcoord).x;
     if (depth == 1.0) {
         return float4(1.0, 0.0, 0.0, 0.0);
     }
 
-    float4 normal_roughness = normal_roughness_tex.Sample(input_sampler, fin.texcoord0);
+    float4 normal_roughness = normal_roughness_tex.Sample(input_sampler, fin.texcoord);
     float3 normal;
     float3 tangent;
     unpack_normal_and_tangent(normal_roughness.xyz, normal, tangent);
     Frame frame = create_frame(normal, tangent);
 
-    float3 position_view = position_view_from_depth(fin.texcoord0, depth, matrix_inv_proj);
+    float3 position_view = position_view_from_depth(fin.texcoord, depth, matrix_inv_proj);
     float3 position_world = mul(matrix_inv_view, float4(position_view, 1.0)).xyz;
 
     uint rng_seed = rng_tea(uint(fin.sv_position.y) * viewport_size.x + uint(fin.sv_position.x), frame_index);

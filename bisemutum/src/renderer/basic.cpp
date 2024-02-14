@@ -45,6 +45,7 @@ struct BasicRenderer::Impl final {
 
         gfx::TextureHandle color;
         gfx::TextureHandle depth;
+        gfx::TextureHandle velocity;
         GBufferTextures gbuffer;
         if (settings.pipeline_mode == PipelineMode::forward) {
             auto forward_output_data = forward_pass.render(camera, rg, {
@@ -53,6 +54,7 @@ struct BasicRenderer::Impl final {
             });
             color = forward_output_data.output;
             depth = forward_output_data.depth;
+            velocity = forward_output_data.velocity;
         } else {
             auto gbuffer_output = gbuffer_pass.render(camera, rg);
             gbuffer = gbuffer_output.gbuffer;
@@ -64,6 +66,7 @@ struct BasicRenderer::Impl final {
             });
             color = lighting_output.output;
             depth = gbuffer_output.depth;
+            velocity = gbuffer_output.velocity;
         }
         auto skybox_output = skybox_pass.render(camera, rg, {
             .color = color,
@@ -81,6 +84,7 @@ struct BasicRenderer::Impl final {
                 .color = color,
                 .depth = depth,
                 .normal_roughness = gbuffer.normal_roughness,
+                .velocity = velocity,
             }, settings.ambient_occlusion);
         }
 

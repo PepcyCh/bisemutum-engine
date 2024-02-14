@@ -5,7 +5,7 @@ namespace bi::gfx {
 auto FragmentShader::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void {
     compilation_environment.set_define(
         "VERTEX_ATTRIBUTES_TYPE",
-        std::to_string(static_cast<uint32_t>(needed_vertex_attributes))
+        std::to_string(needed_vertex_attributes.raw_value())
     );
 
     if (modify_compiler_environment_func) {

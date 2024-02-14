@@ -12,11 +12,11 @@
 
 float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     GBuffer gbuffer;
-    gbuffer.base_color = gbuffer_textures[GBUFFER_BASE_COLOR].Sample(gbuffer_sampler, fin.texcoord0);
-    gbuffer.normal_roughness = gbuffer_textures[GBUFFER_NORMAL_ROUGHNESS].Sample(gbuffer_sampler, fin.texcoord0);
-    gbuffer.fresnel = gbuffer_textures[GBUFFER_FRESNEL].Sample(gbuffer_sampler, fin.texcoord0);
-    gbuffer.material_0 = gbuffer_textures[GBUFFER_MATERIAL_0].Sample(gbuffer_sampler, fin.texcoord0);
-    float depth = depth_texture.Sample(gbuffer_sampler, fin.texcoord0).x;
+    gbuffer.base_color = gbuffer_textures[GBUFFER_BASE_COLOR].Sample(gbuffer_sampler, fin.texcoord);
+    gbuffer.normal_roughness = gbuffer_textures[GBUFFER_NORMAL_ROUGHNESS].Sample(gbuffer_sampler, fin.texcoord);
+    gbuffer.fresnel = gbuffer_textures[GBUFFER_FRESNEL].Sample(gbuffer_sampler, fin.texcoord);
+    gbuffer.material_0 = gbuffer_textures[GBUFFER_MATERIAL_0].Sample(gbuffer_sampler, fin.texcoord);
+    float depth = depth_texture.Sample(gbuffer_sampler, fin.texcoord).x;
     if (depth == 1.0) {
         return float4(0.0, 0.0, 0.0, 1.0);
     }
@@ -27,7 +27,7 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     unpack_gbuffer_to_surface(gbuffer, N, T, surface, surface_model);
     float3 B = cross(N, T);
 
-    float3 position_view = position_view_from_depth(fin.texcoord0, depth, matrix_inv_proj);
+    float3 position_view = position_view_from_depth(fin.texcoord, depth, matrix_inv_proj);
     float3 position_world = mul(matrix_inv_view, float4(position_view, 1.0)).xyz;
     float3 V = normalize(camera_position_world() - position_world);
 

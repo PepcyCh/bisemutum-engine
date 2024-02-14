@@ -17,6 +17,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Forward and deferred rendering
   * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
   * Skybox & IBL
+  * Basic SSAO
   * Bloom
 * Core
   * Custom static reflection

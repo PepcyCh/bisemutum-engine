@@ -192,6 +192,10 @@ struct RenderGraph::Impl final {
     }
     auto import_buffer(Ref<Buffer> buffer) -> BufferHandle {
         BI_ASSERT(buffer->has_value());
+        if (auto it = imported_buffer_map.find(buffer.get()); it != imported_buffer_map.end()) {
+            return it->second;
+        }
+
         auto node = Box<BufferNode>::make();
         node->index = graph_nodes_.size();
         node->buffer = PoolBuffer{
@@ -203,7 +207,9 @@ struct RenderGraph::Impl final {
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
 
-        return static_cast<BufferHandle>(graph_nodes_.size() - 1);
+        auto handle = static_cast<BufferHandle>(graph_nodes_.size() - 1);
+        imported_buffer_map.insert({buffer.get(), handle});
+        return handle;
     }
     auto add_texture(std::function<auto(TextureBuilder&) -> void>&& setup_func) -> TextureHandle {
         TextureBuilder builder{};
@@ -218,6 +224,10 @@ struct RenderGraph::Impl final {
     }
     auto import_texture(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> TextureHandle {
         BI_ASSERT(texture->has_value());
+        if (auto it = imported_texture_map.find(texture.get()); it != imported_texture_map.end()) {
+            return it->second;
+        }
+
         auto node = Box<TextureNode>::make();
         node->index = graph_nodes_.size();
         node->texture = PoolTexture{
@@ -229,7 +239,9 @@ struct RenderGraph::Impl final {
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
 
-        return static_cast<TextureHandle>(graph_nodes_.size() - 1);
+        auto handle = static_cast<TextureHandle>(graph_nodes_.size() - 1);
+        imported_texture_map.insert({texture.get(), handle});
+        return handle;
     }
     auto import_back_buffer() const -> TextureHandle {
         return back_buffer_handle_;
@@ -561,6 +573,8 @@ struct RenderGraph::Impl final {
         graph_order_.clear();
         resources_to_create_.clear();
         resources_to_destroy_.clear();
+        imported_buffer_map.clear();
+        imported_texture_map.clear();
         present_pass_index_ = static_cast<size_t>(-1);
         graph_is_invalid = false;
 
@@ -571,7 +585,7 @@ struct RenderGraph::Impl final {
         to->in_nodes.push_back(from);
     }
 
-    auto require_buffer(Ref<rhi::Device> device, rhi::BufferDesc const& desc) -> PoolBuffer {
+    auto find_buffer_pool(rhi::BufferDesc const& desc) -> BufferPool& {
         BufferKey key{
             .size_log = 0,
             .memory_property = desc.memory_property,
@@ -582,10 +596,17 @@ struct RenderGraph::Impl final {
             created_size <<= 1;
             ++key.size_log;
         }
-        auto& pool = buffer_pools[key];
+        return buffer_pools[key];
+    }
+    auto require_buffer(Ref<rhi::Device> device, rhi::BufferDesc const& desc) -> PoolBuffer {
+        auto& pool = find_buffer_pool(desc);
         if (!pool.recycled_indices.empty()) {
             auto index = pool.recycled_indices.back();
             pool.recycled_indices.pop_back();
+            if (!pool.resources[index]) {
+                pool.resources[index] = Box<Buffer>::make(desc, false);
+                pool.accesses[index] = {};
+            }
             auto buffer = pool.resources[index].ref();
             auto access = pool.accesses[index];
             return PoolBuffer{buffer, index, access};
@@ -599,19 +620,17 @@ struct RenderGraph::Impl final {
         }
     }
     auto remove_buffer(PoolBuffer const& buffer, rhi::BufferDesc const& desc) -> void {
-        BufferKey key{
-            .size_log = 0,
-            .memory_property = desc.memory_property,
-            .usages = desc.usages,
-        };
-        auto created_size = 1;
-        while (created_size < desc.size) {
-            created_size <<= 1;
-            ++key.size_log;
-        }
-        auto& pool = buffer_pools[key];
+        auto& pool = find_buffer_pool(desc);
         pool.accesses[buffer.index] = buffer.get_access();
         pool.recycled_indices.push_back(buffer.index);
+    }
+    auto take_buffer(BufferHandle handle) -> Box<Buffer> {
+        auto node = graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<BufferNode>();
+        if (node->imported) { return {}; }
+        auto& pool = find_buffer_pool(node->desc);
+        pool.recycled_indices.push_back(node->buffer.value().index);
+        auto result = std::move(pool.resources[node->buffer.value().index]);
+        return result;
     }
 
     auto require_texture(Ref<rhi::Device> device, rhi::TextureDesc const& desc) -> PoolTexture {
@@ -619,6 +638,10 @@ struct RenderGraph::Impl final {
         if (!pool.recycled_indices.empty()) {
             auto index = pool.recycled_indices.back();
             pool.recycled_indices.pop_back();
+            if (!pool.resources[index]) {
+                pool.resources[index] = Box<Texture>::make(desc);
+                pool.accesses[index] = {};
+            }
             auto texture = pool.resources[index].ref();
             auto access = pool.accesses[index];
             return PoolTexture{texture, index, access};
@@ -636,12 +659,23 @@ struct RenderGraph::Impl final {
         pool.accesses[texture.index] = texture.get_access();
         pool.recycled_indices.push_back(texture.index);
     }
+    auto take_texture(TextureHandle handle) -> Box<Texture> {
+        auto node = graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<TextureNode>();
+        if (node->imported) { return {}; }
+        auto& pool = texture_pools[node->desc];
+        pool.recycled_indices.push_back(node->texture.value().index);
+        auto result = std::move(pool.resources[node->texture.value().index]);
+        return result;
+    }
 
     Ptr<rhi::Device> device_;
     uint32_t num_frames_;
 
     std::unordered_map<BufferKey, BufferPool> buffer_pools;
     std::unordered_map<rhi::TextureDesc, TexturePool> texture_pools;
+
+    std::unordered_map<Buffer const*, BufferHandle> imported_buffer_map;
+    std::unordered_map<Texture const*, TextureHandle> imported_texture_map;
 
     Ptr<rhi::CommandEncoder> cmd_encoder_;
 
@@ -660,6 +694,8 @@ struct RenderGraph::Impl final {
 auto RenderGraph::Impl::BufferNode::create(RenderGraph::Impl& rg) -> void {
     if (prev_alias) {
         buffer = prev_alias->buffer;
+        // `imported` may become to true if this resource is taken outside.
+        imported = prev_alias->imported;
     }
     if (!buffer.has_value()) {
         buffer = rg.require_buffer(rg.device_.value(), desc);
@@ -676,6 +712,8 @@ auto RenderGraph::Impl::BufferNode::destroy(RenderGraph::Impl& rg) -> void {
 auto RenderGraph::Impl::TextureNode::create(RenderGraph::Impl& rg) -> void {
     if (prev_alias) {
         texture = prev_alias->texture;
+        // `imported` may become to true if this resource is taken outside.
+        imported = prev_alias->imported;
     }
     if (!texture.has_value()) {
         texture = rg.require_texture(rg.device_.value(), desc);
@@ -1057,6 +1095,13 @@ auto RenderGraph::buffer(BufferHandle handle) const -> Ref<Buffer> {
 auto RenderGraph::texture(TextureHandle handle) const -> Ref<Texture> {
     return impl()->texture(handle);
 }
+auto RenderGraph::take_buffer(BufferHandle handle) -> Box<Buffer> {
+    return impl()->take_buffer(handle);
+}
+auto RenderGraph::take_texture(TextureHandle handle) -> Box<Texture> {
+    return impl()->take_texture(handle);
+}
+
 auto RenderGraph::rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList> {
     return impl()->rendered_object_list(handle);
 }

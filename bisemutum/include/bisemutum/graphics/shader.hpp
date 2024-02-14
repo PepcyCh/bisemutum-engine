@@ -19,7 +19,7 @@ struct FragmentShader final {
     std::string source_entry;
     ShaderParameterMetadataList shader_params_metadata;
     std::function<auto(ShaderCompilationEnvironment&) -> void> modify_compiler_environment_func;
-    VertexAttributesType needed_vertex_attributes = VertexAttributesType::full;
+    BitFlags<VertexAttributesType> needed_vertex_attributes = VertexAttributesType::full;
 
     rhi::FrontFace front_face = rhi::FrontFace::ccw;
     rhi::CullMode cull_mode = rhi::CullMode::none;

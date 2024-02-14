@@ -274,6 +274,8 @@ struct GraphicsManager::Impl final {
 
             cmd_encoder->pop_label();
 
+            camera.clear_history_resources();
+
             ++camera_index;
         });
 

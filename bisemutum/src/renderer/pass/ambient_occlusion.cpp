@@ -3,6 +3,7 @@
 #include <bisemutum/prelude/misc.hpp>
 #include <bisemutum/prelude/math.hpp>
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/window/window.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 
 namespace bi {
@@ -24,6 +25,20 @@ struct SSAOPassData final {
     gfx::TextureHandle depth;
 
     gfx::TextureHandle output;
+};
+
+BI_SHADER_PARAMETERS_BEGIN(TemporalAccumulatePassParams)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, ao_tex, ao_tex_format)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, history_ao_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, velocity_tex)
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
+BI_SHADER_PARAMETERS_END(TemporalAccumulatePassParams)
+
+struct TemporalAccumulatePassData final {
+    gfx::TextureHandle ao_value;
+    gfx::TextureHandle history_ao_value;
+    gfx::TextureHandle velocity;
 };
 
 BI_SHADER_PARAMETERS_BEGIN(SpatialFilterPassParams)
@@ -63,6 +78,11 @@ AmbientOcclusionPass::AmbientOcclusionPass() {
     screen_space_shader_.set_shader_params_struct<SSAOPassParams>();
     screen_space_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     screen_space_shader_.depth_test = false;
+
+    temporal_accumulate_shader_params_.initialize<TemporalAccumulatePassParams>();
+    temporal_accumulate_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/temporal_accumulate.hlsl";
+    temporal_accumulate_shader_.source_entry = "ao_temporal_accumulate_cs";
+    temporal_accumulate_shader_.set_shader_params_struct<TemporalAccumulatePassParams>();
 
     spatial_filter_shader_params_.initialize<SpatialFilterPassParams>();
     spatial_filter_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/spatial_filter.hlsl";
@@ -122,7 +142,9 @@ auto AmbientOcclusionPass::render_screen_space(
     auto ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(ao_tex_format, width, height)
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+            .usage({
+                rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write
+            });
     });
     pass_data->output = builder.use_color(0, ao_tex);
 
@@ -158,11 +180,42 @@ auto AmbientOcclusionPass::render_denoise(
     auto width = camera.target_texture().desc().extent.width;
     auto height = camera.target_texture().desc().extent.height;
 
-    gfx::TextureHandle filtered_ao_tex;
+    auto frame_count = g_engine->window()->frame_count();
+    auto [frame_count_it, is_new_camera] = last_frame_counts_.try_emplace(&camera);
+    auto has_history = !is_new_camera && frame_count_it->second + 1 == frame_count;
+    frame_count_it->second = frame_count;
+    auto history_ao_tex = camera.get_history_texture("ambient_occlusion");
 
-    {
-        // TODO - temporal accumulate
+    if (has_history && history_ao_tex != gfx::TextureHandle::invalid) {
+        auto [builder, pass_data] = rg.add_compute_pass<TemporalAccumulatePassData>("AO Temporal Accumulate Pass");
+
+        pass_data->ao_value = builder.write(ao_tex);
+        pass_data->history_ao_value = builder.read(history_ao_tex);
+        ao_tex = pass_data->ao_value;
+        pass_data->velocity = builder.read(input.velocity);
+
+        builder.set_execution_function<TemporalAccumulatePassData>(
+            [this, width, height](CRef<TemporalAccumulatePassData> pass_data, gfx::ComputePassContext const& ctx) {
+                auto params = temporal_accumulate_shader_params_.mutable_typed_data<TemporalAccumulatePassParams>();
+                params->tex_size = {width, height};
+                params->ao_tex = {ctx.rg->texture(pass_data->ao_value)};
+                params->history_ao_tex = {ctx.rg->texture(pass_data->history_ao_value)};
+                params->velocity_tex = {ctx.rg->texture(pass_data->velocity)};
+                params->input_sampler = {sampler_};
+                temporal_accumulate_shader_params_.update_uniform_buffer();
+                ctx.dispatch(
+                    temporal_accumulate_shader_, temporal_accumulate_shader_params_,
+                    ceil_div(width, 16u), ceil_div(height, 16u)
+                );
+            }
+        );
     }
+
+    auto filtered_ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(ao_tex_format, width, height)
+            .usage({rhi::TextureUsage::storage_read_write, rhi::TextureUsage::sampled});
+    });
 
     {
         auto [builder, pass_data] = rg.add_compute_pass<SpatialFilterPassData>("AO Spatial Filter Pass");
@@ -171,15 +224,12 @@ auto AmbientOcclusionPass::render_denoise(
         pass_data->depth = builder.read(input.depth);
         pass_data->normal_roughness = builder.read(input.normal_roughness);
 
-        filtered_ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
-            builder
-                .dim_2d(ao_tex_format, width, height)
-                .usage({rhi::TextureUsage::storage_read_write, rhi::TextureUsage::sampled});
-        });
         pass_data->output = builder.write(filtered_ao_tex);
 
         builder.set_execution_function<SpatialFilterPassData>(
-            [this, width, height](CRef<SpatialFilterPassData> pass_data, gfx::ComputePassContext const& ctx) {
+            [this, width, height, &camera](
+                CRef<SpatialFilterPassData> pass_data, gfx::ComputePassContext const& ctx
+            ) {
                 auto params = spatial_filter_shader_params_.mutable_typed_data<SpatialFilterPassParams>();
                 params->tex_size = {width, height};
                 params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness)};
@@ -191,6 +241,7 @@ auto AmbientOcclusionPass::render_denoise(
                     spatial_filter_shader_, spatial_filter_shader_params_,
                     ceil_div(width, 16u), ceil_div(height, 16u)
                 );
+                camera.add_history_texture("ambient_occlusion", pass_data->output);
             }
         );
     }

@@ -71,6 +71,9 @@ struct RenderGraph final : PImpl<RenderGraph> {
     auto buffer(BufferHandle handle) const -> Ref<Buffer>;
     auto texture(TextureHandle handle) const -> Ref<Texture>;
 
+    auto take_buffer(BufferHandle handle) -> Box<Buffer>;
+    auto take_texture(TextureHandle handle) -> Box<Texture>;
+
     auto rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList>;
 
 private:

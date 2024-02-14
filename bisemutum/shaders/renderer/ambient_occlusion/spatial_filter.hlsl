@@ -37,7 +37,6 @@ void ao_spatial_filter_cs(
         fetch_shared_data(linear_local_index * 2, group_id.xy * NUM_GROUP_THREADS);
         fetch_shared_data(linear_local_index * 2 + 1, group_id.xy * NUM_GROUP_THREADS);
     }
-    // GroupMemoryBarrier();
     GroupMemoryBarrierWithGroupSync();
 
     if (any(global_thread_id.xy >= tex_size)) { return; }

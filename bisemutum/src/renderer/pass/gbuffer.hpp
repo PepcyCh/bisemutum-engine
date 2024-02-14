@@ -8,6 +8,7 @@ namespace bi {
 
 struct GBufferdPass final {
     struct OutputData final {
+        gfx::TextureHandle velocity;
         gfx::TextureHandle depth;
         GBufferTextures gbuffer;
     };

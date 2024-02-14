@@ -11,6 +11,7 @@ struct GBufferOutput {
     float4 normal_roughness : SV_Target1;
     float4 fresnel : SV_Target2;
     float4 material_0 : SV_Target3;
+    float4 velocity : SV_Target4;
 };
 
 GBufferOutput gbuffer_pass_fs(VertexAttributesOutput fin) {
@@ -29,6 +30,11 @@ GBufferOutput gbuffer_pass_fs(VertexAttributesOutput fin) {
     fout.normal_roughness = gbuffer.normal_roughness;
     fout.fresnel = gbuffer.fresnel;
     fout.material_0 = gbuffer.material_0;
+
+    float4 history_pos_clip = mul(history_matrix_proj_view, float4(fin.history_position_world, 1.0));
+    history_pos_clip.xyz /= history_pos_clip.w;
+    float2 history_uv = float2(history_pos_clip.x * 0.5 + 0.5, 0.5 - history_pos_clip.y * 0.5);
+    fout.velocity = float4(fin.sv_position.xy / viewport_size - history_uv, 0.0, 1.0);
 
     return fout;
 }

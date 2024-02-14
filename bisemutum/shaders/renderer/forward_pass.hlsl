@@ -7,7 +7,12 @@
 #include "../core/shader_params/material.hlsl"
 #include "../core/shader_params/fragment.hlsl"
 
-float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
+struct Output {
+    float4 color : SV_Target0;
+    float4 velocity : SV_Target1;
+};
+
+Output forward_pass_fs(VertexAttributesOutput fin) {
     float3 N = normalize(fin.normal_world);
     float3 T = normalize(fin.tangent_world);
     float3 B = normalize(fin.bitangent_world);
@@ -54,5 +59,13 @@ float4 forward_pass_fs(VertexAttributesOutput fin) : SV_Target {
     float3 ibl = surface_eval_ibl(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
     color += ibl;
 
-    return float4(color, 1.0);
+    Output result;
+    result.color = float4(color, 1.0);
+
+    float4 history_pos_clip = mul(history_matrix_proj_view, float4(fin.history_position_world, 1.0));
+    history_pos_clip.xyz /= history_pos_clip.w;
+    float2 history_uv = float2(history_pos_clip.x * 0.5 + 0.5, 0.5 - history_pos_clip.y * 0.5);
+    fout.velocity = float4(fin.sv_position.xy / viewport_size - history_uv, 0.0, 1.0);
+
+    return Output;
 }

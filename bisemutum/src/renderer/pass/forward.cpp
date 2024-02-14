@@ -33,6 +33,7 @@ BI_SHADER_PARAMETERS_END(ForwardPassParams)
 
 struct PassData final {
     gfx::TextureHandle output;
+    gfx::TextureHandle velocity;
     gfx::TextureHandle depth;
 
     gfx::RenderedObjectListHandle list;
@@ -95,11 +96,26 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
             .usage({rhi::TextureUsage::depth_stencil_attachment, rhi::TextureUsage::sampled});
     });
 
-    builder.use_color(
+    pass_data->output = builder.use_color(
         0,
         gfx::GraphicsPassColorTargetBuilder{pass_data->output}.clear_color()
     );
-    builder.use_depth_stencil(gfx::GraphicsPassDepthStencilTargetBuilder{pass_data->depth}.clear_depth_stencil());
+    pass_data->depth = builder.use_depth_stencil(
+        gfx::GraphicsPassDepthStencilTargetBuilder{pass_data->depth}.clear_depth_stencil()
+    );
+
+    pass_data->velocity = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(
+                rhi::ResourceFormat::rg16_sfloat,
+                camera_target.desc().extent.width, camera_target.desc().extent.height
+            )
+            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+    });
+    pass_data->velocity = builder.use_color(
+        1,
+        gfx::GraphicsPassColorTargetBuilder{pass_data->velocity}.clear_color()
+    );
 
     builder.read(input.shadow_maps.dir_lights_shadow_map);
     builder.read(input.shadow_maps.point_lights_shadow_map);
@@ -124,6 +140,7 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
 
     return OutputData{
         .output = pass_data->output,
+        .velocity = pass_data->velocity,
         .depth = pass_data->depth,
     };
 }
