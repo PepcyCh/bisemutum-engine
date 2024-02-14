@@ -1,6 +1,7 @@
 #include "ambient_occlusion.hpp"
 
 #include <bisemutum/prelude/misc.hpp>
+#include <bisemutum/prelude/math.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 
@@ -8,7 +9,11 @@ namespace bi {
 
 namespace {
 
+constexpr rhi::ResourceFormat ao_tex_format = rhi::ResourceFormat::rg16_sfloat;
+
 BI_SHADER_PARAMETERS_BEGIN(SSAOPassParams)
+    BI_SHADER_PARAMETER(float, ao_range)
+    BI_SHADER_PARAMETER(float, ao_strength)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
@@ -21,8 +26,23 @@ struct SSAOPassData final {
     gfx::TextureHandle output;
 };
 
+BI_SHADER_PARAMETERS_BEGIN(SpatialFilterPassParams)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_ao_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, output_ao_tex, ao_tex_format)
+BI_SHADER_PARAMETERS_END(SpatialFilterPassParams)
+
+struct SpatialFilterPassData final {
+    gfx::TextureHandle input;
+    gfx::TextureHandle normal_roughness;
+    gfx::TextureHandle depth;
+
+    gfx::TextureHandle output;
+};
+
 BI_SHADER_PARAMETERS_BEGIN(MergePassParams)
-    BI_SHADER_PARAMETER(float, ao_strength)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, color_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, ao_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
@@ -43,6 +63,11 @@ AmbientOcclusionPass::AmbientOcclusionPass() {
     screen_space_shader_.set_shader_params_struct<SSAOPassParams>();
     screen_space_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     screen_space_shader_.depth_test = false;
+
+    spatial_filter_shader_params_.initialize<SpatialFilterPassParams>();
+    spatial_filter_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/spatial_filter.hlsl";
+    spatial_filter_shader_.source_entry = "ao_spatial_filter_cs";
+    spatial_filter_shader_.set_shader_params_struct<SpatialFilterPassParams>();
 
     merge_ao_shader_params_.initialize<MergePassParams>();
     merge_ao_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/merge.hlsl";
@@ -76,9 +101,9 @@ auto AmbientOcclusionPass::render(
             unreachable();
     }
 
-    // TODO - AO denoise
+    ao_tex = render_denoise(camera, rg, input, settings, ao_tex);
 
-    auto result_tex = render_merge(camera, rg, settings, input.color, ao_tex);
+    auto result_tex = render_merge(camera, rg, input.color, ao_tex);
 
     return result_tex;
 }
@@ -96,16 +121,16 @@ auto AmbientOcclusionPass::render_screen_space(
     pass_data->depth = builder.read(input.depth);
     auto ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(rhi::ResourceFormat::rg16_sfloat, width, height)
-            .usage({
-                rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write,
-            });
+            .dim_2d(ao_tex_format, width, height)
+            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
     });
     pass_data->output = builder.use_color(0, ao_tex);
 
     builder.set_execution_function<SSAOPassData>(
-        [this, &camera](CRef<SSAOPassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+        [this, &camera, &settings](CRef<SSAOPassData> pass_data, gfx::GraphicsPassContext const& ctx) {
             auto params = screen_space_shader_params_.mutable_typed_data<SSAOPassParams>();
+            params->ao_range = std::max(settings.range, 0.05f);
+            params->ao_strength = settings.strength;
             params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness)};
             params->depth_tex = {ctx.rg->texture(pass_data->depth)};
             params->input_sampler = {sampler_};
@@ -125,9 +150,56 @@ auto AmbientOcclusionPass::render_raytraced(
     return gfx::TextureHandle::invalid;
 }
 
+auto AmbientOcclusionPass::render_denoise(
+    gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
+    BasicRenderer::AmbientOcclusionSettings const& settings,
+    gfx::TextureHandle ao_tex
+) -> gfx::TextureHandle {
+    auto width = camera.target_texture().desc().extent.width;
+    auto height = camera.target_texture().desc().extent.height;
+
+    gfx::TextureHandle filtered_ao_tex;
+
+    {
+        // TODO - temporal accumulate
+    }
+
+    {
+        auto [builder, pass_data] = rg.add_compute_pass<SpatialFilterPassData>("AO Spatial Filter Pass");
+
+        pass_data->input = builder.read(ao_tex);
+        pass_data->depth = builder.read(input.depth);
+        pass_data->normal_roughness = builder.read(input.normal_roughness);
+
+        filtered_ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+            builder
+                .dim_2d(ao_tex_format, width, height)
+                .usage({rhi::TextureUsage::storage_read_write, rhi::TextureUsage::sampled});
+        });
+        pass_data->output = builder.write(filtered_ao_tex);
+
+        builder.set_execution_function<SpatialFilterPassData>(
+            [this, width, height](CRef<SpatialFilterPassData> pass_data, gfx::ComputePassContext const& ctx) {
+                auto params = spatial_filter_shader_params_.mutable_typed_data<SpatialFilterPassParams>();
+                params->tex_size = {width, height};
+                params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness)};
+                params->depth_tex = {ctx.rg->texture(pass_data->depth)};
+                params->input_ao_tex = {ctx.rg->texture(pass_data->input)};
+                params->output_ao_tex = {ctx.rg->texture(pass_data->output)};
+                spatial_filter_shader_params_.update_uniform_buffer();
+                ctx.dispatch(
+                    spatial_filter_shader_, spatial_filter_shader_params_,
+                    ceil_div(width, 16u), ceil_div(height, 16u)
+                );
+            }
+        );
+    }
+
+    return filtered_ao_tex;
+}
+
 auto AmbientOcclusionPass::render_merge(
     gfx::Camera const& camera, gfx::RenderGraph& rg,
-    BasicRenderer::AmbientOcclusionSettings const& settings,
     gfx::TextureHandle color_tex, gfx::TextureHandle ao_tex
 ) -> gfx::TextureHandle {
     auto width = camera.target_texture().desc().extent.width;
@@ -145,12 +217,11 @@ auto AmbientOcclusionPass::render_merge(
     pass_data->output = builder.use_color(0, output_tex);
 
     builder.set_execution_function<MergePassData>(
-        [this, &camera, &settings](CRef<MergePassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+        [this, &camera](CRef<MergePassData> pass_data, gfx::GraphicsPassContext const& ctx) {
             auto params = merge_ao_shader_params_.mutable_typed_data<MergePassParams>();
             params->color_tex = {ctx.rg->texture(pass_data->color_tex)};
             params->ao_tex = {ctx.rg->texture(pass_data->ao_tex)};
             params->input_sampler = {sampler_};
-            params->ao_strength = settings.strength;
             merge_ao_shader_params_.update_uniform_buffer();
             ctx.render_full_screen(camera, merge_ao_shader_, merge_ao_shader_params_);
         }

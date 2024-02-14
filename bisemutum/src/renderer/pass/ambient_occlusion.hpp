@@ -30,14 +30,22 @@ private:
         BasicRenderer::AmbientOcclusionSettings const& settings
     ) -> gfx::TextureHandle;
 
+    auto render_denoise(
+        gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
+        BasicRenderer::AmbientOcclusionSettings const& settings,
+        gfx::TextureHandle ao_tex
+    ) -> gfx::TextureHandle;
+
     auto render_merge(
         gfx::Camera const& camera, gfx::RenderGraph& rg,
-        BasicRenderer::AmbientOcclusionSettings const& settings,
         gfx::TextureHandle color_tex, gfx::TextureHandle ao_tex
     ) -> gfx::TextureHandle;
 
     gfx::FragmentShader screen_space_shader_;
     gfx::ShaderParameter screen_space_shader_params_;
+
+    gfx::ComputeShader spatial_filter_shader_;
+    gfx::ShaderParameter spatial_filter_shader_params_;
 
     gfx::FragmentShader merge_ao_shader_;
     gfx::ShaderParameter merge_ao_shader_params_;

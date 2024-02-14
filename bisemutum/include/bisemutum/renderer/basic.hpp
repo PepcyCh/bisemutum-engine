@@ -43,6 +43,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
             raytraced,
         };
         Mode mode = Mode::none;
+        float range = 0.5f;
         float strength = 0.5f;
     };
 
@@ -74,7 +75,8 @@ BI_SREFL(
 BI_SREFL(
     type(BasicRenderer::AmbientOcclusionSettings),
     field(mode),
-    field(strength),
+    field(range, RangeF{}),
+    field(strength, RangeF{0.0f, 1.0f}),
 )
 BI_SREFL(
     type(BasicRenderer::Settings),

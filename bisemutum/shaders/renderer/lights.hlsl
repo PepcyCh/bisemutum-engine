@@ -38,7 +38,7 @@ float test_shadow_pcf9(
     float4 light_pos = mul(light_transform, float4(position + normal * shadow_normal_bias, 1.0));
     light_pos.xyz /= light_pos.w;
     float2 sm_uv = float2((light_pos.x + 1.0) * 0.5, (1.0 - light_pos.y) * 0.5);
-    const float delta = 0.001;
+    const float delta = 0.0002;
     float2 uv_offset[9] = {
         float2(-delta, -delta),
         float2(0.0, -delta),

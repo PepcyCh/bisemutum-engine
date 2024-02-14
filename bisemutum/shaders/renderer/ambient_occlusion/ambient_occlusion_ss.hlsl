@@ -11,7 +11,7 @@
 float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
     float depth = depth_tex.Sample(input_sampler, fin.texcoord0).x;
     if (depth == 1.0) {
-        return 0.0;
+        return float4(1.0, 0.0, 0.0, 0.0);
     }
 
     float4 normal_roughness = normal_roughness_tex.Sample(input_sampler, fin.texcoord0);
@@ -31,7 +31,7 @@ float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
         float3 dir_local = cos_hemisphere_sample(rand);
         float3 dir_world = frame_to_world(frame, dir_local);
 
-        float3 pos = position_world + dir_world * 1.0;
+        float3 pos = position_world + dir_world * ao_range;
         float4 pos_clip = mul(matrix_proj_view, float4(pos, 1.0));
         pos_clip.xyz /= pos_clip.w;
         float2 uv = float2(pos_clip.x * 0.5 + 0.5, 0.5 - pos_clip.y * 0.5);
@@ -39,7 +39,7 @@ float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
 
         ao_value += pos_clip.z < tap_depth ? 0.0 : 1.0;
     }
-    ao_value = 1.0 - ao_value / 4;
+    ao_value = 1.0 - ao_value * ao_strength / 4;
 
     return float4(ao_value, 1.0, 0.0, 0.0);
 }

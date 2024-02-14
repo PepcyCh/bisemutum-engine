@@ -24,7 +24,7 @@
 #include "shader.hpp"
 #include "pipeline.hpp"
 
-#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 1
+#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 0
 
 namespace bi::rhi {
 
