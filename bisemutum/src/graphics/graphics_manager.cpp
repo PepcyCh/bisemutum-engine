@@ -240,11 +240,13 @@ struct GraphicsManager::Impl final {
 
         renderer.prepare_renderer_per_frame_data();
 
-        gpu_scene->for_each_drawable([](Drawable& drawable) {
-            drawable.mesh->fill_shader_params(drawable);
-            drawable.shader_params.update_uniform_buffer();
-            drawable.material->shader_parameters.update_uniform_buffer();
-        });
+        gpu_scene->for_each_drawable_with_shader_data(
+            [](Drawable& drawable, DrawableShaderData const& drawable_data) {
+                drawable.mesh->fill_shader_params(drawable, drawable_data);
+                drawable.shader_params.update_uniform_buffer();
+                drawable.material->shader_parameters.update_uniform_buffer();
+            }
+        );
         size_t num_enabled_camera = 0;
         gpu_scene->for_each_camera([&num_enabled_camera](Camera& camera) {
             if (camera.enabled) {

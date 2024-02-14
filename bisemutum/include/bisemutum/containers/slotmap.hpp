@@ -57,6 +57,62 @@ struct SlotMap final {
         SlotMapRef slotmap_;
     };
 
+    template <bool is_const>
+    struct PairsHelper;
+    template <bool is_const>
+    struct PairIterator final {
+    public:
+        using SlotMapRef = std::conditional_t<is_const, SlotMap<T, Handle> const&, SlotMap<T, Handle>&>;
+
+        auto operator*() -> std::pair<Handle, std::conditional_t<is_const, T const&, T&>> {
+            return {static_cast<Handle>(index_), slotmap_.data_[index_].value()};
+        }
+
+        auto operator++() -> PairIterator& {
+            if (index_ == slotmap_.data_.size()) {
+                return *this;
+            }
+            do {
+                ++index_;
+            } while (index_ < slotmap_.data_.size() && !slotmap_.data_[index_].has_value());
+            return *this;
+        }
+        auto operator++(int) -> PairIterator {
+            auto ret = *this;
+            ++(*this);
+            return ret;
+        }
+
+        auto operator==(PairIterator const& rhs) const -> bool {
+            return index_ == rhs.index_ && &slotmap_ == &rhs.slotmap_;
+        }
+
+    private:
+        friend SlotMap;
+        template <bool is_const_>
+        friend struct PairsHelper;
+
+        PairIterator(SlotMapRef slotmap, size_t index) : index_(index), slotmap_(slotmap) {}
+
+        size_t index_ = 0;
+        SlotMapRef slotmap_;
+    };
+
+    template <bool is_const>
+    struct PairsHelper final {
+        using SlotMapRef = std::conditional_t<is_const, SlotMap<T, Handle> const&, SlotMap<T, Handle>&>;
+
+        auto begin() -> PairIterator<is_const> { return PairIterator<is_const>{slotmap_, slotmap_.first_valid_index()}; }
+        auto end() -> PairIterator<is_const> { return PairIterator<is_const>{slotmap_, slotmap_.data_.size()}; }
+
+    private:
+        friend SlotMap;
+
+        PairsHelper(SlotMapRef slotmap) : slotmap_(slotmap) {}
+
+        SlotMapRef slotmap_;
+    };
+
     auto size() const -> size_t { return data_.size() - freed_indices_.size(); }
     auto begin() -> Iterator<false> { return Iterator<false>{*this, first_valid_index()}; }
     auto end() -> Iterator<false> { return Iterator<false>{*this, data_.size()}; }
@@ -64,6 +120,10 @@ struct SlotMap final {
     auto cend() const -> Iterator<true> { return Iterator<true>{*this, data_.size()}; }
     auto begin() const -> Iterator<true> { return Iterator<true>{*this, first_valid_index()}; }
     auto end() const -> Iterator<true> { return Iterator<true>{*this, data_.size()}; }
+
+    auto pairs() -> PairsHelper<false> { return PairsHelper<false>(*this); }
+    auto const_pairs() const -> PairsHelper<true> { return PairsHelper<true>(*this); }
+    auto pairs() const -> PairsHelper<true> { return PairsHelper<true>(*this); }
 
     auto insert(T&& value) -> Handle {
         if (!freed_indices_.empty()) {

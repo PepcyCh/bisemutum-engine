@@ -222,7 +222,6 @@ auto GraphicsPassContext::render_list(RenderedObjectListHandle handle, ShaderPar
             cmd_encoder, graphics_set_fragment, graphics_set_visibility_fragment, params
         );
         for (auto drawable : item.drawables) {
-            drawable->mesh->fill_shader_params(drawable);
             resource_binding_ctx_->set_shader_params(
                 cmd_encoder, graphics_set_mesh, graphics_set_visibility_mesh, drawable->shader_params
             );

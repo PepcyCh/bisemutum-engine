@@ -12,12 +12,42 @@ namespace bi::rt {
 struct Scene;
 
 BI_TRAIT_BEGIN(IGlobalSystem, move, type_info)
-    BI_TRAIT_METHOD(update, (&self) requires (self.update()) -> void)
+    template <typename T>
+    static auto helper_update(T& self) -> void {}
+    template <typename T> requires requires (T v) { v.update(); }
+    static auto helper_update(T& self) -> void {
+        return self.update();
+    }
+
+    template <typename T>
+    static auto helper_post_update(T& self) -> void {}
+    template <typename T> requires requires (T v) { v.post_update(); }
+    static auto helper_post_update(T& self) -> void {
+        return self.post_update();
+    }
+
+    BI_TRAIT_METHOD(update, (&self) requires (helper_update(self)) -> void)
+    BI_TRAIT_METHOD(post_update, (&self) requires (helper_post_update(self)) -> void)
 BI_TRAIT_END(IGlobalSystem)
 
 BI_TRAIT_BEGIN(ISystem, move, type_info)
+    template <typename T>
+    static auto helper_update(T& self) -> void {}
+    template <typename T> requires requires (T v) { v.update(); }
+    static auto helper_update(T& self) -> void {
+        return self.update();
+    }
+
+    template <typename T>
+    static auto helper_post_update(T& self) -> void {}
+    template <typename T> requires requires (T v) { v.post_update(); }
+    static auto helper_post_update(T& self) -> void {
+        return self.post_update();
+    }
+
     BI_TRAIT_METHOD(init_on, (&self, Ref<Scene> scene) requires (self.init_on(scene)) -> void)
-    BI_TRAIT_METHOD(update, (&self) requires (self.update()) -> void)
+    BI_TRAIT_METHOD(update, (&self) requires (helper_update(self)) -> void)
+    BI_TRAIT_METHOD(post_update, (&self) requires (helper_post_update(self)) -> void)
 BI_TRAIT_END(ISystem)
 
 using GlobalSystemCreator = std::function<auto() -> Dyn<IGlobalSystem>::Box>;
@@ -57,7 +87,8 @@ struct SystemManager final : PImpl<SystemManager> {
     }
 
     auto init_on(Ref<Scene> scene) -> void;
-    auto tick() -> void;
+    auto tick_update() -> void;
+    auto tick_post_update() -> void;
 
 private:
     auto register_global_system(std::type_index type, GlobalSystemCreator creator) -> void;

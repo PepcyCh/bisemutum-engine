@@ -281,7 +281,11 @@ struct ShaderParameterMetadataListHelper<TypeList<Ts...>> final {
         if constexpr (sizeof...(Ts) == 0) {
             return {};
         } else {
-            auto params_2d = std::vector{shader_parameter_metadata_of(Ts{})...};
+            // We need to write template parameter of std::vector here,
+            // or type of `params_2d` will be incorrect when sizeof...(Ts) == 1.
+            auto params_2d = std::vector<std::vector<ShaderParameterMetadata>>{
+                shader_parameter_metadata_of(Ts{})...
+            };
             size_t count = 0;
             for (auto const& inner_vec : params_2d) {
                 count += inner_vec.size();

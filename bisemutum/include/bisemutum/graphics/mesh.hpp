@@ -12,6 +12,7 @@
 namespace bi::gfx {
 
 struct Drawable;
+struct DrawableShaderData;
 
 struct SubmeshDesc final {
     uint32_t base_vertex = 0;
@@ -118,7 +119,8 @@ BI_TRAIT_BEGIN(IMesh, move)
     )
 
     BI_TRAIT_METHOD(fill_shader_params,
-        (const& self, Ref<Drawable> drawable) requires (self.fill_shader_params(drawable)) -> void
+        (const& self, Ref<Drawable> drawable, DrawableShaderData const& drawable_data)
+            requires (self.fill_shader_params(drawable, drawable_data)) -> void
     )
     BI_TRAIT_METHOD(shader_params_metadata,
         (const& self, uint32_t submesh_index)

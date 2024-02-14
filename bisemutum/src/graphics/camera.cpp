@@ -27,6 +27,7 @@ BI_SHADER_PARAMETERS_BEGIN(CameraData)
     BI_SHADER_PARAMETER(float4x4, matrix_inv_proj)
     BI_SHADER_PARAMETER(float4x4, matrix_proj_view)
     BI_SHADER_PARAMETER(float4x4, matrix_prev_proj_view)
+    BI_SHADER_PARAMETER(float4x4, history_matrix_proj_view)
 BI_SHADER_PARAMETERS_END(CameraData)
 
 BI_SHADER_PARAMETERS_BEGIN(GraphicsInput)
@@ -105,6 +106,8 @@ auto Camera::update_shader_params() -> void {
     matrix_proj_view_ = uniform_data->camera.matrix_proj_view;
 
     shader_parameter_.update_uniform_buffer();
+
+    uniform_data->camera.history_matrix_proj_view = uniform_data->camera.matrix_proj_view;
 }
 
 }

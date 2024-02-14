@@ -123,6 +123,7 @@ struct Option final {
     template <typename... Args>
     auto emplace(Args&&... args) -> void {
         reset();
+        has_value_ = true;
         new (memory_) T(std::forward<Args>(args)...);
     }
 

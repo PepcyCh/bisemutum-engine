@@ -18,7 +18,7 @@ struct SystemManager::Impl final {
             }
         }
     }
-    auto tick() -> void {
+    auto tick_update() -> void {
         for (auto& [_, system] : global_systems) {
             system.update();
         }
@@ -26,6 +26,16 @@ struct SystemManager::Impl final {
         auto& scene_systems = systems.at(g_engine->world()->current_scene().value());
         for (auto& [_, system] : scene_systems) {
             system.update();
+        }
+    }
+    auto tick_post_update() -> void {
+        for (auto& [_, system] : global_systems) {
+            system.post_update();
+        }
+
+        auto& scene_systems = systems.at(g_engine->world()->current_scene().value());
+        for (auto& [_, system] : scene_systems) {
+            system.post_update();
         }
     }
 
@@ -64,8 +74,11 @@ SystemManager::~SystemManager() = default;
 auto SystemManager::init_on(Ref<Scene> scene) -> void {
     impl()->init_on(scene);
 }
-auto SystemManager::tick() -> void {
-    impl()->tick();
+auto SystemManager::tick_update() -> void {
+    impl()->tick_update();
+}
+auto SystemManager::tick_post_update() -> void {
+    impl()->tick_post_update();
 }
 
 auto SystemManager::register_global_system(std::type_index type, GlobalSystemCreator creator) -> void {

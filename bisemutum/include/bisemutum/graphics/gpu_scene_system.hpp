@@ -10,6 +10,7 @@ namespace bi::gfx {
 
 struct Camera;
 struct Drawable;
+struct DrawableShaderData;
 
 struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     struct Impl;
@@ -22,6 +23,7 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
 
     auto init_on(Ref<rt::Scene> scene) -> void;
     auto update() -> void;
+    auto post_update() -> void;
 
     auto add_camera() -> CameraHandle;
     auto remove_camera(CameraHandle handle) -> void;
@@ -32,8 +34,15 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     auto add_drawable() -> DrawableHandle;
     auto remove_drawable(DrawableHandle handle) -> void;
     auto get_drawable(DrawableHandle handle) -> Ref<Drawable>;
+
     auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void;
     auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void;
+    auto for_each_drawable_with_shader_data(
+        std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void> func
+    ) -> void;
+    auto for_each_drawable_with_shader_data(
+        std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void> func
+    ) const -> void;
 };
 
 }

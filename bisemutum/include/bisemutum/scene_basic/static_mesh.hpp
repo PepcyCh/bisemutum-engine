@@ -22,14 +22,13 @@ struct StaticMesh final {
 
     // -- For IMesh --
     BI_SHADER_PARAMETERS_BEGIN(ShaderParams)
-        BI_SHADER_PARAMETER(float4x4, matrix_object_to_world)
-        BI_SHADER_PARAMETER(float4x4, matrix_world_to_object_transposed)
+        BI_SHADER_PARAMETER_INCLUDE(gfx::DrawableShaderData, drawable_data)
     BI_SHADER_PARAMETERS_END(ShaderParams)
 
     auto mesh_type_name() const -> std::string_view { return asset_type_name; }
     auto get_mesh_data() const -> gfx::MeshData const& { return mesh_; }
     auto get_mutable_mesh_data() -> gfx::MeshData& { return mesh_; }
-    auto fill_shader_params(Ref<gfx::Drawable> drawable) const -> void;
+    auto fill_shader_params(Ref<gfx::Drawable> drawable, gfx::DrawableShaderData const& drawable_data) const -> void;
     auto shader_params_metadata(uint32_t submesh_index) const -> gfx::ShaderParameterMetadataList const& {
         return ShaderParams::metadata_list();
     }

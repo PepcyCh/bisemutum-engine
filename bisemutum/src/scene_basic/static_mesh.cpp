@@ -34,10 +34,11 @@ auto StaticMesh::save(Dyn<rt::IFile>::Ref file) const -> void {
     file.write_binary_data(bs.data());
 }
 
-auto StaticMesh::fill_shader_params(Ref<gfx::Drawable> drawable) const -> void {
+auto StaticMesh::fill_shader_params(
+    Ref<gfx::Drawable> drawable, gfx::DrawableShaderData const& drawable_data
+) const -> void {
     auto data = drawable->shader_params.mutable_typed_data<ShaderParams>();
-    data->matrix_object_to_world = drawable->transform.matrix();
-    data->matrix_world_to_object_transposed = drawable->transform.matrix_transposed_inverse();
+    data->drawable_data = drawable_data;
 }
 
 auto StaticMesh::resize(size_t num_vertices, size_t num_indices) -> void {

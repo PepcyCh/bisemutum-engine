@@ -18,10 +18,10 @@ struct StaticMeshRenderSystem::Impl final {
         this->scene = scene;
         scene->ecs_registry().on_construct<StaticMeshComponent>().connect<&Impl::on_construct>(this);
         scene->ecs_registry().on_destroy<StaticMeshComponent>().connect<&Impl::on_destroy>(this);
-        scene->ecs_registry().on_update<StaticMeshComponent>().connect<&Impl::on_renderer_update>(this);
+        scene->ecs_registry().on_update<StaticMeshComponent>().connect<&Impl::on_mesh_update>(this);
         scene->ecs_registry().on_construct<MeshRendererComponent>().connect<&Impl::on_construct>(this);
         scene->ecs_registry().on_destroy<MeshRendererComponent>().connect<&Impl::on_destroy>(this);
-        scene->ecs_registry().on_update<MeshRendererComponent>().connect<&Impl::on_mesh_update>(this);
+        scene->ecs_registry().on_update<MeshRendererComponent>().connect<&Impl::on_renderer_update>(this);
     }
 
     auto update() -> void {

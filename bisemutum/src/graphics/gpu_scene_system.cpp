@@ -8,7 +8,13 @@ namespace bi::gfx {
 
 struct GpuSceneSystem::Impl final {
     auto init_on(Ref<rt::Scene> scene) -> void {}
+
     auto update() -> void {}
+    auto post_update() -> void {
+        for (auto [handle, drawable] : drawables.pairs()) {
+            history_transforms[handle] = drawable.transform.matrix();
+        }
+    }
 
     auto add_camera() -> CameraHandle {
         return cameras.emplace();
@@ -39,19 +45,48 @@ struct GpuSceneSystem::Impl final {
     auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
         return drawables.get(handle);
     }
-    auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
+
+    auto for_each_drawable(std::function<auto(Drawable&) -> void>&& func) -> void {
         for (auto& drawable : drawables) {
             func(drawable);
         }
     }
-    auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
+    auto for_each_drawable(std::function<auto(Drawable const&) -> void>&& func) const -> void {
         for (auto const& drawable : drawables) {
             func(drawable);
         }
     }
+    auto for_each_drawable_with_shader_data(
+        std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void>&& func
+    ) -> void {
+        for (auto [handle, drawable] : drawables.pairs()) {
+            func(drawable, drawable_data_of(handle, drawable));
+        }
+    }
+    auto for_each_drawable_with_shader_data(
+        std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void>&& func
+    ) const -> void {
+        for (auto [handle, drawable] : drawables.pairs()) {
+            func(drawable, drawable_data_of(handle, drawable));
+        }
+    }
+
+    auto drawable_data_of(DrawableHandle handle, Drawable const& drawable) const -> DrawableShaderData {
+        float4x4 history_matrix_object_to_world(1.0f);
+        if (auto history_it = history_transforms.find(handle); history_it != history_transforms.end()) {
+            history_matrix_object_to_world = history_it->second;
+        }
+        return DrawableShaderData{
+            .matrix_object_to_world = drawable.transform.matrix(),
+            .matrix_world_to_object_transposed = drawable.transform.matrix_transposed_inverse(),
+            .history_matrix_object_to_world = history_matrix_object_to_world,
+        };
+    }
 
     SlotMap<Camera, CameraHandle> cameras;
     SlotMap<Drawable, DrawableHandle> drawables;
+
+    std::unordered_map<DrawableHandle, float4x4> history_transforms;
 };
 
 GpuSceneSystem::GpuSceneSystem() = default;
@@ -65,6 +100,9 @@ auto GpuSceneSystem::init_on(Ref<rt::Scene> scene) -> void {
 }
 auto GpuSceneSystem::update() -> void {
     impl()->update();
+}
+auto GpuSceneSystem::post_update() -> void {
+    impl()->post_update();
 }
 
 auto GpuSceneSystem::add_camera() -> CameraHandle {
@@ -92,11 +130,22 @@ auto GpuSceneSystem::remove_drawable(DrawableHandle handle) -> void {
 auto GpuSceneSystem::get_drawable(DrawableHandle handle) -> Ref<Drawable> {
     return impl()->get_drawable(handle);
 }
+
 auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
     impl()->for_each_drawable(std::move(func));
 }
 auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
     impl()->for_each_drawable(std::move(func));
+}
+auto GpuSceneSystem::for_each_drawable_with_shader_data(
+    std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void> func
+) -> void {
+    impl()->for_each_drawable_with_shader_data(std::move(func));
+}
+auto GpuSceneSystem::for_each_drawable_with_shader_data(
+    std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void> func
+) const -> void {
+    impl()->for_each_drawable_with_shader_data(std::move(func));
 }
 
 }

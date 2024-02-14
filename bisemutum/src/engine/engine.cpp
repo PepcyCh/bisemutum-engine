@@ -194,8 +194,9 @@ struct Engine::Impl final {
             window_manager.new_frame();
             graphics_manager.new_frame();
             frame_timer.tick();
-            system_manager.tick();
+            system_manager.tick_update();
             graphics_manager.render_frame();
+            system_manager.tick_post_update();
             ui.execute();
             world.current_scene()->do_destroy_scene_objects();
         });
