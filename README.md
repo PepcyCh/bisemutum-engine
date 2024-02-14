@@ -10,8 +10,9 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * RHI on Vulkan and D3D12
   * ImGui integration on RHI
   * Render graph
+  * SRP-like custom renderer
   * Generate shader resources definition and pipeline layout from C++ structs
-* Rendering
+* Rendering (the builtin renderer)
   * Basic PBR
   * Forward and deferred rendering
   * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
@@ -22,7 +23,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
     * Reflection on `enum` is based on Magic Enum
   * Polymorphism using AnyAny
 * Runtime
-  * ECS using EnTT & scene hierarchy & prefab
+  * ECS using EnTT & Scene hierarchy & Prefab
   * Basic asset manager
   * Basic virtual file system
   * Saving & Loading
