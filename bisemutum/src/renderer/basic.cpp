@@ -25,6 +25,9 @@ struct BasicRenderer::Impl final {
         lights_ctx.point_light_shadow_map_resolution = 1u << static_cast<uint32_t>(settings.shadow.point_light_resolution);
         lights_ctx.collect_all_lights();
 
+        lights_ctx.update_shader_params();
+        skybox_ctx.update_shader_params();
+
         forward_pass.update_params(lights_ctx, skybox_ctx);
         deferred_lighting_pass.update_params(lights_ctx, skybox_ctx);
         skybox_pass.update_params(skybox_ctx);

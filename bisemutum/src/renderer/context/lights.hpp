@@ -42,10 +42,24 @@ struct ShadowMapTextures final {
     gfx::TextureHandle point_lights_shadow_map;
 };
 
+BI_SHADER_PARAMETERS_BEGIN(LightsContextShaderData)
+    BI_SHADER_PARAMETER(uint, num_dir_lights)
+    BI_SHADER_PARAMETER(uint, num_point_lights)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<DirLightData>, dir_lights)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<PointLightData>, point_lights)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, dir_lights_shadow_transform)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, dir_lights_shadow_map)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, point_lights_shadow_transform)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, point_lights_shadow_map)
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, shadow_map_sampler)
+BI_SHADER_PARAMETERS_END(LightsContextShaderData)
+
 struct LightsContext final {
     LightsContext();
 
     auto collect_all_lights() -> void;
+
+    auto update_shader_params() -> void;
 
     auto prepare_dir_lights_per_camera(gfx::Camera const& camera) -> void;
 
@@ -68,6 +82,8 @@ struct LightsContext final {
 
     uint32_t dir_light_shadow_map_resolution;
     uint32_t point_light_shadow_map_resolution;
+
+    LightsContextShaderData shader_data;
 };
 
 }

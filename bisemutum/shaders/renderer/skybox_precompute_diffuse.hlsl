@@ -30,7 +30,7 @@ void skybox_precompute_diffuse_cs(uint3 global_thread_id : SV_DispatchThreadID) 
             float3 v = float3(sin_theta * cos_phi, sin_theta * sin_phi, cos_theta);
             v = frame_to_world(frame, v);
             float3 color = skybox.SampleLevel(skybox_sampler, v, 0.0).xyz;
-            float scale = clamp_lum / max(luminance(color), clamp_lum);
+            float scale = 1.0; // clamp_lum / max(luminance(color), clamp_lum);
             irradiance += color * scale * cos_theta * sin_theta;
         }
     }

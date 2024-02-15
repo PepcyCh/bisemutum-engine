@@ -175,6 +175,19 @@ auto LightsContext::collect_all_lights() -> void {
     }
 }
 
+auto LightsContext::update_shader_params() -> void {
+    shader_data.num_dir_lights = dir_lights.size();
+    shader_data.num_point_lights = point_lights.size();
+
+    shader_data.dir_lights = {&dir_lights_buffer, 0};
+    shader_data.point_lights = {&point_lights_buffer, 0};
+    shader_data.dir_lights_shadow_transform = {&dir_lights_shadow_transform_buffer, 0};
+    shader_data.dir_lights_shadow_map = {&dir_lights_shadow_map};
+    shader_data.point_lights_shadow_transform = {&point_lights_shadow_transform_buffer, 0};
+    shader_data.point_lights_shadow_map = {&point_lights_shadow_map};
+    shader_data.shadow_map_sampler = {shadow_map_sampler};
+}
+
 auto LightsContext::prepare_dir_lights_per_camera(gfx::Camera const& camera) -> void {
     for (size_t i = 0; auto& l : dir_lights_with_shadow) {
         l.camera.position = camera.position - l.shadow_size * l.camera.front_dir;

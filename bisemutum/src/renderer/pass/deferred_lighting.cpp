@@ -1,36 +1,16 @@
 #include "deferred_lighting.hpp"
 
-#include <bisemutum/engine/engine.hpp>
-#include <bisemutum/runtime/system_manager.hpp>
-#include <bisemutum/scene_basic/skybox.hpp>
-
 namespace bi {
 
 namespace {
 
 BI_SHADER_PARAMETERS_BEGIN(DeferredLightingPassParams)
-    BI_SHADER_PARAMETER(uint, num_dir_lights)
-    BI_SHADER_PARAMETER(uint, num_point_lights)
-    BI_SHADER_PARAMETER(float3, skybox_diffuse_color)
-    BI_SHADER_PARAMETER(float3, skybox_specular_color)
-    BI_SHADER_PARAMETER(float4x4, skybox_transform)
-
     BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, gbuffer_textures, [GBufferTextures::count])
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_texture)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, gbuffer_sampler)
 
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<DirLightData>, dir_lights)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<PointLightData>, point_lights)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, dir_lights_shadow_transform)
-    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, dir_lights_shadow_map)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, point_lights_shadow_transform)
-    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, point_lights_shadow_map)
-    BI_SHADER_PARAMETER_SAMPLER(SamplerState, shadow_map_sampler)
-
-    BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox_diffuse_irradiance)
-    BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox_specular_filtered)
-    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, skybox_brdf_lut)
-    BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
+    BI_SHADER_PARAMETER_INCLUDE(LightsContextShaderData, lights_ctx)
+    BI_SHADER_PARAMETER_INCLUDE(SkyboxContextShaderData, skybox_ctx)
 BI_SHADER_PARAMETERS_END(DeferredLightingPassParams)
 
 struct PassData final {
@@ -52,27 +32,10 @@ DeferredLightingPass::DeferredLightingPass() {
 }
 
 auto DeferredLightingPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
-    auto& current_skybox = g_engine->system_manager()->get_system_for_current_scene<SkyboxSystem>()->current_skybox();
-
     auto params = fragment_shader_params_.mutable_typed_data<DeferredLightingPassParams>();
-    params->num_dir_lights = lights_ctx.dir_lights.size();
-    params->num_point_lights = lights_ctx.point_lights.size();
-    params->skybox_diffuse_color = current_skybox.color * current_skybox.diffuse_strength;
-    params->skybox_specular_color = current_skybox.color * current_skybox.specular_strength;
-    params->skybox_transform = current_skybox.transform;
 
-    params->dir_lights = {&lights_ctx.dir_lights_buffer, 0};
-    params->point_lights = {&lights_ctx.point_lights_buffer, 0};
-    params->dir_lights_shadow_transform = {&lights_ctx.dir_lights_shadow_transform_buffer, 0};
-    params->dir_lights_shadow_map = {&lights_ctx.dir_lights_shadow_map};
-    params->point_lights_shadow_transform = {&lights_ctx.point_lights_shadow_transform_buffer, 0};
-    params->point_lights_shadow_map = {&lights_ctx.point_lights_shadow_map};
-    params->shadow_map_sampler = {lights_ctx.shadow_map_sampler};
-
-    params->skybox_diffuse_irradiance = {&skybox_ctx.diffuse_irradiance};
-    params->skybox_specular_filtered = {&skybox_ctx.specular_filtered};
-    params->skybox_brdf_lut = {&skybox_ctx.brdf_lut};
-    params->skybox_sampler = {skybox_ctx.skybox_sampler};
+    params->lights_ctx = lights_ctx.shader_data;
+    params->skybox_ctx = skybox_ctx.shader_data;
 }
 
 auto DeferredLightingPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData {
