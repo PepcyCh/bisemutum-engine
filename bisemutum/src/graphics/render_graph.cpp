@@ -344,19 +344,19 @@ struct RenderGraph::Impl final {
     auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {
         std::vector<Ref<Drawable>> drawables;
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
-        gpu_scene->for_each_drawable([this, &drawables, &desc](Drawable& drawable) {
-            if (drawable.submesh_desc().num_indices == 0) { return; }
+        for (auto drawable : desc.candidate_drawables) {
+            if (drawable->submesh_desc().num_indices == 0) { continue; }
 
-            auto mat_is_opaque = drawable.material->blend_mode == BlendMode::opaque
-                || drawable.material->blend_mode == BlendMode::alpha_test;
+            auto mat_is_opaque = drawable->material->blend_mode == BlendMode::opaque
+                || drawable->material->blend_mode == BlendMode::alpha_test;
             if (
                 (desc.type.contains_any(RenderedObjectType::opaque) && mat_is_opaque)
                 || (desc.type.contains_any(RenderedObjectType::transparent) && !mat_is_opaque)
             ) {
                 drawables.push_back(drawable);
-                g_engine->graphics_manager()->update_mesh_buffers(drawable.mesh->get_mesh_data());
+                g_engine->graphics_manager()->update_mesh_buffers(drawable->mesh->get_mesh_data());
             }
-        });
+        };
         std::sort(drawables.begin(), drawables.end(), [](Ref<Drawable> a, Ref<Drawable> b) {
             if (is_poly_ptr_address_same<IMesh>(a->mesh, b->mesh)) {
                 return a->material->base_material() < b->material->base_material();

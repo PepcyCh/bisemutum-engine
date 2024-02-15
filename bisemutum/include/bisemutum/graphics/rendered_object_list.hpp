@@ -3,6 +3,7 @@
 #include "shader.hpp"
 #include "camera.hpp"
 #include "drawable.hpp"
+#include "../prelude/span.hpp"
 
 namespace bi::gfx {
 
@@ -15,6 +16,8 @@ struct RenderedObjectListDesc final {
     CRef<Camera> camera;
     CRef<FragmentShader> fragment_shader;
     BitFlags<RenderedObjectType> type = {RenderedObjectType::all};
+    // Result will be a subset of `candidate_drawables`
+    Span<Ref<Drawable>> candidate_drawables;
 };
 
 // Drawables those can use the same pipline state and vertex buffer.

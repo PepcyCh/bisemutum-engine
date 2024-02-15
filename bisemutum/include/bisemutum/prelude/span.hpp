@@ -18,7 +18,7 @@ struct Span final {
     Span(std::initializer_list<T> list) : data_(list.begin()), size_(list.size()) {}
 
     template <traits::Range R>
-    Span(R const& range) : data_(std::to_address(range.begin())), size_(std::distance(range.begin(), range.end())) {}
+    Span(R& range) : data_(std::to_address(range.begin())), size_(std::distance(range.begin(), range.end())) {}
 
     auto size() const -> size_t { return size_; }
     auto data() const -> T* { return data_; }

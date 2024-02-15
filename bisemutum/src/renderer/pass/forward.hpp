@@ -10,6 +10,7 @@ namespace bi {
 
 struct ForwardPass final {
     struct InputData final {
+        Span<Ref<gfx::Drawable>> drawables;
         ShadowMapTextures shadow_maps;
         PrecomputedSkybox skybox;
     };

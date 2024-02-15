@@ -15,6 +15,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 * Rendering (the builtin renderer)
   * Basic PBR
   * Forward and deferred rendering
+  * CPU frustum culling
   * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
   * Skybox & IBL
   * Basic SSAO

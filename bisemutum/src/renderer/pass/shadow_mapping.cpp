@@ -38,9 +38,10 @@ auto ShadowMappingPass::render(
             .camera = light.camera,
             .fragment_shader = fragment_shader_,
             .type = gfx::RenderedObjectType::opaque,
+            .candidate_drawables = input.drawables,
         });
         builder.set_execution_function<PassData>(
-            [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+            [this](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                 ctx.render_list(pass_data->list, fragment_shader_params_);
             }
         );
@@ -62,9 +63,10 @@ auto ShadowMappingPass::render(
             .camera = light.camera,
             .fragment_shader = fragment_shader_,
             .type = gfx::RenderedObjectType::opaque,
+            .candidate_drawables = input.drawables,
         });
         builder.set_execution_function<PassData>(
-            [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+            [this](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
                 ctx.render_list(pass_data->list, fragment_shader_params_);
             }
         );

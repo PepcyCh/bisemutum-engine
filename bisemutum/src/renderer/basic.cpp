@@ -1,6 +1,8 @@
 #include <bisemutum/renderer/basic.hpp>
 
 #include <bisemutum/runtime/component_utils.hpp>
+#include <bisemutum/runtime/system_manager.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 
 #include "context/lights.hpp"
 #include "context/skybox.hpp"
@@ -35,11 +37,14 @@ struct BasicRenderer::Impl final {
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto& settings = rt::find_volume_component_for(camera.position, default_settings).settings;
 
+        auto drawables = frustum_culling(camera);
+
         auto skybox = skybox_precompute_pass.render(rg, {
             .skybox_ctx = skybox_ctx,
         });
 
         auto shadow_maps = shadow_mapping_pass.render(camera, rg, {
+            .drawables = drawables,
             .lights_ctx = lights_ctx,
         });
 
@@ -49,6 +54,7 @@ struct BasicRenderer::Impl final {
         GBufferTextures gbuffer;
         if (settings.pipeline_mode == PipelineMode::forward) {
             auto forward_output_data = forward_pass.render(camera, rg, {
+                .drawables = drawables,
                 .shadow_maps = shadow_maps,
                 .skybox = skybox,
             });
@@ -56,7 +62,7 @@ struct BasicRenderer::Impl final {
             depth = forward_output_data.depth;
             velocity = forward_output_data.velocity;
         } else {
-            auto gbuffer_output = gbuffer_pass.render(camera, rg);
+            auto gbuffer_output = gbuffer_pass.render(camera, rg, drawables);
             gbuffer = gbuffer_output.gbuffer;
             auto lighting_output = deferred_lighting_pass.render(camera, rg, {
                 .depth = gbuffer_output.depth,
@@ -92,6 +98,19 @@ struct BasicRenderer::Impl final {
             .color = color,
             .depth = depth,
         });
+    }
+
+    auto frustum_culling(gfx::Camera const& camera) -> std::vector<Ref<gfx::Drawable>> {
+        std::vector<Ref<gfx::Drawable>> drawables;
+        auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
+
+        auto frustum_planes = camera.get_frustum_planes();
+        gpu_scene->for_each_drawable([&drawables, &frustum_planes](gfx::Drawable& drawable) {
+            auto bbox = drawable.bounding_box();
+            if (!bbox.test_with_planes(frustum_planes)) { return; }
+            drawables.push_back(drawable);
+        });
+        return drawables;
     }
 
     inline static BasicRendererOverrideVolume default_settings;

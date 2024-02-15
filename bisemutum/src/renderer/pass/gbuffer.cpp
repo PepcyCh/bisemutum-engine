@@ -26,7 +26,9 @@ GBufferdPass::GBufferdPass() {
     fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }
 
-auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> OutputData {
+auto GBufferdPass::render(
+    gfx::Camera const& camera, gfx::RenderGraph& rg, Span<Ref<gfx::Drawable>> drawables
+) -> OutputData {
     auto& camera_target = camera.target_texture();
 
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("GBuffer Pass");
@@ -63,6 +65,7 @@ auto GBufferdPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> Ou
         .camera = camera,
         .fragment_shader = fragment_shader_,
         .type = gfx::RenderedObjectType::opaque,
+        .candidate_drawables = drawables,
     });
 
     fragment_shader_params_.update_uniform_buffer();

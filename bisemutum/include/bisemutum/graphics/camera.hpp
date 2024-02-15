@@ -32,6 +32,12 @@ struct Camera final {
     // The value is updated after `update_shader_params()`.
     auto matrix_proj_view() const -> float4x4 const& { return matrix_proj_view_; }
 
+    // Plane is represented in the form of 'dot(p, n) + d = 0'.
+    // Normal 'n' is xyz and distance 'd' is w.
+    // All normals point to inner side of frustum.
+    // Order is: front, back, top, down, left, right.
+    auto get_frustum_planes() const -> std::array<float4, 6>;
+
     auto add_history_buffer(std::string key, BufferHandle handle) const -> void;
     auto add_history_texture(std::string key, TextureHandle handle) const -> void;
     auto get_history_buffer(std::string_view key) const -> BufferHandle;

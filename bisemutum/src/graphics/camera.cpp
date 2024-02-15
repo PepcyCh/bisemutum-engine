@@ -112,6 +112,56 @@ auto Camera::update_shader_params() -> void {
     uniform_data->camera.history_matrix_proj_view = uniform_data->camera.matrix_proj_view;
 }
 
+auto Camera::get_frustum_planes() const -> std::array<float4, 6> {
+    std::array<float4, 6> planes;
+
+    auto front = math::normalize(front_dir);
+    auto right = math::normalize(math::cross(front, up_dir));
+    auto up = math::cross(right, front);
+
+    auto aspect = 1.0f;
+    if (target_texture_.has_value()) {
+        aspect = static_cast<float>(target_texture_.desc().extent.width)
+            / target_texture_.desc().extent.height;
+    }
+    auto xfov = yfov * aspect;
+
+    auto pos_dot_front = math::dot(position, front);
+    planes[0] = float4(front, -near_z - pos_dot_front);
+    planes[1] = float4(-front, pos_dot_front + far_z);
+
+    if (projection_type == ProjectionType::perspective) {
+        auto vert_angle = math::radians(90.0f - yfov * 0.5f);
+        auto vert_rot_mat_top = math::rotate(float4x4{1.0f}, -vert_angle, right);
+        planes[2] = float4(vert_rot_mat_top * float4(front, 0.0f));
+        planes[2].w = -math::dot(position, float3(planes[2]));
+        auto vert_rot_mat_down = math::rotate(float4x4{1.0f}, vert_angle, right);
+        planes[3] = float4(vert_rot_mat_down * float4(front, 0.0f));
+        planes[3].w = -math::dot(position, float3(planes[3]));
+
+        auto hori_angle = math::radians(90.0f - xfov * 0.5f);
+        auto hori_rot_mat_left = math::rotate(float4x4{1.0f}, -hori_angle, up);
+        planes[4] = float4(hori_rot_mat_left * float4(front, 0.0f));
+        planes[4].w = -math::dot(position, float3(planes[4]));
+        auto hori_rot_mat_right = math::rotate(float4x4{1.0f}, hori_angle, up);
+        planes[5] = float4(hori_rot_mat_right * float4(front, 0.0f));
+        planes[5].w = -math::dot(position, float3(planes[5]));
+    } else {
+        auto ortho_height = std::tan(math::radians(yfov * 0.5f));
+        auto ortho_width = ortho_height * aspect;
+
+        auto pos_dot_up = math::dot(position, up);
+        planes[2] = float4(-up, ortho_height + pos_dot_up);
+        planes[3] = float4(up, ortho_height - pos_dot_up);
+
+        auto pos_dot_right = math::dot(position, right);
+        planes[4] = float4(right, ortho_width - pos_dot_up);
+        planes[5] = float4(-right, ortho_width + pos_dot_up);
+    }
+
+    return planes;
+}
+
 auto Camera::add_history_buffer(std::string key, BufferHandle handle) const -> void {
     auto& rg = g_engine->graphics_manager()->render_graph();
     history_buffers_[history_index_].insert({std::move(key), rg.take_buffer(handle)});

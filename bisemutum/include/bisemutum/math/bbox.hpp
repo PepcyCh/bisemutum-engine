@@ -3,6 +3,7 @@
 #include <limits>
 
 #include "math.hpp"
+#include "../prelude/span.hpp"
 
 namespace bi {
 
@@ -19,6 +20,8 @@ struct BoundingBox final {
 
     auto add(float3 const& point) -> BoundingBox&;
     auto add(BoundingBox const& bbox) -> BoundingBox&;
+
+    auto test_with_planes(CSpan<float4> planes) const -> bool;
 
     static const BoundingBox empty;
 

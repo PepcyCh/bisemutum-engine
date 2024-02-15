@@ -8,6 +8,7 @@ namespace bi {
 
 struct ShadowMappingPass final {
     struct InputData final {
+        Span<Ref<gfx::Drawable>> drawables;
         LightsContext& lights_ctx;
     };
 

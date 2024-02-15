@@ -128,6 +128,7 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
         .camera = camera,
         .fragment_shader = fragment_shader_,
         .type = gfx::RenderedObjectType::all,
+        .candidate_drawables = input.drawables,
     });
 
     fragment_shader_params_.update_uniform_buffer();

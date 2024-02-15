@@ -40,4 +40,19 @@ auto BoundingBox::add(BoundingBox const& bbox) -> BoundingBox& {
     return *this;
 }
 
+auto BoundingBox::test_with_planes(CSpan<float4> planes) const -> bool {
+    auto extent = this->extent() * 0.5f;
+    auto center = this->center();
+
+    for (auto& plane : planes) {
+        auto box_radius = math::dot(math::abs(float3(plane)), extent);
+        auto plane_dist = math::dot(float3(plane), center) + plane.w;
+        if (plane_dist <= -box_radius) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 }

@@ -15,7 +15,7 @@ struct GBufferdPass final {
 
     GBufferdPass();
 
-    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg) -> OutputData;
+    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, Span<Ref<gfx::Drawable>> drawables) -> OutputData;
 
 private:
     gfx::FragmentShader fragment_shader_;
