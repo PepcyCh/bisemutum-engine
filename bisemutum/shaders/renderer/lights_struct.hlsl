@@ -26,3 +26,18 @@ struct PointLightData {
     float shadow_depth_bias;
     float shadow_normal_bias;
 };
+
+struct RectLightData {
+    float3 emission;
+    int texture_index;
+    float3 center_position;
+    bool two_sided;
+    float3 position0;
+    float _pad1;
+    float3 position1;
+    float _pad2;
+    float3 position2;
+    float _pad3;
+    float3 position3;
+    float _pad4;
+};

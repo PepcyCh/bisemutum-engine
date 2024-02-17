@@ -7,7 +7,9 @@
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
 #include <bisemutum/runtime/scene_object.hpp>
+#include <bisemutum/runtime/asset_manager.hpp>
 #include <bisemutum/scene_basic/light.hpp>
+#include <bisemutum/scene_basic/texture.hpp>
 
 namespace bi {
 
@@ -20,10 +22,33 @@ LightsContext::LightsContext() {
         .address_mode_w = rhi::SamplerAddressMode::clamp_to_border,
         .border_color = rhi::SamplerBorderColor::white_float,
     });
+
+    ltc_matrix_lut0 = g_engine->asset_manager()->get_and_load_asset<TextureAsset>(
+        "/bisemutum/assets/textures/ltc_matrix_lut0.texture.biasset"
+    ).second->texture;
+    ltc_matrix_lut1 = g_engine->asset_manager()->get_and_load_asset<TextureAsset>(
+        "/bisemutum/assets/textures/ltc_matrix_lut1.texture.biasset"
+    ).second->texture;
+    ltc_matrix_lut2 = g_engine->asset_manager()->get_and_load_asset<TextureAsset>(
+        "/bisemutum/assets/textures/ltc_matrix_lut2.texture.biasset"
+    ).second->texture;
+    ltc_norm_lut = g_engine->asset_manager()->get_and_load_asset<TextureAsset>(
+        "/bisemutum/assets/textures/ltc_norm_lut.texture.biasset"
+    ).second->texture;
+
+    ltc_lut_sampler = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
+        .mag_filter = rhi::SamplerFilterMode::linear,
+        .min_filter = rhi::SamplerFilterMode::linear,
+        .address_mode_u = rhi::SamplerAddressMode::clamp_to_edge,
+        .address_mode_v = rhi::SamplerAddressMode::clamp_to_edge,
+        .address_mode_w = rhi::SamplerAddressMode::clamp_to_edge,
+    });
 }
 
 auto LightsContext::collect_all_lights() -> void {
     auto scene = g_engine->world()->current_scene().value();
+
+    // Dir Lights
 
     auto dir_lights_view = scene->ecs_registry().view<DirectionalLightComponent>();
     dir_lights.clear();
@@ -89,6 +114,8 @@ auto LightsContext::collect_all_lights() -> void {
                 .usage({rhi::TextureUsage::depth_stencil_attachment, rhi::TextureUsage::sampled})
         );
     }
+
+    // Point (Spot) Lights
 
     auto point_lights_view = scene->ecs_registry().view<PointLightComponent>();
     point_lights.clear();
@@ -173,19 +200,34 @@ auto LightsContext::collect_all_lights() -> void {
                 .usage({rhi::TextureUsage::depth_stencil_attachment, rhi::TextureUsage::sampled})
         );
     }
+
+    // Rect Lights
+
+    rect_lights.clear();
+    // TODO - collect rect lights
+    gfx::Buffer::update_with_container<true>(rect_lights_buffer, rect_lights);
 }
 
 auto LightsContext::update_shader_params() -> void {
     shader_data.num_dir_lights = dir_lights.size();
     shader_data.num_point_lights = point_lights.size();
+    shader_data.num_rect_lights = rect_lights.size();
 
     shader_data.dir_lights = {&dir_lights_buffer, 0};
     shader_data.point_lights = {&point_lights_buffer, 0};
+    shader_data.rect_lights = {&rect_lights_buffer, 0};
+
     shader_data.dir_lights_shadow_transform = {&dir_lights_shadow_transform_buffer, 0};
     shader_data.dir_lights_shadow_map = {&dir_lights_shadow_map};
     shader_data.point_lights_shadow_transform = {&point_lights_shadow_transform_buffer, 0};
     shader_data.point_lights_shadow_map = {&point_lights_shadow_map};
     shader_data.shadow_map_sampler = {shadow_map_sampler};
+
+    shader_data.ltc_matrix_lut0 = {ltc_matrix_lut0};
+    shader_data.ltc_matrix_lut1 = {ltc_matrix_lut1};
+    shader_data.ltc_matrix_lut2 = {ltc_matrix_lut2};
+    shader_data.ltc_norm_lut = {ltc_norm_lut};
+    shader_data.ltc_sampler = {ltc_lut_sampler};
 }
 
 auto LightsContext::prepare_dir_lights_per_camera(gfx::Camera const& camera) -> void {

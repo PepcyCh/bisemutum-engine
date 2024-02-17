@@ -90,6 +90,8 @@ auto Scene::do_destroy_scene_objects() -> void {
 }
 
 auto Scene::load_from_value(serde::Value &&value) -> void {
+    if (!value.contains("objects")) { return; }
+
     auto& scene_objects_value = value["objects"].get_ref<serde::Value::Array>();
     std::vector<Ref<SceneObject>> parsed_objects;
     parsed_objects.reserve(scene_objects_value.size());

@@ -30,6 +30,8 @@ enum class AssetState : uint8_t {
 };
 
 struct AssetPtr final {
+    static auto from_path(std::string_view asset_path) -> AssetPtr;
+
     auto state() const -> AssetState;
     auto load() const -> AssetAny*;
 
@@ -44,6 +46,13 @@ struct TAssetPtr final {
     TAssetPtr(AssetId asset_id) {
         asset_ = nullptr;
         asset_ptr_.asset_id = asset_id;
+    }
+    TAssetPtr(AssetPtr asset_ptr) : asset_ptr_(asset_ptr) {
+        asset_ = nullptr;
+    }
+
+    static auto from_path(std::string_view asset_path) -> TAssetPtr<Asset> {
+        return AssetPtr::from_path(asset_path);
     }
 
     auto asset() -> Ptr<Asset> { return asset_; }

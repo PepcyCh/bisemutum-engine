@@ -14,7 +14,9 @@ struct AssetManager::Impl final {
         std::vector<AssetMetadata> metadata;
         try {
             auto value = serde::Value::from_toml(metadata_str);
-            metadata = value["assets"].get<decltype(metadata)>();
+            if (value.contains("assets")) {
+                metadata = value["assets"].get<decltype(metadata)>();
+            }
         } catch (std::exception const& e) {
             log::critical("general", "Asset metadata file is invalid: {}", e.what());
             return false;

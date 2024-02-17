@@ -7,6 +7,12 @@
 
 namespace bi::rt {
 
+auto AssetPtr::from_path(std::string_view asset_path) -> AssetPtr {
+    return AssetPtr{
+        .asset_id = g_engine->asset_manager()->asset_id_of(asset_path),
+    };
+}
+
 auto AssetPtr::state() const -> AssetState {
     return g_engine->asset_manager()->state_of(asset_id);
 }

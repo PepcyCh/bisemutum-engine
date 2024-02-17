@@ -38,6 +38,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 * Raytracing pipeline in RHI and helpers
 * Screen space & raytraced ambient occlusion, reflection
+* Rect light via LTC
 * Basic resource browser
 
 ## Gallary

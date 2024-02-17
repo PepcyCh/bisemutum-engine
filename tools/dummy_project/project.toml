@@ -1,0 +1,10 @@
+name = "Tools Dummy Project"
+
+asset_metadata_file = "/project/asset_metadata.toml"
+scene_file = "/project/scene.toml"
+
+renderer = "BasicRenderer"
+
+[settings.graphics]
+backend = "vulkan"
+enable_validation = true
