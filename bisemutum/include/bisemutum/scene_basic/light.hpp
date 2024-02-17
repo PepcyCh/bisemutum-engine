@@ -61,4 +61,36 @@ BI_SREFL(
     field(shadow_normal_bias_factor, RangeF{0.0f, 1.0f})
 )
 
+struct RectLightComponent final {
+    static constexpr std::string_view component_type_name = "RectLightComponent";
+
+    float3 color = float3{1.0f};
+    float strength = 1.0f;
+    float range = 30.0f;
+
+    float width = 1.0f;
+    float height = 1.0f;
+    bool two_sided = false;
+
+    bool cast_shadow = false;
+    float shadow_strength = 1.0f;
+    float shadow_range = 100.0f;
+    float shadow_depth_bias_factor = 0.0f;
+    float shadow_normal_bias_factor = 0.5f;
+};
+BI_SREFL(
+    type(RectLightComponent),
+    field(color, Color{}),
+    field(strength, RangeF{}),
+    field(range, RangeF{}),
+    field(width, RangeF{}),
+    field(height, RangeF{}),
+    field(two_sided),
+    field(cast_shadow),
+    field(shadow_strength, RangeF{0.0f, 1.0f}),
+    field(shadow_range, RangeF{}),
+    field(shadow_depth_bias_factor, RangeF{0.0f, 1.0f}),
+    field(shadow_normal_bias_factor, RangeF{0.0f, 1.0f})
+)
+
 }

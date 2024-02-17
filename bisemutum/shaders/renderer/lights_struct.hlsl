@@ -27,11 +27,19 @@ struct PointLightData {
     float shadow_normal_bias;
 };
 
+struct LtcLuts {
+    Texture3D matrix_lut0;
+    Texture3D matrix_lut1;
+    Texture3D matrix_lut2;
+    Texture3D norm_lut;
+    SamplerState sampler;
+};
+
 struct RectLightData {
     float3 emission;
     int texture_index;
     float3 center_position;
-    bool two_sided;
+    uint two_sided;
     float3 position0;
     float _pad1;
     float3 position1;

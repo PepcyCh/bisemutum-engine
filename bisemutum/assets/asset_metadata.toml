@@ -1,0 +1,34 @@
+[[assets]]
+id = 4611686018427387904
+path = '/bisemutum/assets/textures/white1x1.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 4611686018427387905
+path = '/bisemutum/assets/textures/black1x1.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 4611686018427387906
+path = '/bisemutum/assets/textures/normal1x1.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 4611686018427387907
+path = '/bisemutum/assets/textures/ltc_matrix_lut0.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 4611686018427387908
+path = '/bisemutum/assets/textures/ltc_matrix_lut1.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 4611686018427387909
+path = '/bisemutum/assets/textures/ltc_matrix_lut2.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 4611686018427387910
+path = '/bisemutum/assets/textures/ltc_norm_lut.texture.biasset'
+type = 'Texture'

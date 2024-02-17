@@ -38,7 +38,7 @@ struct RectLightData {
     float3 emission = float3{0.0f};
     int texture_index = -1;
     float3 center_position = float3{0.0f};
-    bool two_sided = false;
+    uint32_t two_sided = 0;
     float3 position0 = float3{0.0f};
     float _pad1;
     float3 position1 = float3{0.0f};

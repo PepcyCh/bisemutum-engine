@@ -203,8 +203,27 @@ auto LightsContext::collect_all_lights() -> void {
 
     // Rect Lights
 
+    auto rect_lights_view = scene->ecs_registry().view<RectLightComponent>();
     rect_lights.clear();
-    // TODO - collect rect lights
+    for (auto entity : rect_lights_view) {
+        auto& light = rect_lights_view.get<RectLightComponent>(entity);
+        RectLightData data{};
+        data.emission = light.color * light.strength;
+        if (data.emission == float3(0.0f)) {
+            continue;
+        }
+        auto object = scene->object_of(entity);
+        auto& transform = object->world_transform();
+        data.center_position = transform.translation;
+        auto w = 0.5f * light.width;
+        auto h = 0.5f * light.height;
+        data.position0 = data.center_position + transform.transform_direction_without_scaling({w, h, 0.0f});
+        data.position1 = data.center_position + transform.transform_direction_without_scaling({-w, h, 0.0f});
+        data.position2 = data.center_position + transform.transform_direction_without_scaling({-w, -h, 0.0f});
+        data.position3 = data.center_position + transform.transform_direction_without_scaling({w, -h, 0.0f});
+        data.two_sided = light.two_sided;
+        rect_lights.push_back(data);
+    }
     gfx::Buffer::update_with_container<true>(rect_lights_buffer, rect_lights);
 }
 

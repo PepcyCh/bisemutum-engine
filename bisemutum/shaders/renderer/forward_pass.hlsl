@@ -48,6 +48,29 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface);
     }
 
+    float roughness_x, roughness_y;
+    get_anisotropic_roughness(surface.roughness, surface.anisotropy, roughness_x, roughness_y);
+    LtcLuts ltc_luts;
+    ltc_luts.matrix_lut0 = ltc_matrix_lut0;
+    ltc_luts.matrix_lut1 = ltc_matrix_lut1;
+    ltc_luts.matrix_lut2 = ltc_matrix_lut2;
+    ltc_luts.norm_lut = ltc_norm_lut;
+    ltc_luts.sampler = ltc_sampler;
+    for (i = 0; i < num_rect_lights; i++) {
+        RectLightData light = rect_lights[i];
+        float3 fr = schlick_fresnel(f0_color, f90_color, max(dot(V, N), 0.0), 1.5);
+        float3 spec, diff;
+        rect_light_eval_ltc(
+            ltc_luts,
+            position_world, N, T, B, V,
+            light,
+            roughness_x, roughness_y, surface.f0_color, surface.f90_color,
+            spec, diff
+        );
+        float3 lighting = fr * spec + (1.0 - fr) * diff * surface.base_color;
+        color += lighting;
+    }
+
     float3 skybox_N = mul((float3x3) skybox_transform, N);
     float3 ibl_diffuse = skybox_diffuse_irradiance.Sample(skybox_sampler, skybox_N).xyz * skybox_diffuse_color;
     float3 skybox_R = mul((float3x3) skybox_transform, reflect(-V, N));

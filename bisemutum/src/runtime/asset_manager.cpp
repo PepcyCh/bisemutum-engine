@@ -7,8 +7,27 @@
 
 namespace bi::rt {
 
+namespace {
+
+auto is_asset_id_builtin(uint64_t asset_id) -> bool {
+    return (asset_id & (1ull << 62)) != 0;
+}
+
+}
+
 struct AssetManager::Impl final {
     auto initialize(Dyn<IFile>::Ref metadata_file) -> bool {
+        next_id = 0;
+
+        auto engine_assets_metadata_file =
+            g_engine->file_system()->get_file("/bisemutum/assets/asset_metadata.toml").value();
+        if (!load_metadata_from(*&engine_assets_metadata_file)) { return false; }
+
+        if (!load_metadata_from(metadata_file)) { return false; }
+
+        return true;
+    }
+    auto load_metadata_from(Dyn<IFile>::Ref metadata_file) -> bool {
         auto metadata_str = metadata_file.read_string_data();
 
         std::vector<AssetMetadata> metadata;
@@ -22,11 +41,12 @@ struct AssetManager::Impl final {
             return false;
         }
 
-        next_id = 0;
-        assets.reserve(metadata.size());
+        assets.reserve(assets.size() + metadata.size());
         for (auto &data : metadata) {
             auto it = assets.try_emplace(data.id, Asset{.metadata = std::move(data)}).first;
-            next_id = std::max(next_id, data.id);
+            if (!is_asset_id_builtin(data.id)) {
+                next_id = std::max(next_id, data.id);
+            }
             auto asset_id = static_cast<AssetId>(it->first);
             assets_path_map[it->second.metadata.path] = asset_id;
             assets_type_map[it->second.metadata.type].push_back(asset_id);

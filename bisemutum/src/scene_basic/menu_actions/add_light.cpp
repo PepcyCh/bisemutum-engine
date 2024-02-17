@@ -30,6 +30,13 @@ auto menu_action_scene_add_spot_light(MenuActionContext const& ctx) -> void {
     object->attach_component(PointLightComponent{.spot = true});
 }
 
+auto menu_action_scene_add_rect_light(MenuActionContext const& ctx) -> void {
+    auto scene = g_engine->world()->current_scene();
+    auto object = scene->create_scene_object();
+    object->set_name("Rect Light");
+    object->attach_component(RectLightComponent{});
+}
+
 auto menu_action_scene_add_skybox(MenuActionContext const& ctx) -> void {
     auto scene = g_engine->world()->current_scene();
     auto object = scene->create_scene_object();
