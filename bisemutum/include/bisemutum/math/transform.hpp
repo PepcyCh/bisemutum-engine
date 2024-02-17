@@ -27,6 +27,9 @@ struct Transform final {
     auto transform_direction(float3 const& dir) const -> float3;
     auto transform_bounding_box(BoundingBox const& bbox) const -> BoundingBox;
 
+    auto transform_position_without_scaling(float3 const& pos) const -> float3;
+    auto transform_direction_without_scaling(float3 const& dir) const -> float3;
+
     auto operator*(Transform const& rhs) const -> Transform;
 
     auto inverse() const -> Transform;

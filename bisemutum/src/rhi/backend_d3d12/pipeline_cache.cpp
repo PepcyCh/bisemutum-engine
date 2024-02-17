@@ -179,7 +179,14 @@ auto PipelineStateCacheD3D12::create_graphics_pipeline(
 
     auto ret = device_->CreateGraphicsPipelineState(&desc_dx, IID_PPV_ARGS(&pipeline));
 
-    if (need_to_cache) {
+    if (ret == D3D12_ERROR_ADAPTER_NOT_FOUND || ret == D3D12_ERROR_DRIVER_VERSION_MISMATCH) {
+        cached_pipeline_offsets_.erase(hash_key);
+        need_to_cache = true;
+        desc_dx.CachedPSO = {};
+        ret = device_->CreateGraphicsPipelineState(&desc_dx, IID_PPV_ARGS(&pipeline));
+    }
+
+    if (need_to_cache && ret == S_OK) {
         Microsoft::WRL::ComPtr<ID3DBlob> cache_data;
         pipeline->GetCachedBlob(&cache_data);
         auto cached_pair = std::make_pair<size_t, size_t>(data_.size(), cache_data->GetBufferSize());
@@ -211,7 +218,14 @@ auto PipelineStateCacheD3D12::create_compute_pipeline(
 
     auto ret = device_->CreateComputePipelineState(&desc_dx, IID_PPV_ARGS(&pipeline));
 
-    if (need_to_cache) {
+    if (ret == D3D12_ERROR_ADAPTER_NOT_FOUND || ret == D3D12_ERROR_DRIVER_VERSION_MISMATCH) {
+        cached_pipeline_offsets_.erase(hash_key);
+        need_to_cache = true;
+        desc_dx.CachedPSO = {};
+        ret = device_->CreateComputePipelineState(&desc_dx, IID_PPV_ARGS(&pipeline));
+    }
+
+    if (need_to_cache && ret == S_OK) {
         Microsoft::WRL::ComPtr<ID3DBlob> cache_data;
         pipeline->GetCachedBlob(&cache_data);
         auto cached_pair = std::make_pair<size_t, size_t>(data_.size(), cache_data->GetBufferSize());

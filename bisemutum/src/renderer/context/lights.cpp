@@ -37,7 +37,7 @@ auto LightsContext::collect_all_lights() -> void {
         }
         auto object = scene->object_of(entity);
         auto& transform = object->world_transform();
-        data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
+        data.direction = transform.transform_direction_without_scaling({0.0f, 1.0f, 0.0f});
         if (light.cast_shadow && light.shadow_strength > 0.0f && light.shadow_range > 0.0f) {
             light.cascade_shadow_ratio.z = std::min(light.cascade_shadow_ratio.z, 1.0f);
             light.cascade_shadow_ratio.y = std::min(light.cascade_shadow_ratio.y, light.cascade_shadow_ratio.z);
@@ -103,8 +103,8 @@ auto LightsContext::collect_all_lights() -> void {
         }
         auto object = scene->object_of(entity);
         auto& transform = object->world_transform();
-        data.position = transform.transform_position({0.0f, 0.0f, 0.0f});
-        data.direction = transform.transform_direction({0.0f, 1.0f, 0.0f});
+        data.position = transform.translation;
+        data.direction = transform.transform_direction_without_scaling({0.0f, 1.0f, 0.0f});
         if (light.spot) {
             data.cos_outer = std::cos(math::radians(light.spot_outer_angle));
             data.cos_inner = std::cos(math::radians(light.spot_inner_angle));

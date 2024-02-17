@@ -469,10 +469,14 @@ struct GraphicsManager::Impl final {
         std::vector<rhi::VertexInputBufferDesc> vertex_input_desc{};
         std::string vertex_attributes_id{};
         {
+            BitFlags<VertexAttributesType> input_vertex_attributes{};
             vertex_attributes_id += "VA-";
             auto& mesh_data = drawable->mesh->get_mesh_data();
-            auto add_vertex_attribute = [&vertex_input_desc, &vertex_attributes_id](
-                auto const& attribute_data, rhi::VertexSemantics semantics, std::string_view attribute_id
+            auto add_vertex_attribute = [&vertex_input_desc, &vertex_attributes_id, &input_vertex_attributes](
+                auto const& attribute_data,
+                rhi::VertexSemantics semantics,
+                VertexAttributesType attrib_type,
+                std::string_view attribute_id
             ) {
                 if (!attribute_data.empty()) {
                     using attribute_type = typename std::remove_reference_t<decltype(attribute_data)>::value_type;
@@ -496,14 +500,20 @@ struct GraphicsManager::Impl final {
                         },
                     });
                     vertex_attributes_id += attribute_id;
+                    input_vertex_attributes.set(attrib_type);
                 }
             };
-            add_vertex_attribute(mesh_data.positions_, rhi::VertexSemantics::position, "P");
-            add_vertex_attribute(mesh_data.normals_, rhi::VertexSemantics::normal, "N");
-            add_vertex_attribute(mesh_data.tangents_, rhi::VertexSemantics::tangent, "T");
-            add_vertex_attribute(mesh_data.colors_, rhi::VertexSemantics::color, "C");
-            add_vertex_attribute(mesh_data.texcoords_, rhi::VertexSemantics::texcoord0, "U1");
-            add_vertex_attribute(mesh_data.texcoords2_, rhi::VertexSemantics::texcoord0, "U2");
+            add_vertex_attribute(mesh_data.positions_, rhi::VertexSemantics::position, VertexAttributesType::position, "P");
+            add_vertex_attribute(mesh_data.normals_, rhi::VertexSemantics::normal, VertexAttributesType::normal, "N");
+            add_vertex_attribute(mesh_data.tangents_, rhi::VertexSemantics::tangent, VertexAttributesType::tangent, "T");
+            add_vertex_attribute(mesh_data.colors_, rhi::VertexSemantics::color, VertexAttributesType::color, "C");
+            add_vertex_attribute(mesh_data.texcoords_, rhi::VertexSemantics::texcoord0, VertexAttributesType::texcoord, "U1");
+            add_vertex_attribute(mesh_data.texcoords2_, rhi::VertexSemantics::texcoord0, VertexAttributesType::texcoord2, "U2");
+
+            shader_env.set_define(
+                "VERTEX_ATTRIBUTES_IN",
+                std::to_string(input_vertex_attributes.raw_value())
+            );
         }
 
         auto mesh_shaders_id = fmt::format(

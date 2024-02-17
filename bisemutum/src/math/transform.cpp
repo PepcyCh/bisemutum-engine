@@ -67,6 +67,14 @@ auto Transform::transform_bounding_box(BoundingBox const& bbox) const -> Boundin
     };
 }
 
+auto Transform::transform_position_without_scaling(float3 const& pos) const -> float3 {
+    return rotation * pos + translation;
+}
+
+auto Transform::transform_direction_without_scaling(float3 const& dir) const -> float3 {
+    return rotation * dir;
+}
+
 auto Transform::operator*(Transform const& rhs) const -> Transform {
     return from_matrix(matrix() * rhs.matrix());
 }

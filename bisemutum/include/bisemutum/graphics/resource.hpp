@@ -97,7 +97,9 @@ struct Buffer final {
                 desired_size = sizeof(container[0]);
             }
         }
-        if (!buffer.has_value() || buffer.desc().size < desired_size || buffer.desc().size > 2 * desired_size) {
+        if (desired_size == 0) {
+            buffer.reset();
+        } else if (!buffer.has_value() || buffer.desc().size < desired_size || buffer.desc().size > 2 * desired_size) {
             buffer = Buffer(rhi::BufferDesc{
                 .size = desired_size,
                 .usages = usages,
