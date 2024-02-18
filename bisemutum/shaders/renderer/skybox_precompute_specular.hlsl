@@ -7,6 +7,7 @@
 #include "../core/shader_params/compute.hlsl"
 
 static const uint num_samples = 1024;
+static const float clamp_lum = 12.0;
 
 [numthreads(16, 16, 1)]
 void skybox_precompute_specular_cs(uint3 global_thread_id : SV_DispatchThreadID) {
@@ -19,7 +20,6 @@ void skybox_precompute_specular_cs(uint3 global_thread_id : SV_DispatchThreadID)
     float3 wi = float3(0.0, 0.0, 1.0);
 
     float3 center_color = skybox.SampleLevel(skybox_sampler, dir, 0.0).xyz;
-    float clamp_lum = max(luminance(center_color) * 16.0, 0.1);
 
     float3 filtered = 0.0;
     float weight_sum = 0.0;

@@ -46,7 +46,10 @@ struct MenuManager::Impl final {
         std::function<auto(StringHashMap<MenuItem>&) -> void> dfs = [&dfs, &ctx](StringHashMap<MenuItem>& items) {
             for (auto& [name, item] : items) {
                 if (item.action.has_value()) {
-                    if (ImGui::MenuItem(name.c_str(), nullptr, &item.state)) {
+                    if (ImGui::MenuItem(
+                        name.c_str(), nullptr,
+                        item.flags.contains_any(MenuItemFlag::checkable) ? &item.state : nullptr
+                    )) {
                         ctx.state = item.state;
                         (item.action.value())(ctx);
                     }

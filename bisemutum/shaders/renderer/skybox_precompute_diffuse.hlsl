@@ -6,6 +6,7 @@
 
 static const uint num_samples_sqrt = 64;
 static const uint num_samples = num_samples_sqrt * num_samples_sqrt;
+static const float clamp_lum = 12.0;
 
 [numthreads(16, 16, 1)]
 void skybox_precompute_diffuse_cs(uint3 global_thread_id : SV_DispatchThreadID) {
@@ -18,7 +19,6 @@ void skybox_precompute_diffuse_cs(uint3 global_thread_id : SV_DispatchThreadID) 
     Frame frame = create_frame(dir);
 
     float3 center_color = skybox.SampleLevel(skybox_sampler, dir, 0.0).xyz;
-    float clamp_lum = max(luminance(center_color) * 16.0, 0.1);
 
     float delta = PI / num_samples_sqrt;
     for (float phi = delta * 0.5; phi < TWO_PI; phi += delta) {
@@ -30,7 +30,7 @@ void skybox_precompute_diffuse_cs(uint3 global_thread_id : SV_DispatchThreadID) 
             float3 v = float3(sin_theta * cos_phi, sin_theta * sin_phi, cos_theta);
             v = frame_to_world(frame, v);
             float3 color = skybox.SampleLevel(skybox_sampler, v, 0.0).xyz;
-            float scale = 1.0; // clamp_lum / max(luminance(color), clamp_lum);
+            float scale = clamp_lum / max(luminance(color), clamp_lum);
             irradiance += color * scale * cos_theta * sin_theta;
         }
     }
