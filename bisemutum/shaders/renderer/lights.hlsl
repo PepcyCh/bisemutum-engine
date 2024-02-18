@@ -177,7 +177,7 @@ float3x3 fetch_fetch_ltc_matrix(LtcLuts ltc_luts, float3 u) {
     float3 m0 = ltc_luts.matrix_lut0.Sample(ltc_luts.sampler, u).xyz;
     float3 m1 = ltc_luts.matrix_lut1.Sample(ltc_luts.sampler, u).xyz;
     float3 m2 = ltc_luts.matrix_lut2.Sample(ltc_luts.sampler, u).xyz;
-    return transpose(float3x3(m0, m1, m2));
+    return float3x3(m0, m1, m2);
 }
 float3x3 fetch_ltc_matrix(LtcLuts ltc_luts, float4 u) {
     float3 u1, u2;
@@ -188,20 +188,20 @@ float3x3 fetch_ltc_matrix(LtcLuts ltc_luts, float4 u) {
     float3x3 m2 = fetch_fetch_ltc_matrix(ltc_luts, u2);
     return lerp(m1, m2, w);
 }
-float fetch_ltc_norm(LtcLuts ltc_luts, float4 u) {
+float2 fetch_ltc_brdf(LtcLuts ltc_luts, float4 u) {
     float3 u1, u2;
     float w;
     get_ltc_tex3d_coord(u, u1, u2, w);
 
-    float n1 = ltc_luts.norm_lut.Sample(ltc_luts.sampler, u1).x;
-    float n2 = ltc_luts.norm_lut.Sample(ltc_luts.sampler, u2).x;
+    float2 n1 = ltc_luts.norm_lut.Sample(ltc_luts.sampler, u1).xy;
+    float2 n2 = ltc_luts.norm_lut.Sample(ltc_luts.sampler, u2).xy;
     return lerp(n1, n2, w);
 }
 
-void get_ltc_matrix_and_norm(
+void get_ltc_matrix_and_brdf(
     LtcLuts ltc_luts,
     float3 local_v, float roughness_x, float roughness_y,
-    inout float4x3 L, out float3x3 ltc_matrix, out float ltc_norm
+    inout float4x3 L, out float3x3 ltc_matrix, out float2 ltc_brdf
 ) {
     float theta_wi = acos(local_v.z);
     bool flip_roughness = roughness_y > roughness_x;
@@ -222,11 +222,9 @@ void get_ltc_matrix_and_norm(
     if (phi_wi < PI * 0.5) {
         float u3 = phi_wi / (PI * 0.5);
         float4 u = float4(u3, u2, u1, u0);
-
-        L = mul(winding, L);
         ltc_matrix = fetch_ltc_matrix(ltc_luts, u);
-        ltc_norm = fetch_ltc_norm(ltc_luts, u);
-    } else if (phi_wi >= PI * 0.5 && phi_wi < PI) {
+        ltc_brdf = fetch_ltc_brdf(ltc_luts, u);
+    } else if (phi_wi < PI) {
         float u3 = (PI - phi_wi) / (PI * 0.5);
         float4 u = float4(u3, u2, u1, u0);
         float3x3 flip = {
@@ -234,9 +232,10 @@ void get_ltc_matrix_and_norm(
             0.0, 1.0, 0.0,
             0.0, 0.0, 1.0,
         };
+        L = mul(winding, L);
         ltc_matrix = mul(flip, fetch_ltc_matrix(ltc_luts, u));
-        ltc_norm = fetch_ltc_norm(ltc_luts, u);
-    } else if (phi_wi >= PI && phi_wi < 1.5 * PI) {
+        ltc_brdf = fetch_ltc_brdf(ltc_luts, u);
+    } else if (phi_wi < 1.5 * PI) {
         float u3 = (phi_wi - PI) / (PI * 0.5);
         float4 u = float4(u3, u2, u1, u0);
         float3x3 flip = {
@@ -244,11 +243,9 @@ void get_ltc_matrix_and_norm(
             0.0, -1.0, 0.0,
             0.0, 0.0, 1.0,
         };
-
-        L = mul(winding, L);
         ltc_matrix = mul(flip, fetch_ltc_matrix(ltc_luts, u));
-        ltc_norm = fetch_ltc_norm(ltc_luts, u);
-    } else { // (phi_wi >= 1.5 * PI && phi_wi < 2.0 * PI)
+        ltc_brdf = fetch_ltc_brdf(ltc_luts, u);
+    } else {
         float u3 = (2.0 * PI - phi_wi) / (PI * 0.5);
         float4 u = float4(u3, u2, u1, u0);
         float3x3 flip = {
@@ -256,9 +253,9 @@ void get_ltc_matrix_and_norm(
             0.0, -1.0, 0.0,
             0.0, 0.0, 1.0
         };
-
+        L = mul(winding, L);
         ltc_matrix = mul(flip, fetch_ltc_matrix(ltc_luts, u));
-        ltc_norm = fetch_ltc_norm(ltc_luts, u);
+        ltc_brdf = fetch_ltc_brdf(ltc_luts, u);
     }
 
     if (flip_roughness) {
@@ -420,6 +417,7 @@ float ltc_integrate(
     if (n == 5) { sum += ltc_integrate_edge(LP[4], LP[0]); }
 
     sum = two_sided ? abs(sum) : max(0.0, sum);
+    if (isnan(sum) || isinf(sum)) { sum = 0.0; }
 
     return sum;
 }
@@ -433,25 +431,24 @@ void rect_light_eval_ltc(
     float3 V,
     RectLightData light,
     float roughness_x, float roughness_y, float3 f0_color, float3 f90_color,
-    out float3 specular,
-    out float3 diffuse
+    out float3 ltc_specular,
+    out float3 ltc_diffuse,
+    out float2 ltc_brdf
 ) {
-    float4x3 L = {
-        light.position0,
-        light.position1,
-        light.position2,
-        light.position3,
-    };
-
     float3 local_v = float3(dot(V, T), dot(V, B), dot(V, N));
-    float3x3 ltc_matrix;
-    float ltc_norm;
-    get_ltc_matrix_and_norm(ltc_luts, local_v, roughness_x, roughness_y, L, ltc_matrix, ltc_norm);
+    if (local_v.z <= 0.0) {
+        ltc_specular = 0.0;
+        ltc_diffuse = 0.0;
+        ltc_brdf = 0.0;
+        return;
+    }
 
-    // TODO - LTC with Fresnel
-
-    float ltc_integral_spec = ltc_integrate(P, N, T, B, ltc_matrix, L, light.two_sided != 0);
-    specular = light.emission * ltc_integral_spec * ltc_norm;
+    float4x3 L = {
+        light.position3,
+        light.position2,
+        light.position1,
+        light.position0,
+    };
 
     float3x3 identity = {
         1.0, 0.0, 0.0,
@@ -459,5 +456,10 @@ void rect_light_eval_ltc(
         0.0, 0.0, 1.0,
     };
     float ltc_integral_diff = ltc_integrate(P, N, T, B, identity, L, light.two_sided != 0);
-    diffuse = light.emission * ltc_integral_diff;
+    ltc_diffuse = light.emission * ltc_integral_diff;
+
+    float3x3 ltc_matrix;
+    get_ltc_matrix_and_brdf(ltc_luts, local_v, roughness_x, roughness_y, L, ltc_matrix, ltc_brdf);
+    float ltc_integral_spec = ltc_integrate(P, N, T, B, ltc_matrix, L, light.two_sided != 0);
+    ltc_specular = light.emission * ltc_integral_spec;
 }

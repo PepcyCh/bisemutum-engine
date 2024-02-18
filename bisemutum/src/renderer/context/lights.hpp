@@ -36,6 +36,7 @@ struct PointLightData final {
 // This struct must be the same as that in "light_struct.hlsl"
 struct RectLightData {
     float3 emission = float3{0.0f};
+    // TODO - support emissive texture for rect light
     int texture_index = -1;
     float3 center_position = float3{0.0f};
     uint32_t two_sided = 0;

@@ -30,18 +30,18 @@ float3 surface_eval_lit(
     return (diffuse + specular) * max(local_l.z, 0.0);
 }
 
-float3 surface_eval_ibl_lit(
+float3 surface_eval_lut_lit(
     float3 N,
     float3 V,
     SurfaceData surface,
-    float3 ibl_diffuse,
-    float3 ibl_specular,
-    float2 ibl_brdf
+    float3 integrated_diffuse,
+    float3 integrated_specular,
+    float2 integrated_brdf
 ) {
     float ndotv = dot(N, V);
     if (ndotv <= 0.0) { return 0.0; }
     float3 fr = schlick_fresnel(surface.f0_color, surface.f90_color, ndotv, surface.ior);
     float3 diffuse = (1.0 - fr) * surface.base_color * INV_PI;
-    float3 specular = surface.f0_color * ibl_brdf.x + surface.f90_color * ibl_brdf.y;
-    return diffuse * ibl_diffuse + specular * ibl_specular;
+    float3 specular = surface.f0_color * integrated_brdf.x + surface.f90_color * integrated_brdf.y;
+    return diffuse * integrated_diffuse + specular * integrated_specular;
 }

@@ -67,15 +67,16 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     for (i = 0; i < num_rect_lights; i++) {
         RectLightData light = rect_lights[i];
         float3 fr = schlick_fresnel(surface.f0_color, surface.f90_color, max(dot(V, N), 0.0), 1.5);
-        float3 spec, diff;
+        float3 ltc_spec, ltc_diff;
+        float2 ltc_brdf;
         rect_light_eval_ltc(
             ltc_luts,
             position_world, N, T, B, V,
             light,
             roughness_x, roughness_y, surface.f0_color, surface.f90_color,
-            spec, diff
+            ltc_spec, ltc_diff, ltc_brdf
         );
-        float3 lighting = fr * spec + (1.0 - fr) * diff * surface.base_color;
+        float3 lighting = surface_eval_lut(N, V, surface, ltc_diff, ltc_spec, ltc_brdf, surface_model);
         color += lighting;
     }
 
@@ -87,7 +88,7 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     ).xyz * skybox_specular_color;
     color += skybox_diffuse_irradiance.Sample(skybox_sampler, N) * skybox_diffuse_color * ibl_diffuse;
     float2 ibl_brdf = skybox_brdf_lut.Sample(skybox_sampler, float2(dot(N, V), surface.roughness)).xy;
-    float3 ibl = surface_eval_ibl(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf, surface_model);
+    float3 ibl = surface_eval_lut(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf, surface_model);
     color += ibl;
 
     return float4(color, 1.0);

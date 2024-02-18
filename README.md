@@ -17,6 +17,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Forward and deferred rendering
   * CPU frustum culling
   * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
+  * Rect light via LTC (anisotropic GGX)
   * Skybox & IBL
   * Basic SSAO
   * Bloom
@@ -38,7 +39,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 * Raytracing pipeline in RHI and helpers
 * Screen space & raytraced ambient occlusion, reflection
-* Rect light via LTC
+* Rect light with emissive mapping
 * Basic resource browser
 
 ## Gallary

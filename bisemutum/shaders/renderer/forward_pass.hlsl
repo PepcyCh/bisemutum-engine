@@ -58,16 +58,17 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     ltc_luts.sampler = ltc_sampler;
     for (i = 0; i < num_rect_lights; i++) {
         RectLightData light = rect_lights[i];
-        float3 fr = schlick_fresnel(f0_color, f90_color, max(dot(V, N), 0.0), 1.5);
-        float3 spec, diff;
+        float3 fr = schlick_fresnel(surface.f0_color, surface.f90_color, max(dot(V, N), 0.0), 1.5);
+        float3 ltc_spec, ltc_diff;
+        float2 ltc_brdf;
         rect_light_eval_ltc(
             ltc_luts,
-            position_world, N, T, B, V,
+            fin.position_world, N, T, B, V,
             light,
             roughness_x, roughness_y, surface.f0_color, surface.f90_color,
-            spec, diff
+            ltc_spec, ltc_diff, ltc_brdf
         );
-        float3 lighting = fr * spec + (1.0 - fr) * diff * surface.base_color;
+        float3 lighting = surface_eval_lut(N, V, surface, ltc_diff, ltc_spec, ltc_brdf);
         color += lighting;
     }
 
@@ -79,7 +80,7 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     ).xyz * skybox_specular_color;
     color += skybox_diffuse_irradiance.Sample(skybox_sampler, N) * skybox_diffuse_color * ibl_diffuse;
     float2 ibl_brdf = skybox_brdf_lut.Sample(skybox_sampler, float2(dot(N, V), surface.roughness)).xy;
-    float3 ibl = surface_eval_ibl(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
+    float3 ibl = surface_eval_lut(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
     color += ibl;
 
     Output result;
@@ -88,7 +89,7 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     float4 history_pos_clip = mul(history_matrix_proj_view, float4(fin.history_position_world, 1.0));
     history_pos_clip.xyz /= history_pos_clip.w;
     float2 history_uv = float2(history_pos_clip.x * 0.5 + 0.5, 0.5 - history_pos_clip.y * 0.5);
-    fout.velocity = float4(fin.sv_position.xy / viewport_size - history_uv, 0.0, 1.0);
+    result.velocity = float4(fin.sv_position.xy / viewport_size - history_uv, 0.0, 1.0);
 
-    return Output;
+    return result;
 }
