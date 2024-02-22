@@ -35,6 +35,7 @@ private:
 
 struct GraphicsCommandEncoderD3D12;
 struct ComputeCommandEncoderD3D12;
+struct RaytracingCommandEncoderD3D12;
 
 struct CommandEncoderD3D12 final : CommandEncoder {
     CommandEncoderD3D12(Ref<DeviceD3D12> device, ID3D12GraphicsCommandList4* cmd_list);
@@ -100,11 +101,14 @@ struct CommandEncoderD3D12 final : CommandEncoder {
 
     auto begin_compute_pass(CommandLabel const& label) -> Box<ComputeCommandEncoder> override;
 
+    auto begin_raytracing_pass(CommandLabel const& label) -> Box<RaytracingCommandEncoder> override;
+
     auto valid() const -> bool override { return cmd_list_ != nullptr; }
 
 private:
     friend GraphicsCommandEncoderD3D12;
     friend ComputeCommandEncoderD3D12;
+    friend RaytracingCommandEncoderD3D12;
 
     Ref<DeviceD3D12> device_;
     ID3D12GraphicsCommandList4* cmd_list_;
@@ -185,6 +189,33 @@ private:
     bool has_label_;
 
     struct ComputePipelineD3D12 const* curr_pipeline_ = nullptr;
+};
+
+struct RaytracingCommandEncoderD3D12 : public RaytracingCommandEncoder {
+    RaytracingCommandEncoderD3D12(Ref<DeviceD3D12> device, Ref<CommandEncoderD3D12> base_encoder, bool has_label);
+    ~RaytracingCommandEncoderD3D12();
+
+    auto push_label(CommandLabel const& label) -> void override;
+
+    auto pop_label() -> void override;
+
+    void set_pipeline(CRef<RaytracingPipeline> pipeline) override;
+
+    auto set_descriptors(uint32_t from_group_index, CSpan<DescriptorHandle> descriptors) -> void override;
+
+    auto push_constants(void const* data, uint32_t size, uint32_t offset = 0) -> void override;
+
+    auto dispatch_rays(
+        RaytracingShaderBindingTableBuffers const& sbt, uint32_t width, uint32_t height, uint32_t depth
+    ) -> void override;
+
+private:
+    Ref<DeviceD3D12> device_;
+    Ref<CommandEncoderD3D12> base_encoder_;
+    ID3D12GraphicsCommandList4* cmd_list_;
+    bool has_label_;
+
+    struct RaytracingPipelineD3D12 const* curr_pipeline_ = nullptr;
 };
 
 }

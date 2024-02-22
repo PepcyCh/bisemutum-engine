@@ -119,6 +119,7 @@ struct Scissor final {
 struct CommandEncoder;
 struct GraphicsCommandEncoder;
 struct ComputeCommandEncoder;
+struct RaytracingCommandEncoder;
 
 struct CommandBuffer {
     virtual ~CommandBuffer() = default;
@@ -192,7 +193,9 @@ struct CommandEncoder : public CommandEncoderBase {
 
     virtual auto begin_compute_pass(CommandLabel const& label) -> Box<ComputeCommandEncoder> = 0;
 
-    // If it is in `{Graphics|Compute}CommandEncoder`, then it is invalid, otherwise valid.
+    virtual auto begin_raytracing_pass(CommandLabel const& label) -> Box<RaytracingCommandEncoder> = 0;
+
+    // If it is in `{Graphics|Compute|Raytracing}CommandEncoder`, then it is invalid, otherwise valid.
     virtual auto valid() const -> bool = 0;
 };
 
@@ -238,6 +241,29 @@ struct ComputeCommandEncoder : public CommandEncoderBase {
     virtual auto push_constants(void const* data, uint32_t size, uint32_t offset = 0) -> void = 0;
 
     virtual auto dispatch(uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z) -> void = 0;
+};
+
+struct RaytracingShaderBindingTableBuffers final {
+    CPtr<Buffer> raygen_buffer;
+    CPtr<Buffer> miss_buffer;
+    CPtr<Buffer> hit_group_buffer;
+    CPtr<Buffer> callable_buffer;
+    uint32_t raygen_offset = 0;
+    uint32_t miss_offset = 0;
+    uint32_t hit_group_offset = 0;
+    uint32_t callable_offset = 0;
+};
+struct RaytracingCommandEncoder : public CommandEncoderBase {
+    virtual ~RaytracingCommandEncoder() = default;
+
+    virtual void set_pipeline(CRef<struct RaytracingPipeline> pipeline) = 0;
+
+    virtual auto set_descriptors(uint32_t from_group_index, CSpan<DescriptorHandle> descriptors) -> void = 0;
+    virtual auto push_constants(void const* data, uint32_t size, uint32_t offset = 0) -> void = 0;
+
+    virtual auto dispatch_rays(
+        RaytracingShaderBindingTableBuffers const& sbt, uint32_t width, uint32_t height = 1, uint32_t depth = 1
+    ) -> void = 0;
 };
 
 }

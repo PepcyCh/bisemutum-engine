@@ -388,7 +388,7 @@ struct GraphicsManager::Impl final {
 
     auto update_mesh_buffers(CRef<MeshData> mesh) -> void {
         auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
-        if (mesh_buffers.version < mesh->version_) {
+        if (mesh_buffers.version < mesh->buffer_version_) {
             mesh_buffers.positions_buffer.reset();
 
             Buffer::update_with_container(mesh_buffers.positions_buffer, mesh->positions_, rhi::BufferUsage::vertex);
@@ -399,7 +399,7 @@ struct GraphicsManager::Impl final {
             Buffer::update_with_container(mesh_buffers.texcoords2_buffer, mesh->texcoords2_, rhi::BufferUsage::vertex);
             Buffer::update_with_container(mesh_buffers.indices_buffer, mesh->indices_, rhi::BufferUsage::index);
 
-            mesh_buffers.version = mesh->version_;
+            mesh_buffers.version = mesh->buffer_version_;
         }
     }
 
@@ -909,6 +909,12 @@ struct GraphicsManager::Impl final {
         Buffer indices_buffer;
     };
     std::unordered_map<uint64_t, MeshBuffers> meshes_buffers;
+
+    struct MeshBlas final {
+        uint64_t version = 0;
+        Box<rhi::AccelerationStructure> blas;
+    };
+    std::unordered_map<uint64_t, MeshBlas> meshes_blas;
 };
 
 GraphicsManager::GraphicsManager() = default;

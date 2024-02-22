@@ -35,6 +35,7 @@ private:
 
 struct GraphicsCommandEncoderVulkan;
 struct ComputeCommandEncoderVulkan;
+struct RaytracingCommandEncoderVulkan;
 
 struct CommandEncoderVulkan final : CommandEncoder {
     CommandEncoderVulkan(Ref<DeviceVulkan> device, VkCommandBuffer cmd_buffer);
@@ -100,6 +101,8 @@ struct CommandEncoderVulkan final : CommandEncoder {
 
     auto begin_compute_pass(CommandLabel const& label) -> Box<ComputeCommandEncoder> override;
 
+    auto begin_raytracing_pass(CommandLabel const& label) -> Box<RaytracingCommandEncoder> override;
+
     auto valid() const -> bool override { return cmd_buffer_ != VK_NULL_HANDLE; }
 
 private:
@@ -110,6 +113,7 @@ private:
 
     friend GraphicsCommandEncoderVulkan;
     friend ComputeCommandEncoderVulkan;
+    friend RaytracingCommandEncoderVulkan;
 
     Ref<DeviceVulkan> device_;
     VkCommandBuffer cmd_buffer_;
@@ -192,6 +196,33 @@ private:
     bool has_label_;
 
     struct ComputePipelineVulkan const* curr_pipeline_ = nullptr;
+};
+
+struct RaytracingCommandEncoderVulkan : public RaytracingCommandEncoder {
+    RaytracingCommandEncoderVulkan(Ref<DeviceVulkan> device, Ref<CommandEncoderVulkan> base_encoder, bool has_label);
+    ~RaytracingCommandEncoderVulkan();
+
+    auto push_label(CommandLabel const& label) -> void override;
+
+    auto pop_label() -> void override;
+
+    void set_pipeline(CRef<RaytracingPipeline> pipeline) override;
+
+    auto set_descriptors(uint32_t from_group_index, CSpan<DescriptorHandle> descriptors) -> void override;
+
+    auto push_constants(void const* data, uint32_t size, uint32_t offset = 0) -> void override;
+
+    auto dispatch_rays(
+        RaytracingShaderBindingTableBuffers const& sbt, uint32_t width, uint32_t height, uint32_t depth
+    ) -> void override;
+
+private:
+    Ref<DeviceVulkan> device_;
+    Ref<CommandEncoderVulkan> base_encoder_;
+    VkCommandBuffer cmd_buffer_;
+    bool has_label_;
+
+    struct RaytracingPipelineVulkan const* curr_pipeline_ = nullptr;
 };
 
 }

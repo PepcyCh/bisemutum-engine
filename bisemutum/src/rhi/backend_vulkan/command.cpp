@@ -651,6 +651,17 @@ auto CommandEncoderVulkan::begin_compute_pass(CommandLabel const& label) -> Box<
     return compute_encoder;
 }
 
+auto CommandEncoderVulkan::begin_raytracing_pass(CommandLabel const& label) -> Box<RaytracingCommandEncoder> {
+    if (!label.label.empty()) {
+        push_label(label);
+    }
+    auto raytracing_encoder = Box<RaytracingCommandEncoderVulkan>::make(
+        device_, unsafe_make_ref(this), !label.label.empty()
+    );
+    cmd_buffer_ = VK_NULL_HANDLE;
+    return raytracing_encoder;
+}
+
 auto CommandEncoderVulkan::set_descriptors(
     VkCommandBuffer cmd_buffer, VkPipelineBindPoint bind_point, VkPipelineLayout pipline_layout,
     uint32_t from_group_index, CSpan<DescriptorHandle> descriptors
@@ -953,6 +964,104 @@ auto ComputeCommandEncoderVulkan::push_constants(void const* data, uint32_t size
 
 void ComputeCommandEncoderVulkan::dispatch(uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z) {
     vkCmdDispatch(cmd_buffer_, num_groups_x, num_groups_y, num_groups_z);
+}
+
+
+RaytracingCommandEncoderVulkan::RaytracingCommandEncoderVulkan(
+    Ref<DeviceVulkan> device, Ref<CommandEncoderVulkan> base_encoder, bool has_label
+)
+    : device_(device), base_encoder_(base_encoder), has_label_(has_label)
+{
+    cmd_buffer_ = base_encoder->cmd_buffer_;
+}
+
+RaytracingCommandEncoderVulkan::~RaytracingCommandEncoderVulkan() {
+    if (has_label_) {
+        pop_label();
+    }
+    base_encoder_->cmd_buffer_ = cmd_buffer_;
+}
+
+auto RaytracingCommandEncoderVulkan::push_label(CommandLabel const& label) -> void {
+    push_label_impl(cmd_buffer_, label);
+}
+
+auto RaytracingCommandEncoderVulkan::pop_label() -> void {
+    pop_label_impl(cmd_buffer_);
+}
+
+auto RaytracingCommandEncoderVulkan::set_pipeline(CRef<RaytracingPipeline> pipeline) -> void {
+    curr_pipeline_ = pipeline.cast_to<const RaytracingPipelineVulkan>().get();
+    vkCmdBindPipeline(cmd_buffer_, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, curr_pipeline_->raw());
+
+    if (auto embedded_samplers_set = curr_pipeline_->static_samplers_set(); embedded_samplers_set != ~0u) {
+        if (device_->use_descriptor_buffer()) {
+            vkCmdBindDescriptorBufferEmbeddedSamplersEXT(
+                cmd_buffer_, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, curr_pipeline_->raw_layout(), embedded_samplers_set
+            );
+        } else {
+            auto desc_set = curr_pipeline_->immutable_samplers_desc_set();
+            vkCmdBindDescriptorSets(
+                cmd_buffer_, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, curr_pipeline_->raw_layout(), embedded_samplers_set,
+                1, &desc_set, 0, nullptr
+            );
+        }
+    }
+}
+
+auto RaytracingCommandEncoderVulkan::set_descriptors(
+    uint32_t from_group_index, CSpan<DescriptorHandle> descriptors
+) -> void {
+    base_encoder_->set_descriptors(
+        cmd_buffer_, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, curr_pipeline_->raw_layout(), from_group_index, descriptors
+    );
+}
+
+auto RaytracingCommandEncoderVulkan::push_constants(void const* data, uint32_t size, uint32_t offset) -> void {
+    auto stages = curr_pipeline_->push_constants_stages();
+    if (stages != 0) {
+        vkCmdPushConstants(
+            cmd_buffer_, curr_pipeline_->raw_layout(), stages, offset, size, data
+        );
+    }
+}
+
+void RaytracingCommandEncoderVulkan::dispatch_rays(
+    RaytracingShaderBindingTableBuffers const& sbt, uint32_t width, uint32_t height, uint32_t depth
+) {
+    auto strides = curr_pipeline_->get_shader_binding_table_sizes();
+    auto& pipeline_desc = curr_pipeline_->desc();
+
+    VkStridedDeviceAddressRegionKHR raygen{
+        .deviceAddress = sbt.raygen_buffer
+            ? sbt.raygen_buffer.cast_to<const BufferVulkan>()->address() + sbt.raygen_offset
+            : 0ull,
+        .stride = strides.raygen_size,
+        .size = strides.raygen_size,
+    };
+    VkStridedDeviceAddressRegionKHR miss{
+        .deviceAddress = sbt.miss_buffer
+            ? sbt.miss_buffer.cast_to<const BufferVulkan>()->address() + sbt.miss_offset
+            : 0ull,
+        .stride = strides.miss_stride,
+        .size = strides.miss_stride * pipeline_desc.shaders.miss.size(),
+    };
+    VkStridedDeviceAddressRegionKHR hit_group{
+        .deviceAddress = sbt.hit_group_buffer
+            ? sbt.hit_group_buffer.cast_to<const BufferVulkan>()->address() + sbt.hit_group_offset
+            : 0ull,
+        .stride = strides.hit_group_stride,
+        .size = strides.hit_group_stride * pipeline_desc.shaders.hit_group.size(),
+    };
+    VkStridedDeviceAddressRegionKHR callable{
+        .deviceAddress = sbt.hit_group_buffer
+            ? sbt.hit_group_buffer.cast_to<const BufferVulkan>()->address() + sbt.hit_group_offset
+            : 0ull,
+        .stride = strides.callable_stride,
+        .size = strides.callable_stride * pipeline_desc.shaders.callable.size(),
+    };
+
+    vkCmdTraceRaysKHR(cmd_buffer_, &raygen, &miss, &hit_group, &callable, width, height, depth);
 }
 
 }

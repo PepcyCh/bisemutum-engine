@@ -87,8 +87,8 @@ auto Material::update_shader_parameter() -> void {
             auto list_i = i + value_params.size() + texture_params.size();
             list.params[list_i].descriptor_type = rhi::DescriptorType::sampler;
             list.params[list_i].type_name = "SamplerState";
-            list.params[list_i].size = sizeof(SamplerState);
-            list.params[list_i].alignment = alignof(SamplerState);
+            list.params[list_i].size = sizeof(shader::SamplerState);
+            list.params[list_i].alignment = alignof(shader::SamplerState);
             list.params[list_i].cpu_alignment = list.params[list_i].alignment;
             list.params[list_i].var_name = sampler_params[i].first;
         }
@@ -154,10 +154,10 @@ auto Material::update_shader_parameter() -> void {
         cpu_size += sizeof(TextureParam);
     }
     for (auto& [_, samp] : sampler_params) {
-        cpu_size = aligned_size(cpu_size, alignof(SamplerState));
-        auto sampler = shader_parameters.mutable_typed_data_offset<SamplerState>(cpu_size);
+        cpu_size = aligned_size(cpu_size, alignof(shader::SamplerState));
+        auto sampler = shader_parameters.mutable_typed_data_offset<shader::SamplerState>(cpu_size);
         sampler->sampler = samp;
-        cpu_size += sizeof(SamplerState);
+        cpu_size += sizeof(shader::SamplerState);
     }
 }
 auto Material::shader_params_metadata() const -> ShaderParameterMetadataList const& {

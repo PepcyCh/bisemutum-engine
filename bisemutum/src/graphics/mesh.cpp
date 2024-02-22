@@ -9,44 +9,46 @@ MeshData::MeshData() : id_(curr_id_++) {
 }
 
 auto MeshData::mutable_positions() -> std::vector<float3>& {
-    data_dirty();
+    set_buffer_dirty();
+    set_geometry_dirty();
     return positions_;
 }
 
 auto MeshData::mutable_normals() -> std::vector<float3>& {
-    data_dirty();
+    set_buffer_dirty();
     return normals_;
 }
 
 auto MeshData::mutable_tangents() -> std::vector<float4>& {
-    data_dirty();
+    set_buffer_dirty();
     return tangents_;
 }
 
 auto MeshData::mutable_colors() -> std::vector<float3>& {
-    data_dirty();
+    set_buffer_dirty();
     return colors_;
 }
 
 auto MeshData::mutable_texcoords() -> std::vector<float2>& {
-    data_dirty();
+    set_buffer_dirty();
     return texcoords_;
 }
 
 auto MeshData::mutable_texcoords2() -> std::vector<float2>& {
-    data_dirty();
+    set_buffer_dirty();
     return texcoords2_;
 }
 
 auto MeshData::mutable_indices() -> std::vector<uint32_t>& {
-    data_dirty();
+    set_buffer_dirty();
+    set_geometry_dirty();
     return indices_;
 }
 
 auto MeshData::set_submehes(std::vector<SubmeshDesc> submehes) -> void {
     submehes = std::move(submehes);
     for (uint32_t i = 0; i < static_cast<uint32_t>(submehes.size()); i++) {
-        submesh_dirty(i);
+        set_submesh_dirty(i);
     }
 }
 
@@ -55,7 +57,7 @@ auto MeshData::set_submesh(uint32_t index, SubmeshDesc const& submeh) -> void {
         submeshes_.resize(index + 1);
     }
     submeshes_[index] = submeh;
-    submesh_dirty(index);
+    set_submesh_dirty(index);
 }
 
 auto MeshData::bounding_box() const -> BoundingBox const& {
@@ -96,12 +98,14 @@ auto MeshData::submesh_bounding_box(uint32_t index) const -> BoundingBox const& 
     return bbox_;
 }
 
-auto MeshData::data_dirty() -> void {
-    ++version_;
+auto MeshData::set_buffer_dirty() -> void {
+    ++buffer_version_;
+}
+auto MeshData::set_geometry_dirty() -> void {
+    ++geometry_version_;
     bbox_.reset();
 }
-
-auto MeshData::submesh_dirty(uint32_t index) -> void {
+auto MeshData::set_submesh_dirty(uint32_t index) -> void {
     if (index < submesh_bboxes_.size()) {
         submesh_bboxes_[index].reset();
     }

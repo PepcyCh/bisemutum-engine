@@ -87,7 +87,7 @@ auto set_shader_params_helper(
             case rhi::DescriptorType::sampler:
                 for (uint32_t i = 0; i < count; i++) {
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
-                    auto sampler = params.typed_data_offset<SamplerState>(cpu_size)->sampler.value();
+                    auto sampler = params.typed_data_offset<shader::SamplerState>(cpu_size)->sampler.value();
                     if (separate_samplers) {
                         resource_binding_ctx.temp_set_samplers[set].cpu_descriptors.push_back(sampler->get_descriptor());
                     } else {

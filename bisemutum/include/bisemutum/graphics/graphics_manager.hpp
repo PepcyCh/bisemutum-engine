@@ -34,6 +34,7 @@ BI_SREFL(
 
 struct Buffer;
 struct Texture;
+struct AccelerationStructure;
 struct Sampler;
 
 struct ShaderCompiler;
@@ -140,6 +141,7 @@ private:
     friend Buffer;
     friend Texture;
     friend Sampler;
+    friend AccelerationStructure;
     auto allocate_cpu_descriptor(rhi::DescriptorType type) -> rhi::DescriptorHandle;
     auto free_cpu_resource_descriptor(rhi::DescriptorHandle descriptor) -> void;
     auto free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void;

@@ -523,6 +523,17 @@ auto CommandEncoderD3D12::begin_compute_pass(CommandLabel const& label) -> Box<C
     return compute_encoder;
 }
 
+auto CommandEncoderD3D12::begin_raytracing_pass(CommandLabel const& label) -> Box<RaytracingCommandEncoder> {
+    if (!label.label.empty()) {
+        push_label(label);
+    }
+    auto raytracing_encoder = Box<RaytracingCommandEncoderD3D12>::make(
+        device_, unsafe_make_ref(this), !label.label.empty()
+    );
+    cmd_list_ = nullptr;
+    return raytracing_encoder;
+}
+
 
 GraphicsCommandEncoderD3D12::GraphicsCommandEncoderD3D12(
     Ref<DeviceD3D12> device,
@@ -738,7 +749,9 @@ auto GraphicsCommandEncoderD3D12::draw_indexed(
 
 ComputeCommandEncoderD3D12::ComputeCommandEncoderD3D12(
     Ref<DeviceD3D12> device, Ref<CommandEncoderD3D12> base_encoder, bool has_label
-) : device_(device), base_encoder_(base_encoder), has_label_(has_label) {
+)
+    : device_(device), base_encoder_(base_encoder), has_label_(has_label)
+{
     cmd_list_ = base_encoder->cmd_list_;
 }
 
@@ -780,6 +793,92 @@ auto ComputeCommandEncoderD3D12::push_constants(void const* data, uint32_t size,
 
 auto ComputeCommandEncoderD3D12::dispatch(uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z) -> void {
     cmd_list_->Dispatch(num_groups_x, num_groups_y, num_groups_z);
+}
+
+
+RaytracingCommandEncoderD3D12::RaytracingCommandEncoderD3D12(
+    Ref<DeviceD3D12> device, Ref<CommandEncoderD3D12> base_encoder, bool has_label
+)
+    : device_(device), base_encoder_(base_encoder), has_label_(has_label)
+{
+    cmd_list_ = base_encoder->cmd_list_;
+}
+
+RaytracingCommandEncoderD3D12::~RaytracingCommandEncoderD3D12() {
+    if (has_label_) {
+        pop_label();
+    }
+    base_encoder_->cmd_list_ = cmd_list_;
+}
+
+auto RaytracingCommandEncoderD3D12::push_label(CommandLabel const& label) -> void {
+    push_label_impl(cmd_list_, label);
+}
+
+auto RaytracingCommandEncoderD3D12::pop_label() -> void {
+    pop_label_impl(cmd_list_);
+}
+
+auto RaytracingCommandEncoderD3D12::set_pipeline(CRef<RaytracingPipeline> pipeline) -> void {
+    curr_pipeline_ = pipeline.cast_to<const RaytracingPipelineD3D12>().get();
+    cmd_list_->SetPipelineState1(curr_pipeline_->raw());
+}
+
+auto RaytracingCommandEncoderD3D12::set_descriptors(
+    uint32_t from_group_index, CSpan<DescriptorHandle> descriptors
+) -> void {
+    for (size_t i = 0; i < descriptors.size(); i++) {
+        cmd_list_->SetComputeRootDescriptorTable(from_group_index + i, {descriptors[i].gpu});
+    }
+}
+
+auto RaytracingCommandEncoderD3D12::push_constants(void const* data, uint32_t size, uint32_t offset) -> void {
+    cmd_list_->SetComputeRoot32BitConstants(
+        curr_pipeline_->root_constant_index(),
+        size / 4, data, offset / 4
+    );
+}
+
+auto RaytracingCommandEncoderD3D12::dispatch_rays(
+    RaytracingShaderBindingTableBuffers const& sbt, uint32_t width, uint32_t height, uint32_t depth
+) -> void {
+    auto strides = curr_pipeline_->get_shader_binding_table_sizes();
+    auto& pipeline_desc = curr_pipeline_->desc();
+
+    D3D12_DISPATCH_RAYS_DESC desc{
+        .RayGenerationShaderRecord{
+            .StartAddress = sbt.raygen_buffer
+                ? sbt.raygen_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress() + sbt.raygen_offset
+                : 0ull,
+            .SizeInBytes = strides.raygen_size,
+        },
+        .MissShaderTable{
+            .StartAddress = sbt.miss_buffer
+                ? sbt.miss_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress() + sbt.miss_offset
+                : 0ull,
+            .SizeInBytes = strides.miss_stride * pipeline_desc.shaders.miss.size(),
+            .StrideInBytes = strides.miss_stride,
+        },
+        .HitGroupTable{
+            .StartAddress = sbt.hit_group_buffer
+                ? sbt.hit_group_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress() + sbt.hit_group_offset
+                : 0ull,
+            .SizeInBytes = strides.hit_group_stride * pipeline_desc.shaders.hit_group.size(),
+            .StrideInBytes = strides.hit_group_stride,
+        },
+        .CallableShaderTable{
+            .StartAddress = sbt.callable_buffer
+                ? sbt.callable_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress() + sbt.callable_offset
+                : 0ull,
+            .SizeInBytes = strides.callable_stride * pipeline_desc.shaders.callable.size(),
+            .StrideInBytes = strides.callable_stride,
+        },
+        .Width = width,
+        .Height = height,
+        .Depth = depth,
+    };
+
+    cmd_list_->DispatchRays(&desc);
 }
 
 }

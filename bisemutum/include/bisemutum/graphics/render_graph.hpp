@@ -6,6 +6,7 @@
 #include "handles.hpp"
 #include "resource.hpp"
 #include "resource_builder.hpp"
+#include "accel.hpp"
 #include "render_graph_pass.hpp"
 #include "rendered_object_list.hpp"
 #include "../prelude/idiom.hpp"
@@ -31,6 +32,8 @@ struct RenderGraph final : PImpl<RenderGraph> {
         Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access = rhi::ResourceAccessType::none
     ) -> TextureHandle;
     auto import_back_buffer() const -> TextureHandle;
+
+    auto add_acceleration_structure(AccelerationStructureDesc const& desc) -> AccelerationStructureHandle;
 
     template <typename PassData>
     auto add_graphics_pass(std::string_view name) -> std::pair<GraphicsPassBuilder&, Ref<PassData>> {
@@ -73,6 +76,8 @@ struct RenderGraph final : PImpl<RenderGraph> {
 
     auto take_buffer(BufferHandle handle) -> Box<Buffer>;
     auto take_texture(TextureHandle handle) -> Box<Texture>;
+
+    auto acceleration_structure(AccelerationStructureHandle handle) const -> Ref<AccelerationStructure>;
 
     auto rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList>;
 

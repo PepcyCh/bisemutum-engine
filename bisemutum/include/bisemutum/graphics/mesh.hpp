@@ -1,13 +1,11 @@
 #pragma once
 
-#include "vertex_attributes_type.hpp"
 #include "shader_param.hpp"
 #include "shader_compilation_environment.hpp"
 #include "../prelude/poly.hpp"
 #include "../prelude/byte_stream.hpp"
 #include "../math/bbox.hpp"
 #include "../rhi/pipeline.hpp"
-#include "../rhi/command.hpp"
 
 namespace bi::gfx {
 
@@ -67,8 +65,9 @@ struct MeshData final {
     auto load_from_byte_stream(ReadByteStream& bs) -> void;
 
 private:
-    auto data_dirty() -> void;
-    auto submesh_dirty(uint32_t index) -> void;
+    auto set_buffer_dirty() -> void;
+    auto set_geometry_dirty() -> void;
+    auto set_submesh_dirty(uint32_t index) -> void;
 
     std::vector<float3> positions_;
     std::vector<float3> normals_;
@@ -87,7 +86,8 @@ private:
     friend GraphicsManager;
     static uint64_t curr_id_;
     const uint64_t id_;
-    uint64_t version_ = 1;
+    uint64_t buffer_version_ = 1;
+    uint64_t geometry_version_ = 1;
 };
 
 BI_TRAIT_BEGIN(IMesh, move)

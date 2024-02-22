@@ -67,7 +67,7 @@ struct PoolBuffer final {
 struct PoolTexture final {
     Ref<Texture> texture;
     size_t index;
-    // `access` is only valid for the first resource in the a aliasing chain.
+    // `access` is only valid for the first resource in the aliasing chain.
     // `p_access` in the same chain all pointer to that.
     BitFlags<rhi::ResourceAccessType> access;
     Ptr<BitFlags<rhi::ResourceAccessType>> p_access = nullptr;
@@ -245,6 +245,11 @@ struct RenderGraph::Impl final {
     }
     auto import_back_buffer() const -> TextureHandle {
         return back_buffer_handle_;
+    }
+
+    auto add_acceleration_structure(AccelerationStructureDesc const& desc) -> AccelerationStructureHandle {
+        // TODO
+        return AccelerationStructureHandle::invalid;
     }
 
     template <typename HandleT, typename NodeT>
@@ -525,6 +530,11 @@ struct RenderGraph::Impl final {
     }
     auto pool_texture(TextureHandle handle) -> PoolTexture& {
         return graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<TextureNode>()->texture.value();
+    }
+
+    auto acceleration_structure(AccelerationStructureHandle handle) const -> Ref<AccelerationStructure> {
+        // TODO
+        unreachable();
     }
 
     auto set_graphics_device(Ref<rhi::Device> device, uint32_t num_frames) -> void {
@@ -1084,6 +1094,10 @@ auto RenderGraph::import_back_buffer() const -> TextureHandle {
     return impl()->import_back_buffer();
 }
 
+auto RenderGraph::add_acceleration_structure(AccelerationStructureDesc const& desc) -> AccelerationStructureHandle {
+    return impl()->add_acceleration_structure(desc);
+}
+
 auto RenderGraph::execute() -> void {
     impl()->compile();
     impl()->execute(*this);
@@ -1100,6 +1114,10 @@ auto RenderGraph::take_buffer(BufferHandle handle) -> Box<Buffer> {
 }
 auto RenderGraph::take_texture(TextureHandle handle) -> Box<Texture> {
     return impl()->take_texture(handle);
+}
+
+auto RenderGraph::acceleration_structure(AccelerationStructureHandle handle) const -> Ref<AccelerationStructure> {
+    return impl()->acceleration_structure(handle);
 }
 
 auto RenderGraph::rendered_object_list(RenderedObjectListHandle handle) const -> CRef<RenderedObjectList> {
