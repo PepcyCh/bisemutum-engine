@@ -1,6 +1,8 @@
 #pragma once
 
+#include "texture.hpp"
 #include "../math/math.hpp"
+#include "../runtime/asset.hpp"
 
 namespace bi {
 
@@ -66,6 +68,8 @@ struct RectLightComponent final {
 
     float3 color = float3{1.0f};
     float strength = 1.0f;
+    rt::TAssetPtr<TextureAsset> texture;
+
     float range = 30.0f;
 
     float width = 1.0f;
@@ -82,6 +86,7 @@ BI_SREFL(
     type(RectLightComponent),
     field(color, Color{}),
     field(strength, RangeF{}),
+    field(texture),
     field(range, RangeF{}),
     field(width, RangeF{}),
     field(height, RangeF{}),

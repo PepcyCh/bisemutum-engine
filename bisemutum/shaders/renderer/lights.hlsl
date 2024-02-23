@@ -268,8 +268,6 @@ void get_ltc_matrix_and_brdf(
         L = mul(winding, L);
         ltc_matrix = mul(flip, ltc_matrix);
     }
-
-    ltc_matrix = inverse(ltc_matrix);
 }
 
 void ltc_clip_quad(inout float3 L[5], out int n) {
@@ -363,7 +361,7 @@ void ltc_clip_quad(inout float3 L[5], out int n) {
     if (n == 3) { L[3] = L[0]; }
     if (n == 4) { L[4] = L[0]; }
 }
-float ltc_integrate_edge(float3 v1, float3 v2) {
+float4 ltc_integrate_edge(float3 v1, float3 v2) {
     // float cos_theta = dot(v1, v2);
     // float theta = acos(cos_theta);
     // float res = cross(v1, v2).z * ((theta > 0.001) ? theta / sin(theta) : 1.0);
@@ -376,7 +374,7 @@ float ltc_integrate_edge(float3 v1, float3 v2) {
     if (x < 0.0) {
         theta_div_sin_theta = PI * rsqrt(1.0 - x * x) - theta_div_sin_theta;
     }
-    float res = cross(v1, v2).z * theta_div_sin_theta;
+    float4 res = cross(v1, v2).xyzz * theta_div_sin_theta;
 
     return res;
 }
@@ -386,16 +384,18 @@ float ltc_integrate(
     float3 T,
     float3 B,
     float3x3 ltc_matrix,
+    float3x3 ltc_matrix_inv,
     float4x3 L,
-    bool two_sided
+    bool two_sided,
+    out float3 mrp
 ) {
     float3x3 TBN = float3x3(T, B, N);
 
     float3 LP[5];
-    LP[0] = mul(ltc_matrix, mul(TBN, (L[0] - P)));
-    LP[1] = mul(ltc_matrix, mul(TBN, (L[1] - P)));
-    LP[2] = mul(ltc_matrix, mul(TBN, (L[2] - P)));
-    LP[3] = mul(ltc_matrix, mul(TBN, (L[3] - P)));
+    LP[0] = mul(ltc_matrix_inv, mul(TBN, (L[0] - P)));
+    LP[1] = mul(ltc_matrix_inv, mul(TBN, (L[1] - P)));
+    LP[2] = mul(ltc_matrix_inv, mul(TBN, (L[2] - P)));
+    LP[3] = mul(ltc_matrix_inv, mul(TBN, (L[3] - P)));
 
     int n;
     ltc_clip_quad(LP, n);
@@ -409,20 +409,44 @@ float ltc_integrate(
     LP[4] = normalize(LP[4]);
 
     // integrate
-    float sum = 0.0;
+    float4 sum = 0.0;
     sum += ltc_integrate_edge(LP[0], LP[1]);
     sum += ltc_integrate_edge(LP[1], LP[2]);
     sum += ltc_integrate_edge(LP[2], LP[3]);
     if (n >= 4) { sum += ltc_integrate_edge(LP[3], LP[4]); }
     if (n == 5) { sum += ltc_integrate_edge(LP[4], LP[0]); }
 
-    sum = two_sided ? abs(sum) : max(0.0, sum);
-    if (isnan(sum) || isinf(sum)) { sum = 0.0; }
+    float integral = two_sided ? abs(sum.w) : max(0.0, sum.w);
+    if (isnan(integral) || isinf(integral)) { integral = 0.0; }
 
-    return sum;
+    mrp = normalize(mul(mul(ltc_matrix, sum.xyz), TBN));
+
+    return integral;
+}
+
+float3 rect_light_sample_texture(
+    Texture2D tex,
+    SamplerState tex_sampler,
+    RectLightData light,
+    float3 direction,
+    float3 P,
+    float roughness
+) {
+    float step = abs(dot(direction, light.normal));
+    if (step < 0.0001) { return 0.0; }
+    float dist = abs(dot(P - light.position2, light.normal));
+    float t = dist / step;
+    float3 rect_pos = P + direction * t - light.position2;
+    float u = saturate(dot(rect_pos, light.position3 - light.position2) * light.inv_width_sqr);
+    float v = saturate(dot(rect_pos, light.position1 - light.position2) * light.inv_height_sqr);
+    float num_texels = t * roughness * light.inv_texel_size;
+    float level = log2(max(1.0, num_texels));
+    return tex.SampleLevel(tex_sampler, float2(u, v), level);
 }
 
 void rect_light_eval_ltc(
+    Texture2D textures[MAX_NUM_RECT_LIGHT_TEXTURES],
+    SamplerState texture_samplers[MAX_NUM_RECT_LIGHT_TEXTURES],
     LtcLuts ltc_luts,
     float3 P,
     float3 N,
@@ -455,11 +479,33 @@ void rect_light_eval_ltc(
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
     };
-    float ltc_integral_diff = ltc_integrate(P, N, T, B, identity, L, light.two_sided != 0);
+    float3 diff_mrp;
+    float ltc_integral_diff = ltc_integrate(P, N, T, B, identity, identity, L, light.two_sided != 0, diff_mrp);
     ltc_diffuse = light.emission * ltc_integral_diff;
 
     float3x3 ltc_matrix;
     get_ltc_matrix_and_brdf(ltc_luts, local_v, roughness_x, roughness_y, L, ltc_matrix, ltc_brdf);
-    float ltc_integral_spec = ltc_integrate(P, N, T, B, ltc_matrix, L, light.two_sided != 0);
+    float3x3 ltc_matrix_inv = inverse(ltc_matrix);
+    float3 spec_mrp;
+    float ltc_integral_spec = ltc_integrate(P, N, T, B, ltc_matrix, ltc_matrix_inv, L, light.two_sided != 0, spec_mrp);
     ltc_specular = light.emission * ltc_integral_spec;
+
+    if (light.texture_index >= 0) {
+        ltc_diffuse *= rect_light_sample_texture(
+            textures[light.texture_index],
+            texture_samplers[light.texture_index],
+            light,
+            diff_mrp,
+            P,
+            1.0
+        );
+        ltc_specular *= rect_light_sample_texture(
+            textures[light.texture_index],
+            texture_samplers[light.texture_index],
+            light,
+            spec_mrp,
+            P,
+            sqrt(roughness_x * roughness_y)
+        );
+    }
 }

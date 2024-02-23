@@ -109,7 +109,8 @@ template <RWTextureElement T>
 struct RWTexture2DArray final {};
 
 struct RaytracingAccelerationStructure final {
-    // TODO - ptr of accel
+    // TODO - replace this with ptr of accel
+    void* ptr;
 };
 
 struct SamplerState final {
@@ -489,6 +490,12 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
             ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::shader::ty, #ty, #name>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
+#define BI_SHADER_PARAMETER_SAMPLER_ARRAY(ty, name, arr) ::bi::gfx::shader::ty name arr; \
+    template <> struct XParamsTuple<__LINE__> { \
+        using type = decltype( \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::shader::ty, #ty, #name, int arr>>(XParamsTuple<__LINE__ - 1>::type{}) \
+        ); \
+    };
 
 #define BI_SHADER_PARAMETERS_END(name) using ParamsTypeList = name::XParamsTuple<__LINE__ - 1>::type; };
 
@@ -536,6 +543,8 @@ struct ShaderParameter {
     auto update_uniform_buffer() -> void;
 
 private:
+    auto start_lifetime() -> void;
+
     ShaderParameterMetadataList metadata_list_;
     std::vector<std::byte> data_;
     std::byte* data_start_ = nullptr;

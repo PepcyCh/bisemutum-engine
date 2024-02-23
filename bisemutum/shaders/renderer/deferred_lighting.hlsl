@@ -70,6 +70,8 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
         float3 ltc_spec, ltc_diff;
         float2 ltc_brdf;
         rect_light_eval_ltc(
+            rect_light_textures,
+            rect_light_samplers,
             ltc_luts,
             position_world, N, T, B, V,
             light,

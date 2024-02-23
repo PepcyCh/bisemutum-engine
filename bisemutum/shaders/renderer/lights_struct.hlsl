@@ -41,11 +41,15 @@ struct RectLightData {
     float3 center_position;
     uint two_sided;
     float3 position0;
-    float _pad1;
+    float inv_width_sqr;
     float3 position1;
-    float _pad2;
+    float inv_height_sqr;
     float3 position2;
-    float _pad3;
+    float inv_texel_size;
     float3 position3;
-    float _pad4;
+    float _pad1;
+    float3 normal;
+    float _pad2;
 };
+
+#define MAX_NUM_RECT_LIGHT_TEXTURES 16

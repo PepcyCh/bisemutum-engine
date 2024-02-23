@@ -205,6 +205,7 @@ auto LightsContext::collect_all_lights() -> void {
 
     auto rect_lights_view = scene->ecs_registry().view<RectLightComponent>();
     rect_lights.clear();
+    rect_light_textures.clear();
     for (auto entity : rect_lights_view) {
         auto& light = rect_lights_view.get<RectLightComponent>(entity);
         RectLightData data{};
@@ -221,7 +222,22 @@ auto LightsContext::collect_all_lights() -> void {
         data.position1 = data.center_position + transform.transform_direction_without_scaling({-w, h, 0.0f});
         data.position2 = data.center_position + transform.transform_direction_without_scaling({-w, -h, 0.0f});
         data.position3 = data.center_position + transform.transform_direction_without_scaling({w, -h, 0.0f});
+        data.normal = transform.transform_direction_without_scaling({0.0f, 0.0f, 1.0f});
+        data.inv_width_sqr = 1.0f / (light.width * light.width);
+        data.inv_height_sqr = 1.0f / (light.height * light.height);
         data.two_sided = light.two_sided;
+        if (light.texture.asset_id() != rt::AssetId::invalid && rect_light_textures.size() < max_num_rect_light_textures) {
+            light.texture.load();
+            auto tex = light.texture.asset();
+            if (tex && tex->texture.desc().dim == rhi::TextureDimension::d2) {
+                data.texture_index = rect_light_textures.size();
+                data.inv_texel_size = std::max(
+                    static_cast<float>(tex->texture.desc().extent.width) / light.width,
+                    static_cast<float>(tex->texture.desc().extent.height) / light.height
+                );
+                rect_light_textures.push_back(tex.value());
+            }
+        }
         rect_lights.push_back(data);
     }
     gfx::Buffer::update_with_container<true>(rect_lights_buffer, rect_lights);
@@ -241,6 +257,16 @@ auto LightsContext::update_shader_params() -> void {
     shader_data.point_lights_shadow_transform = {&point_lights_shadow_transform_buffer, 0};
     shader_data.point_lights_shadow_map = {&point_lights_shadow_map};
     shader_data.shadow_map_sampler = {shadow_map_sampler};
+
+    for (size_t i = 0; i < max_num_rect_light_textures; i++) {
+        if (i < rect_light_textures.size()) {
+            shader_data.rect_light_textures[i] = {&rect_light_textures[i]->texture};
+            shader_data.rect_light_samplers[i] = {rect_light_textures[i]->sampler};
+        } else {
+            shader_data.rect_light_textures[i] = {nullptr};
+            shader_data.rect_light_samplers[i] = {nullptr};
+        }
+    }
 
     shader_data.ltc_matrix_lut0 = {ltc_matrix_lut0};
     shader_data.ltc_matrix_lut1 = {ltc_matrix_lut1};

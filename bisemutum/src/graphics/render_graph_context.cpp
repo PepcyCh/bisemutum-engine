@@ -43,6 +43,9 @@ auto set_shader_params_helper(
         resource_binding_ctx.temp_set_samplers[set].layout.clear();
     }
 
+    auto default_buffer = g_engine->graphics_manager()->default_buffer();
+    auto default_texture = g_engine->graphics_manager()->default_texture(DefaultTexture::black_1x1);
+    auto default_sampler = g_engine->graphics_manager()->get_sampler({});
     for (auto& param : metadata_list.params) {
         uint32_t count = 1;
         for (auto sz : param.array_sizes) { count *= sz; }
@@ -54,9 +57,13 @@ auto set_shader_params_helper(
                 for (uint32_t i = 0; i < count; i++) {
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
                     auto buffer = params.typed_data_offset<BufferParam>(cpu_size);
-                    cpu_descriptors.push_back(buffer->buffer->get_descriptor(
-                        param, buffer->offset, buffer->size
-                    ));
+                    if (buffer->buffer) {
+                        cpu_descriptors.push_back(buffer->buffer->get_descriptor(
+                            param, buffer->offset, buffer->size
+                        ));
+                    } else {
+                        cpu_descriptors.push_back(default_buffer->get_descriptor(param));
+                    }
                     cpu_size += param.size;
                 }
                 break;
@@ -64,11 +71,15 @@ auto set_shader_params_helper(
                 for (uint32_t i = 0; i < count; i++) {
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
                     auto texture = params.typed_data_offset<TextureParam>(cpu_size);
-                    cpu_descriptors.push_back(texture->texture->get_descriptor(
-                        param,
-                        texture->base_level, texture->num_levels,
-                        texture->base_layer, texture->num_layers
-                    ));
+                    if (texture->texture) {
+                        cpu_descriptors.push_back(texture->texture->get_descriptor(
+                            param,
+                            texture->base_level, texture->num_levels,
+                            texture->base_layer, texture->num_layers
+                        ));
+                    } else {
+                        cpu_descriptors.push_back(default_texture->get_descriptor(param));
+                    }
                     cpu_size += param.size;
                 }
                 break;
@@ -76,23 +87,40 @@ auto set_shader_params_helper(
                 for (uint32_t i = 0; i < count; i++) {
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
                     auto texture = params.typed_data_offset<RWTextureParam>(cpu_size);
-                    cpu_descriptors.push_back(texture->texture->get_descriptor(
-                        param,
-                        texture->mip_level, 1,
-                        texture->base_layer, texture->num_layers
-                    ));
+                    if (texture->texture) {
+                        cpu_descriptors.push_back(texture->texture->get_descriptor(
+                            param,
+                            texture->mip_level, 1,
+                            texture->base_layer, texture->num_layers
+                        ));
+                    } else {
+                        cpu_descriptors.push_back(default_texture->get_descriptor(param));
+                    }
                     cpu_size += param.size;
                 }
                 break;
             case rhi::DescriptorType::sampler:
                 for (uint32_t i = 0; i < count; i++) {
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
-                    auto sampler = params.typed_data_offset<shader::SamplerState>(cpu_size)->sampler.value();
-                    if (separate_samplers) {
-                        resource_binding_ctx.temp_set_samplers[set].cpu_descriptors.push_back(sampler->get_descriptor());
+                    auto sampler = params.typed_data_offset<shader::SamplerState>(cpu_size)->sampler;
+                    rhi::DescriptorHandle descriptor;
+                    if (sampler) {
+                        descriptor = sampler->get_descriptor();
                     } else {
-                        cpu_descriptors.push_back(sampler->get_descriptor());
+                        descriptor = default_sampler->get_descriptor();
                     }
+                    if (separate_samplers) {
+                        resource_binding_ctx.temp_set_samplers[set].cpu_descriptors.push_back(descriptor);
+                    } else {
+                        cpu_descriptors.push_back(descriptor);
+                    }
+                    cpu_size += param.size;
+                }
+                break;
+            case rhi::DescriptorType::acceleration_structure:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    // TODO - accel shader param
                     cpu_size += param.size;
                 }
                 break;

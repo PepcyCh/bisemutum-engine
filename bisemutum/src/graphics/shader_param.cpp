@@ -250,6 +250,8 @@ auto ShaderParameter::initialize(ShaderParameterMetadataList metadata_list, bool
         i = j;
     }
 
+    start_lifetime();
+
     allocated_ = true;
 }
 
@@ -292,6 +294,89 @@ auto ShaderParameter::mutable_data_offset(size_t offset) -> std::byte* {
     dirty_count_ = g_engine->graphics_manager()->num_frames_in_flight();
     last_update_frame_ = 0xffffffffu;
     return data_start_ + offset;
+}
+
+auto ShaderParameter::start_lifetime() -> void {
+    size_t cpu_size = 0;
+    for (auto& param : metadata_list_.params) {
+        uint32_t count = 1;
+        for (auto sz : param.array_sizes) { count *= sz; }
+
+        switch (param.descriptor_type) {
+            case rhi::DescriptorType::uniform_buffer:
+            case rhi::DescriptorType::read_only_storage_buffer:
+            case rhi::DescriptorType::read_write_storage_buffer:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    new (data_start_ + cpu_size) BufferParam{};
+                    cpu_size += param.size;
+                }
+                break;
+            case rhi::DescriptorType::sampled_texture:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    new (data_start_ + cpu_size) TextureParam{};
+                    cpu_size += param.size;
+                }
+                break;
+            case rhi::DescriptorType::read_write_storage_texture:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    new (data_start_ + cpu_size) RWTextureParam{};
+                    cpu_size += param.size;
+                }
+                break;
+            case rhi::DescriptorType::sampler:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    new (data_start_ + cpu_size) shader::SamplerState{};
+                    cpu_size += param.size;
+                }
+                break;
+            case rhi::DescriptorType::acceleration_structure:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    new (data_start_ + cpu_size) shader::RaytracingAccelerationStructure{};
+                    cpu_size += param.size;
+                }
+                break;
+            case rhi::DescriptorType::none:
+                for (uint32_t i = 0; i < count; i++) {
+                    cpu_size = aligned_size(cpu_size, param.cpu_alignment);
+                    if (param.type_name == "float") {
+                        new (data_start_ + cpu_size) float{};
+                    } else if (param.type_name == "float2") {
+                        new (data_start_ + cpu_size) float2{};
+                    } else if (param.type_name == "float3") {
+                        new (data_start_ + cpu_size) float3{};
+                    } else if (param.type_name == "float4") {
+                        new (data_start_ + cpu_size) float4{};
+                    } else if (param.type_name == "int") {
+                        new (data_start_ + cpu_size) int{};
+                    } else if (param.type_name == "int2") {
+                        new (data_start_ + cpu_size) int2{};
+                    } else if (param.type_name == "int3") {
+                        new (data_start_ + cpu_size) int3{};
+                    } else if (param.type_name == "int4") {
+                        new (data_start_ + cpu_size) int4{};
+                    } else if (param.type_name == "uint") {
+                        new (data_start_ + cpu_size) uint{};
+                    } else if (param.type_name == "uint2") {
+                        new (data_start_ + cpu_size) uint2{};
+                    } else if (param.type_name == "uint3") {
+                        new (data_start_ + cpu_size) uint3{};
+                    } else if (param.type_name == "uint4") {
+                        new (data_start_ + cpu_size) uint4{};
+                    } else if (param.type_name == "float4x4") {
+                        new (data_start_ + cpu_size) float4x4{};
+                    }
+                    cpu_size += param.size;
+                }
+                break;
+            default:
+                unreachable();
+        }
+    }
 }
 
 }

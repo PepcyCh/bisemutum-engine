@@ -4,6 +4,7 @@
 #include <bisemutum/graphics/resource.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/graphics/handles.hpp>
+#include <bisemutum/scene_basic/texture.hpp>
 
 namespace bi {
 
@@ -36,18 +37,19 @@ struct PointLightData final {
 // This struct must be the same as that in "light_struct.hlsl"
 struct RectLightData {
     float3 emission = float3{0.0f};
-    // TODO - support emissive texture for rect light
     int texture_index = -1;
     float3 center_position = float3{0.0f};
     uint32_t two_sided = 0;
     float3 position0 = float3{0.0f};
-    float _pad1;
+    float inv_width_sqr;
     float3 position1 = float3{0.0f};
-    float _pad2;
+    float inv_height_sqr;
     float3 position2 = float3{0.0f};
-    float _pad3;
+    float inv_texel_size = 0.0f;
     float3 position3 = float3{0.0f};
-    float _pad4;
+    float _pad1;
+    float3 normal = float3{0.0f};
+    float _pad2;
 };
 
 struct ShadowLight final {
@@ -59,6 +61,8 @@ struct ShadowMapTextures final {
     gfx::TextureHandle dir_lights_shadow_map;
     gfx::TextureHandle point_lights_shadow_map;
 };
+
+inline constexpr size_t max_num_rect_light_textures = 16;
 
 BI_SHADER_PARAMETERS_BEGIN(LightsContextShaderData)
     BI_SHADER_PARAMETER(uint, num_dir_lights)
@@ -74,6 +78,9 @@ BI_SHADER_PARAMETERS_BEGIN(LightsContextShaderData)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, point_lights_shadow_transform)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, point_lights_shadow_map)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, shadow_map_sampler)
+
+    BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, rect_light_textures, [max_num_rect_light_textures])
+    BI_SHADER_PARAMETER_SAMPLER_ARRAY(SamplerState, rect_light_samplers, [max_num_rect_light_textures])
 
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture3D, ltc_matrix_lut0)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture3D, ltc_matrix_lut1)
@@ -111,6 +118,8 @@ struct LightsContext final {
     Ptr<gfx::Sampler> shadow_map_sampler;
     uint32_t dir_light_shadow_map_resolution;
     uint32_t point_light_shadow_map_resolution;
+
+    std::vector<Ref<TextureAsset>> rect_light_textures;
 
     Ptr<gfx::Texture> ltc_matrix_lut0;
     Ptr<gfx::Texture> ltc_matrix_lut1;

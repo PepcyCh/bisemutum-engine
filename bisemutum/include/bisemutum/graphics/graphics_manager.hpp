@@ -122,6 +122,7 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto shader_compiler() -> Ref<ShaderCompiler>;
     auto render_graph() -> RenderGraph&;
 
+    auto default_buffer() -> Ref<Buffer>;
     auto default_texture(DefaultTexture index) -> Ref<Texture>;
 
     auto swapchain_format() const -> rhi::ResourceFormat;

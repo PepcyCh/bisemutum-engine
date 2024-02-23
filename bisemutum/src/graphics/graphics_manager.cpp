@@ -109,30 +109,38 @@ struct GraphicsManager::Impl final {
 
         render_graph.set_graphics_device(device.ref(), frame_data.size());
 
-        initialize_default_textures();
+        initialize_default_resources();
     }
 
-    auto initialize_default_textures() -> void {
-        auto usages = BitFlags<rhi::TextureUsage>{rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read};
+    auto initialize_default_resources() -> void {
+        default_buffer = gfx::Buffer(
+            gfx::BufferBuilder{}
+                .size(256u)
+                .usage({rhi::BufferUsage::uniform, rhi::BufferUsage::storage_read_write})
+        );
+
+        auto tex_usages = BitFlags<rhi::TextureUsage>{
+            rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write,
+        };
         default_textures[static_cast<size_t>(DefaultTexture::black_1x1)] = gfx::Texture(
             gfx::TextureBuilder{}
                 .dim_2d(rhi::ResourceFormat::rgba8_unorm, 1, 1)
-                .usage(usages)
+                .usage(tex_usages)
         );
         default_textures[static_cast<size_t>(DefaultTexture::white_1x1)] = gfx::Texture(
             gfx::TextureBuilder{}
                 .dim_2d(rhi::ResourceFormat::rgba8_unorm, 1, 1)
-                .usage(usages)
+                .usage(tex_usages)
         );
         default_textures[static_cast<size_t>(DefaultTexture::normal_1x1)] = gfx::Texture(
             gfx::TextureBuilder{}
                 .dim_2d(rhi::ResourceFormat::rgba16_sfloat, 1, 1)
-                .usage(usages)
+                .usage(tex_usages)
         );
         default_textures[static_cast<size_t>(DefaultTexture::black_1x1_cube)] = gfx::Texture(
             gfx::TextureBuilder{}
                 .dim_cube(rhi::ResourceFormat::rgba8_unorm, 1)
-                .usage(usages)
+                .usage(tex_usages)
         );
 
         constexpr size_t temp_buffer_size = 4 * 6;
@@ -892,6 +900,7 @@ struct GraphicsManager::Impl final {
     RenderGraph render_graph;
     std::unordered_map<rhi::SamplerDesc, Sampler> samplers;
 
+    Buffer default_buffer;
     std::array<Texture, num_default_textures> default_textures;
 
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;
@@ -1002,6 +1011,9 @@ auto GraphicsManager::render_graph() -> RenderGraph& {
     return impl()->render_graph;
 }
 
+auto GraphicsManager::default_buffer() -> Ref<Buffer> {
+    return impl()->default_buffer;
+}
 auto GraphicsManager::default_texture(DefaultTexture index) -> Ref<Texture> {
     return impl()->default_textures[static_cast<size_t>(index)];
 }
