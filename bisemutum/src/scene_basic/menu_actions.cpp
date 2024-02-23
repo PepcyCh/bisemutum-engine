@@ -19,6 +19,7 @@ auto register_menu_actions_scene_basic(Ref<editor::MenuManager> mgr) -> void {
 
     mgr->register_action("Asset/Import/Model (Assimp)", {}, menu_action_import_model_assimp);
     mgr->register_action("Asset/Import/Texture/HDRI", {}, menu_action_import_texture_hdri);
+    mgr->register_action("Asset/Import/Texture/2D Texture", {}, menu_action_import_texture_2d);
 }
 
 }

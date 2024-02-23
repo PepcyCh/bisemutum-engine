@@ -12,6 +12,51 @@
 
 namespace bi::editor {
 
+auto menu_action_import_texture_2d(MenuActionContext const& ctx) -> void {
+    ctx.file_dialog->choose_file(
+        "Import 2D Texture", "Choose File", ".jpg,.jpeg,.png,.bmp,.tga",
+        [](std::string choosed_path) {
+            std::filesystem::path path{choosed_path};
+            if (!std::filesystem::exists(path)) { return; }
+            rt::PhysicalFile file{path, false};
+            auto texture_path = fmt::format("/project/imported/textures/2D/{}.texture.biasset", path.stem().string());
+
+            int width, height, temp_comp;
+            auto temp_image_data = stbi_load(path.string().c_str(), &width, &height, &temp_comp, 0);
+            if (temp_image_data == nullptr) { return; }
+
+            auto num_pixels = width * height;
+            auto comp = temp_comp == 3 ? 4 : temp_comp;
+
+            auto [_, texture] = g_engine->asset_manager()->create_asset(texture_path, TextureAsset{});
+            texture->texture_data.resize(num_pixels * comp);
+            for (int i = 0; i < num_pixels; i++) {
+                for (int c = 0; c < temp_comp; c++) {
+                    texture->texture_data[comp * i + c] = static_cast<std::byte>(temp_image_data[temp_comp * i + c]);
+                }
+                if (temp_comp == 3) {
+                    texture->texture_data[comp * i + 3] = static_cast<std::byte>(255);
+                }
+            }
+
+            auto format = comp == 4 ? rhi::ResourceFormat::rgba8_unorm
+                : comp == 2 ? rhi::ResourceFormat::rg8_unorm : rhi::ResourceFormat::r8_unorm;
+            texture->texture = gfx::Texture(
+                gfx::TextureBuilder{}
+                    .dim_2d(format, width, height)
+                    .mipmap()
+                    .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write})
+            );
+            texture->sampler = g_engine->graphics_manager()->get_sampler({
+                .mag_filter = rhi::SamplerFilterMode::linear,
+                .min_filter = rhi::SamplerFilterMode::linear,
+                .mipmap_mode = rhi::SamplerMipmapMode::linear,
+            });
+            texture->update_gpu_data();
+        }
+    );
+}
+
 auto menu_action_import_texture_hdri(MenuActionContext const& ctx) -> void {
     ctx.file_dialog->choose_file(
         "Import HDRI", "Choose File", ".exr,.hdr",

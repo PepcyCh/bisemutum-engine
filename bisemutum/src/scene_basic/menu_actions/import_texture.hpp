@@ -4,6 +4,8 @@
 
 namespace bi::editor {
 
+auto menu_action_import_texture_2d(MenuActionContext const& ctx) -> void;
+
 auto menu_action_import_texture_hdri(MenuActionContext const& ctx) -> void;
 
 }
