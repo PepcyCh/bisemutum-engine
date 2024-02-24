@@ -5,6 +5,7 @@
 #include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/rhi/device.hpp>
+#include <bisemutum/graphics/buffer_suballocator.hpp>
 #include <bisemutum/graphics/shader_compiler.hpp>
 #include <bisemutum/graphics/render_graph.hpp>
 #include <bisemutum/graphics/shader.hpp>
@@ -38,7 +39,9 @@ constexpr uint32_t gpu_sampler_desc_heap_size = 2048;
 constexpr uint32_t gpu_resource_desc_heap_chunk_size = 16384;
 constexpr uint32_t gpu_sampler_desc_heap_chunk_size = 512;
 
-}
+constexpr uint32_t max_num_mesh_total_vertices = 4 * 1024 * 1024;
+
+} // namespace
 
 struct GraphicsManager::Impl final {
     ~Impl() {
@@ -110,6 +113,8 @@ struct GraphicsManager::Impl final {
         render_graph.set_graphics_device(device.ref(), frame_data.size());
 
         initialize_default_resources();
+
+        initialize_mesh_buffers_suballocator();
     }
 
     auto initialize_default_resources() -> void {
@@ -183,6 +188,37 @@ struct GraphicsManager::Impl final {
         update_texture(default_textures[static_cast<size_t>(DefaultTexture::white_1x1)]);
         temp_buffer.set_data_raw(normal.data(), normal.size() * sizeof(uint16_t));
         update_texture(default_textures[static_cast<size_t>(DefaultTexture::normal_1x1)]);
+    }
+
+    auto initialize_mesh_buffers_suballocator() -> void {
+        mesh_buffer_allocator.positions_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(float3),
+            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+        });
+        mesh_buffer_allocator.normals_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(float3),
+            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+        });
+        mesh_buffer_allocator.tangents_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(float4),
+            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+        });
+        mesh_buffer_allocator.colors_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(float3),
+            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+        });
+        mesh_buffer_allocator.texcoords_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(float2),
+            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+        });
+        mesh_buffer_allocator.texcoords2_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(float2),
+            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+        });
+        mesh_buffer_allocator.indices_buffer = BufferSuballocator(rhi::BufferDesc{
+            .size = max_num_mesh_total_vertices * sizeof(uint32_t) * 3,
+            .usages = {rhi::BufferUsage::index, rhi::BufferUsage::storage_read},
+        });
     }
 
     auto wait_idle() -> void {
@@ -397,15 +433,72 @@ struct GraphicsManager::Impl final {
     auto update_mesh_buffers(CRef<MeshData> mesh) -> void {
         auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
         if (mesh_buffers.version < mesh->buffer_version_) {
-            mesh_buffers.positions_buffer.reset();
+            auto update_buffer = [this](
+                BufferSuballocator& allocator, SuballocatedBuffer& dst_buffer, auto const& container,
+                BitFlags<rhi::ResourceAccessType> access = rhi::ResourceAccessType::vertex_buffer_read
+            ) {
+                auto desired_size = container.size() * sizeof(container[0]);
+                if (desired_size == 0) {
+                    if (dst_buffer.allocator()) {
+                        allocator.free(dst_buffer);
+                        dst_buffer = {};
+                    }
+                    return;
+                }
+                if (dst_buffer.size() < desired_size || dst_buffer.size() > 2 * desired_size) {
+                    if (dst_buffer.allocator()) {
+                        allocator.free(dst_buffer);
+                    }
+                    dst_buffer = allocator.allocate(desired_size, sizeof(float)).value();
+                }
 
-            Buffer::update_with_container(mesh_buffers.positions_buffer, mesh->positions_, rhi::BufferUsage::vertex);
-            Buffer::update_with_container(mesh_buffers.normals_buffer, mesh->normals_, rhi::BufferUsage::vertex);
-            Buffer::update_with_container(mesh_buffers.tangents_buffer, mesh->tangents_, rhi::BufferUsage::vertex);
-            Buffer::update_with_container(mesh_buffers.colors_buffer, mesh->colors_, rhi::BufferUsage::vertex);
-            Buffer::update_with_container(mesh_buffers.texcoords_buffer, mesh->texcoords_, rhi::BufferUsage::vertex);
-            Buffer::update_with_container(mesh_buffers.texcoords2_buffer, mesh->texcoords2_, rhi::BufferUsage::vertex);
-            Buffer::update_with_container(mesh_buffers.indices_buffer, mesh->indices_, rhi::BufferUsage::index);
+                if (desired_size != 0) {
+                    auto temp_buffer = Buffer(rhi::BufferDesc{
+                        .size = desired_size,
+                        .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
+                    });
+                    temp_buffer.set_data(container.data(), container.size());
+                    execute_in_this_frame(
+                        [
+                            staging_buffer = temp_buffer.rhi_buffer(),
+                            dst_buffer, access
+                        ](Ref<rhi::CommandEncoder> cmd) {
+                            rhi::BufferBarrier before_barrier{
+                                .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
+                                .src_access_type = access,
+                                .dst_access_type = rhi::ResourceAccessType::transfer_write,
+                            };
+                            cmd->resource_barriers({before_barrier}, {});
+                            cmd->copy_buffer_to_buffer(
+                                staging_buffer, dst_buffer.allocator()->base_buffer().rhi_buffer(),
+                                rhi::BufferCopyDesc{
+                                    .src_offset = 0,
+                                    .dst_offset = dst_buffer.offset(),
+                                    .length = dst_buffer.size(),
+                                }
+                            );
+                            rhi::BufferBarrier after_barrier{
+                                .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
+                                .src_access_type = rhi::ResourceAccessType::transfer_write,
+                                .dst_access_type = access,
+                            };
+                            cmd->resource_barriers({after_barrier}, {});
+                        }
+                    );
+                }
+            };
+
+            update_buffer(mesh_buffer_allocator.positions_buffer, mesh_buffers.positions_buffer, mesh->positions_);
+            update_buffer(mesh_buffer_allocator.normals_buffer, mesh_buffers.normals_buffer, mesh->normals_);
+            update_buffer(mesh_buffer_allocator.tangents_buffer, mesh_buffers.tangents_buffer, mesh->tangents_);
+            update_buffer(mesh_buffer_allocator.colors_buffer, mesh_buffers.colors_buffer, mesh->colors_);
+            update_buffer(mesh_buffer_allocator.texcoords_buffer, mesh_buffers.texcoords_buffer, mesh->texcoords_);
+            update_buffer(mesh_buffer_allocator.texcoords2_buffer, mesh_buffers.texcoords2_buffer, mesh->texcoords2_);
+
+            update_buffer(
+                mesh_buffer_allocator.indices_buffer, mesh_buffers.indices_buffer, mesh->indices_,
+                rhi::ResourceAccessType::index_buffer_read
+            );
 
             mesh_buffers.version = mesh->buffer_version_;
         }
@@ -417,30 +510,41 @@ struct GraphicsManager::Impl final {
         auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
 
         std::vector<Ref<rhi::Buffer>> vertex_buffers;
+        std::vector<uint64_t> vertex_buffers_offset;
         if (!mesh->positions_.empty()) {
-            vertex_buffers.push_back(mesh_buffers.positions_buffer.rhi_buffer());
+            vertex_buffers.push_back(mesh_buffers.positions_buffer.allocator()->base_buffer().rhi_buffer());
+            vertex_buffers_offset.push_back(mesh_buffers.positions_buffer.offset());
         }
         if (!mesh->normals_.empty()) {
-            vertex_buffers.push_back(mesh_buffers.normals_buffer.rhi_buffer());
+            vertex_buffers.push_back(mesh_buffers.normals_buffer.allocator()->base_buffer().rhi_buffer());
+            vertex_buffers_offset.push_back(mesh_buffers.normals_buffer.offset());
         }
         if (!mesh->tangents_.empty()) {
-            vertex_buffers.push_back(mesh_buffers.tangents_buffer.rhi_buffer());
+            vertex_buffers.push_back(mesh_buffers.tangents_buffer.allocator()->base_buffer().rhi_buffer());
+            vertex_buffers_offset.push_back(mesh_buffers.tangents_buffer.offset());
         }
         if (!mesh->colors_.empty()) {
-            vertex_buffers.push_back(mesh_buffers.colors_buffer.rhi_buffer());
+            vertex_buffers.push_back(mesh_buffers.colors_buffer.allocator()->base_buffer().rhi_buffer());
+            vertex_buffers_offset.push_back(mesh_buffers.colors_buffer.offset());
         }
         if (!mesh->texcoords_.empty()) {
-            vertex_buffers.push_back(mesh_buffers.texcoords_buffer.rhi_buffer());
+            vertex_buffers.push_back(mesh_buffers.texcoords_buffer.allocator()->base_buffer().rhi_buffer());
+            vertex_buffers_offset.push_back(mesh_buffers.texcoords_buffer.offset());
         }
         if (!mesh->texcoords2_.empty()) {
-            vertex_buffers.push_back(mesh_buffers.texcoords2_buffer.rhi_buffer());
+            vertex_buffers.push_back(mesh_buffers.texcoords2_buffer.allocator()->base_buffer().rhi_buffer());
+            vertex_buffers_offset.push_back(mesh_buffers.texcoords2_buffer.offset());
         }
         if (!vertex_buffers.empty()) {
-            cmd_encoder->set_vertex_buffer(vertex_buffers);
+            cmd_encoder->set_vertex_buffer(vertex_buffers, vertex_buffers_offset);
         }
 
         if (!mesh->indices_.empty()) {
-            cmd_encoder->set_index_buffer(mesh_buffers.indices_buffer.rhi_buffer(), 0, rhi::IndexType::uint32);
+            cmd_encoder->set_index_buffer(
+                mesh_buffers.indices_buffer.allocator()->base_buffer().rhi_buffer(),
+                mesh_buffers.indices_buffer.offset(),
+                rhi::IndexType::uint32
+            );
         }
     }
     auto draw_drawable(
@@ -907,15 +1011,25 @@ struct GraphicsManager::Impl final {
     StringHashMap<Box<rhi::GraphicsPipeline>> graphics_pipelines;
     StringHashMap<Box<rhi::ComputePipeline>> compute_pipelines;
 
+    struct MeshBuffersSuballocator final {
+        BufferSuballocator positions_buffer;
+        BufferSuballocator normals_buffer;
+        BufferSuballocator tangents_buffer;
+        BufferSuballocator colors_buffer;
+        BufferSuballocator texcoords_buffer;
+        BufferSuballocator texcoords2_buffer;
+        BufferSuballocator indices_buffer;
+    } mesh_buffer_allocator;
+
     struct MeshBuffers final {
         uint64_t version = 0;
-        Buffer positions_buffer;
-        Buffer normals_buffer;
-        Buffer tangents_buffer;
-        Buffer colors_buffer;
-        Buffer texcoords_buffer;
-        Buffer texcoords2_buffer;
-        Buffer indices_buffer;
+        SuballocatedBuffer positions_buffer;
+        SuballocatedBuffer normals_buffer;
+        SuballocatedBuffer tangents_buffer;
+        SuballocatedBuffer colors_buffer;
+        SuballocatedBuffer texcoords_buffer;
+        SuballocatedBuffer texcoords2_buffer;
+        SuballocatedBuffer indices_buffer;
     };
     std::unordered_map<uint64_t, MeshBuffers> meshes_buffers;
 
