@@ -37,6 +37,7 @@ enum class BufferUsage : uint8_t {
     storage_read_write = 0x10 | 0x8,
     indirect = 0x20,
     acceleration_structure = 0x40,
+    acceleration_structure_build = 0x80,
 };
 
 enum class BufferMemoryProperty : uint8_t {

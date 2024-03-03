@@ -35,6 +35,7 @@ BI_SREFL(
 struct Buffer;
 struct Texture;
 struct AccelerationStructure;
+struct GeometryAccelerationStructure;
 struct Sampler;
 
 struct ShaderCompiler;
@@ -149,6 +150,8 @@ private:
 
     friend RenderGraph;
     auto update_mesh_buffers(CRef<MeshData> mesh) -> void;
+    auto require_blas_build_desc(CRef<Drawable> drawable)
+        -> std::pair<Option<rhi::AccelerationStructureGeometryBuildInput>, Ref<GeometryAccelerationStructure>>;
 
     friend GraphicsPassContext;
     auto bind_mesh_buffers(

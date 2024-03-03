@@ -856,9 +856,9 @@ auto DeviceVulkan::get_acceleration_structure_memory_size(
         &vk_build_info, primitive_counts.data(), &size_info
     );
     return AccelerationStructureMemoryInfo{
-        .acceleration_structure_size = size_info.accelerationStructureSize,
-        .build_scratch_size = size_info.buildScratchSize,
-        .update_scratch_size = size_info.updateScratchSize,
+        .acceleration_structure_size = aligned_size<uint32_t>(size_info.accelerationStructureSize, 256),
+        .build_scratch_size = aligned_size<uint32_t>(size_info.buildScratchSize, 256),
+        .update_scratch_size = aligned_size<uint32_t>(size_info.updateScratchSize, 256),
     };
 }
 

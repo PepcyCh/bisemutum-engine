@@ -1,9 +1,9 @@
 #pragma once
 
+#include <vector>
 #include <variant>
 
 #include "../prelude/ref.hpp"
-#include "../prelude/span.hpp"
 #include "resource.hpp"
 
 namespace bi::rhi {
@@ -79,9 +79,9 @@ struct AccelerationStructureBuildEmitData final {
 };
 
 struct AccelerationStructureGeometryBuildInput final {
-    BitFlags<AccelerationStructureGeometryFlag> flags = {};
+    BitFlags<AccelerationStructureBuildFlag> flags = {};
     bool is_update = false;
-    CSpan<AccelerationStructureGeometryDesc> geometries;
+    std::vector<AccelerationStructureGeometryDesc> geometries;
 };
 struct AccelerationStructureGeometryBuildDesc final {
     AccelerationStructureGeometryBuildInput build_input;
@@ -89,10 +89,10 @@ struct AccelerationStructureGeometryBuildDesc final {
     uint64_t scratch_buffer_offset = 0;
     CPtr<AccelerationStructure> src_acceleration_structure = nullptr;
     Ref<AccelerationStructure> dst_acceleration_structure;
-    Span<AccelerationStructureBuildEmitData> emit_data;
+    std::vector<AccelerationStructureBuildEmitData> emit_data;
 };
 struct AccelerationStructureInstanceBuildInput final {
-    BitFlags<AccelerationStructureGeometryFlag> flags = {};
+    BitFlags<AccelerationStructureBuildFlag> flags = {};
     bool is_update = false;
     uint32_t num_instances = 0;
     CRef<Buffer> instances_buffer;
@@ -104,7 +104,7 @@ struct AccelerationStructureInstanceBuildDesc final {
     uint64_t scratch_buffer_offset = 0;
     CPtr<AccelerationStructure> src_acceleration_structure = nullptr;
     Ref<AccelerationStructure> dst_acceleration_structure;
-    Span<AccelerationStructureBuildEmitData> emit_data;
+    std::vector<AccelerationStructureBuildEmitData> emit_data;
 };
 
 enum class AccelerationStructureType : uint8_t {

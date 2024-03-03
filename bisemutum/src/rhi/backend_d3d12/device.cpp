@@ -471,9 +471,15 @@ auto DeviceD3D12::get_acceleration_structure_memory_size(
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild_info{};
     device_->GetRaytracingAccelerationStructurePrebuildInfo(&dx_build_info, &prebuild_info);
     return AccelerationStructureMemoryInfo{
-        .acceleration_structure_size = prebuild_info.ResultDataMaxSizeInBytes,
-        .build_scratch_size = prebuild_info.ScratchDataSizeInBytes,
-        .update_scratch_size = prebuild_info.UpdateScratchDataSizeInBytes,
+        .acceleration_structure_size = aligned_size<uint32_t>(
+            prebuild_info.ResultDataMaxSizeInBytes, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT
+        ),
+        .build_scratch_size = aligned_size<uint32_t>(
+            prebuild_info.ScratchDataSizeInBytes, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT
+        ),
+        .update_scratch_size = aligned_size<uint32_t>(
+            prebuild_info.UpdateScratchDataSizeInBytes, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT
+        ),
     };
 }
 

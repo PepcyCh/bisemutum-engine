@@ -33,8 +33,22 @@ struct AccelerationStructure final {
     auto get_descriptor() -> rhi::DescriptorHandle;
 
 private:
+    auto create_buffer(uint32_t size) -> void;
+
     Box<rhi::AccelerationStructure> tlas_;
+    Buffer tlas_buffer_;
     rhi::DescriptorHandle cpu_descriptor_{};
+};
+
+struct GeometryAccelerationStructure final {
+private:
+    friend AccelerationStructure;
+
+    auto create_buffer(uint32_t size) -> void;
+    auto compact_buffer(uint32_t size) -> Box<rhi::AccelerationStructure>;
+
+    Box<rhi::AccelerationStructure> blas_;
+    Buffer blas_buffer_;
 };
 
 }

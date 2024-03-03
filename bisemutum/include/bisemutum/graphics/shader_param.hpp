@@ -13,6 +13,8 @@
 
 namespace bi::gfx {
 
+struct AccelerationStructure;
+
 struct BufferParam final {
     Ptr<Buffer> buffer;
     uint64_t offset = 0;
@@ -109,8 +111,7 @@ template <RWTextureElement T>
 struct RWTexture2DArray final {};
 
 struct RaytracingAccelerationStructure final {
-    // TODO - replace this with ptr of accel
-    void* ptr;
+    Ptr<AccelerationStructure> accel;
 };
 
 struct SamplerState final {

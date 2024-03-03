@@ -1,6 +1,7 @@
 #include <bisemutum/graphics/render_graph_context.hpp>
 
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/render_graph.hpp>
 #include <bisemutum/rhi/device.hpp>
@@ -120,7 +121,9 @@ auto set_shader_params_helper(
             case rhi::DescriptorType::acceleration_structure:
                 for (uint32_t i = 0; i < count; i++) {
                     cpu_size = aligned_size(cpu_size, param.cpu_alignment);
-                    // TODO - accel shader param
+                    auto accel = params.typed_data_offset<shader::RaytracingAccelerationStructure>(cpu_size)->accel;
+                    BI_ASSERT(accel);
+                    cpu_descriptors.push_back(accel->get_descriptor());
                     cpu_size += param.size;
                 }
                 break;

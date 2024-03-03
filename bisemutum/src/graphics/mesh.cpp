@@ -45,9 +45,10 @@ auto MeshData::mutable_indices() -> std::vector<uint32_t>& {
     return indices_;
 }
 
-auto MeshData::set_submehes(std::vector<SubmeshDesc> submehes) -> void {
-    submehes = std::move(submehes);
-    for (uint32_t i = 0; i < static_cast<uint32_t>(submehes.size()); i++) {
+auto MeshData::set_submehes(std::vector<SubmeshDesc> submeshes) -> void {
+    submeshes_ = std::move(submeshes);
+    submesh_versions_.resize(submeshes_.size());
+    for (uint32_t i = 0; i < static_cast<uint32_t>(submeshes_.size()); i++) {
         set_submesh_dirty(i);
     }
 }
@@ -55,6 +56,7 @@ auto MeshData::set_submehes(std::vector<SubmeshDesc> submehes) -> void {
 auto MeshData::set_submesh(uint32_t index, SubmeshDesc const& submeh) -> void {
     if (index >= submeshes_.size()) {
         submeshes_.resize(index + 1);
+        submesh_versions_.resize(index + 1);
     }
     submeshes_[index] = submeh;
     set_submesh_dirty(index);
@@ -108,6 +110,7 @@ auto MeshData::set_geometry_dirty() -> void {
 auto MeshData::set_submesh_dirty(uint32_t index) -> void {
     if (index < submesh_bboxes_.size()) {
         submesh_bboxes_[index].reset();
+        ++submesh_versions_[index];
     }
 }
 

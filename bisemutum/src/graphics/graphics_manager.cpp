@@ -107,6 +107,7 @@ struct GraphicsManager::Impl final {
             fd.signal_semaphore = device->create_semaphore();
             fd.fence = device->create_fence();
             fd.graphics_cmd_pool = device->create_command_pool(cmd_pool_desc);
+            fd.immediate_cmd_pool = device->create_command_pool(cmd_pool_desc);
         }
         immediate_execution_fence = device->create_fence();
 
@@ -375,7 +376,8 @@ struct GraphicsManager::Impl final {
     }
     auto execute_immediately(std::function<auto(Ref<rhi::CommandEncoder>) -> void>&& func) -> void {
         auto& fd = curr_frame_data();
-        auto cmd_encoder = fd.graphics_cmd_pool->get_command_encoder();
+        fd.immediate_cmd_pool->reset();
+        auto cmd_encoder = fd.immediate_cmd_pool->get_command_encoder();
         set_descriptor_heaps(cmd_encoder);
         func(cmd_encoder.ref());
         graphics_queue->submit_command_buffer({cmd_encoder->finish()}, {}, {}, immediate_execution_fence.ref());
@@ -430,77 +432,119 @@ struct GraphicsManager::Impl final {
         cpu_sampler_descriptor_allocator->free(descriptor);
     }
 
-    auto update_mesh_buffers(CRef<MeshData> mesh) -> void {
-        auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
-        if (mesh_buffers.version < mesh->buffer_version_) {
-            auto update_buffer = [this](
-                BufferSuballocator& allocator, SuballocatedBuffer& dst_buffer, auto const& container,
-                BitFlags<rhi::ResourceAccessType> access = rhi::ResourceAccessType::vertex_buffer_read
-            ) {
-                auto desired_size = container.size() * sizeof(container[0]);
-                if (desired_size == 0) {
-                    if (dst_buffer.allocator()) {
-                        allocator.free(dst_buffer);
-                        dst_buffer = {};
-                    }
-                    return;
-                }
-                if (dst_buffer.size() < desired_size || dst_buffer.size() > 2 * desired_size) {
-                    if (dst_buffer.allocator()) {
-                        allocator.free(dst_buffer);
-                    }
-                    dst_buffer = allocator.allocate(desired_size, sizeof(float)).value();
-                }
+    auto update_mesh_buffer(
+        BufferSuballocator& allocator, SuballocatedBuffer& dst_buffer, auto const& container,
+        BitFlags<rhi::ResourceAccessType> access = rhi::ResourceAccessType::vertex_buffer_read
+    ) -> void {
+        auto desired_size = container.size() * sizeof(container[0]);
+        if (desired_size == 0) {
+            if (dst_buffer.allocator()) {
+                allocator.free(dst_buffer);
+                dst_buffer = {};
+            }
+            return;
+        }
+        if (dst_buffer.size() < desired_size || dst_buffer.size() > 2 * desired_size) {
+            if (dst_buffer.allocator()) {
+                allocator.free(dst_buffer);
+            }
+            dst_buffer = allocator.allocate(desired_size, sizeof(float)).value();
+        }
 
-                if (desired_size != 0) {
-                    auto temp_buffer = Buffer(rhi::BufferDesc{
-                        .size = desired_size,
-                        .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
-                    });
-                    temp_buffer.set_data(container.data(), container.size());
-                    execute_in_this_frame(
-                        [
-                            staging_buffer = temp_buffer.rhi_buffer(),
-                            dst_buffer, access
-                        ](Ref<rhi::CommandEncoder> cmd) {
-                            rhi::BufferBarrier before_barrier{
-                                .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
-                                .src_access_type = access,
-                                .dst_access_type = rhi::ResourceAccessType::transfer_write,
-                            };
-                            cmd->resource_barriers({before_barrier}, {});
-                            cmd->copy_buffer_to_buffer(
-                                staging_buffer, dst_buffer.allocator()->base_buffer().rhi_buffer(),
-                                rhi::BufferCopyDesc{
-                                    .src_offset = 0,
-                                    .dst_offset = dst_buffer.offset(),
-                                    .length = dst_buffer.size(),
-                                }
-                            );
-                            rhi::BufferBarrier after_barrier{
-                                .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
-                                .src_access_type = rhi::ResourceAccessType::transfer_write,
-                                .dst_access_type = access,
-                            };
-                            cmd->resource_barriers({after_barrier}, {});
+        if (desired_size != 0) {
+            auto temp_buffer = Buffer(rhi::BufferDesc{
+                .size = desired_size,
+                .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
+            });
+            temp_buffer.set_data(container.data(), container.size());
+            execute_in_this_frame(
+                [&temp_buffer, dst_buffer, access](Ref<rhi::CommandEncoder> cmd) {
+                    rhi::BufferBarrier before_barrier{
+                        .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
+                        .src_access_type = access,
+                        .dst_access_type = rhi::ResourceAccessType::transfer_write,
+                    };
+                    cmd->resource_barriers({before_barrier}, {});
+                    cmd->copy_buffer_to_buffer(
+                        temp_buffer.rhi_buffer(),
+                        dst_buffer.allocator()->base_buffer().rhi_buffer(),
+                        rhi::BufferCopyDesc{
+                            .src_offset = 0,
+                            .dst_offset = dst_buffer.offset(),
+                            .length = dst_buffer.size(),
                         }
                     );
+                    rhi::BufferBarrier after_barrier{
+                        .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
+                        .src_access_type = rhi::ResourceAccessType::transfer_write,
+                        .dst_access_type = access,
+                    };
+                    cmd->resource_barriers({after_barrier}, {});
                 }
-            };
+            );
+        }
+    };
+    auto update_mesh_geometry_buffers(CRef<MeshData> mesh) -> void {
+        auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
+        if (mesh_buffers.geometry_version < mesh->geometry_version_) {
+            update_mesh_buffer(mesh_buffer_allocator.positions_buffer, mesh_buffers.positions_buffer, mesh->positions_);
 
-            update_buffer(mesh_buffer_allocator.positions_buffer, mesh_buffers.positions_buffer, mesh->positions_);
-            update_buffer(mesh_buffer_allocator.normals_buffer, mesh_buffers.normals_buffer, mesh->normals_);
-            update_buffer(mesh_buffer_allocator.tangents_buffer, mesh_buffers.tangents_buffer, mesh->tangents_);
-            update_buffer(mesh_buffer_allocator.colors_buffer, mesh_buffers.colors_buffer, mesh->colors_);
-            update_buffer(mesh_buffer_allocator.texcoords_buffer, mesh_buffers.texcoords_buffer, mesh->texcoords_);
-            update_buffer(mesh_buffer_allocator.texcoords2_buffer, mesh_buffers.texcoords2_buffer, mesh->texcoords2_);
-
-            update_buffer(
+            update_mesh_buffer(
                 mesh_buffer_allocator.indices_buffer, mesh_buffers.indices_buffer, mesh->indices_,
                 rhi::ResourceAccessType::index_buffer_read
             );
 
+            mesh_buffers.geometry_version = mesh->buffer_version_;
+        }
+    }
+    auto update_mesh_buffers(CRef<MeshData> mesh) -> void {
+        update_mesh_geometry_buffers(mesh);
+
+        auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
+        if (mesh_buffers.version < mesh->buffer_version_) {
+            update_mesh_buffer(mesh_buffer_allocator.normals_buffer, mesh_buffers.normals_buffer, mesh->normals_);
+            update_mesh_buffer(mesh_buffer_allocator.tangents_buffer, mesh_buffers.tangents_buffer, mesh->tangents_);
+            update_mesh_buffer(mesh_buffer_allocator.colors_buffer, mesh_buffers.colors_buffer, mesh->colors_);
+            update_mesh_buffer(mesh_buffer_allocator.texcoords_buffer, mesh_buffers.texcoords_buffer, mesh->texcoords_);
+            update_mesh_buffer(mesh_buffer_allocator.texcoords2_buffer, mesh_buffers.texcoords2_buffer, mesh->texcoords2_);
+
             mesh_buffers.version = mesh->buffer_version_;
+        }
+    }
+
+    auto require_blas_build_desc(CRef<Drawable> drawable)
+        -> std::pair<Option<rhi::AccelerationStructureGeometryBuildInput>, Ref<GeometryAccelerationStructure>>
+    {
+        auto& mesh_data = drawable->mesh->get_mesh_data();
+        update_mesh_geometry_buffers(mesh_data);
+
+        auto& mesh_blas = meshes_blas.try_emplace(std::make_pair(mesh_data.id_, drawable->submesh_index)).first->second;
+        if (mesh_blas.submesh_version < mesh_data.submesh_versions_[drawable->submesh_index]) {
+            mesh_blas.submesh_version = mesh_data.submesh_versions_[drawable->submesh_index];
+            auto& mesh_buffers = meshes_buffers.at(mesh_data.id_);
+
+            auto& submesh_desc = drawable->submesh_desc();
+            rhi::AccelerationStructureGeometryDesc geo_desc{
+                .geometry = rhi::AccelerationStructureTriangleDesc{
+                    .vertex_format = rhi::ResourceFormat::rgb32_sfloat,
+                    .index_type = rhi::IndexType::uint32,
+                    .num_vertices = mesh_data.num_vertices(),
+                    .num_triangles = submesh_desc.num_indices / 3,
+                    .vertex_stride = sizeof(float3),
+                    .vertex_buffer = mesh_buffers.positions_buffer.allocator()->base_buffer().rhi_buffer(),
+                    .index_buffer = mesh_buffers.indices_buffer.allocator()->base_buffer().rhi_buffer(),
+                    .vertex_buffer_offset = mesh_buffers.positions_buffer.offset() + submesh_desc.base_vertex * sizeof(float3),
+                    .index_buffer_offset = mesh_buffers.indices_buffer.offset() + submesh_desc.index_offset * sizeof(uint32_t),
+                },
+            };
+            rhi::AccelerationStructureGeometryBuildInput build_input{
+                .flags = rhi::AccelerationStructureBuildFlag::fast_trace,
+                .is_update = false,
+                .geometries = {std::move(geo_desc)},
+            };
+            return {build_input, mesh_blas.blas};
+        } else {
+            return {{}, mesh_blas.blas};
         }
     }
 
@@ -992,6 +1036,7 @@ struct GraphicsManager::Impl final {
         Box<rhi::Fence> fence;
 
         Box<rhi::CommandPool> graphics_cmd_pool;
+        Box<rhi::CommandPool> immediate_cmd_pool;
         std::unordered_map<std::vector<rhi::DescriptorHandle>, rhi::DescriptorHandle> cached_descriptors;
     };
     uint32_t frame_index = 0;
@@ -1023,6 +1068,7 @@ struct GraphicsManager::Impl final {
 
     struct MeshBuffers final {
         uint64_t version = 0;
+        uint64_t geometry_version = 0;
         SuballocatedBuffer positions_buffer;
         SuballocatedBuffer normals_buffer;
         SuballocatedBuffer tangents_buffer;
@@ -1034,10 +1080,10 @@ struct GraphicsManager::Impl final {
     std::unordered_map<uint64_t, MeshBuffers> meshes_buffers;
 
     struct MeshBlas final {
-        uint64_t version = 0;
-        Box<rhi::AccelerationStructure> blas;
+        uint64_t submesh_version = 0;
+        GeometryAccelerationStructure blas;
     };
-    std::unordered_map<uint64_t, MeshBlas> meshes_blas;
+    std::unordered_map<std::pair<uint64_t, uint32_t>, MeshBlas> meshes_blas;
 };
 
 GraphicsManager::GraphicsManager() = default;
@@ -1155,6 +1201,12 @@ auto GraphicsManager::free_cpu_sampler_descriptor(rhi::DescriptorHandle descript
 
 auto GraphicsManager::update_mesh_buffers(CRef<MeshData> mesh) -> void {
     impl()->update_mesh_buffers(mesh);
+}
+
+auto GraphicsManager::require_blas_build_desc(CRef<Drawable> drawable)
+    -> std::pair<Option<rhi::AccelerationStructureGeometryBuildInput>, Ref<GeometryAccelerationStructure>>
+{
+    return impl()->require_blas_build_desc(drawable);
 }
 
 auto GraphicsManager::bind_mesh_buffers(

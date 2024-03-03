@@ -30,6 +30,9 @@ auto to_dx_resource_flags(BitFlags<BufferUsage> usage) -> D3D12_RESOURCE_FLAGS {
     if (usage.contains_any(BufferUsage::storage_read_write)) {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
+    if (usage.contains_any(BufferUsage::acceleration_structure)) {
+        flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
     return flags;
 }
 

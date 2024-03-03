@@ -54,8 +54,8 @@ struct MeshData final {
     auto mutable_indices() -> std::vector<uint32_t>&;
 
     auto num_submehes() const -> uint32_t { return static_cast<uint32_t>(submeshes_.size()); }
-    auto set_submehes(std::vector<SubmeshDesc> submehes) -> void;
-    auto set_submesh(uint32_t index, SubmeshDesc const& submeh) -> void;
+    auto set_submehes(std::vector<SubmeshDesc> submeshes) -> void;
+    auto set_submesh(uint32_t index, SubmeshDesc const& submesh) -> void;
     auto get_submesh(uint32_t index) const -> SubmeshDesc const& { return submeshes_[index]; }
 
     auto bounding_box() const -> BoundingBox const&;
@@ -88,6 +88,7 @@ private:
     const uint64_t id_;
     uint64_t buffer_version_ = 1;
     uint64_t geometry_version_ = 1;
+    std::vector<uint64_t> submesh_versions_;
 };
 
 BI_TRAIT_BEGIN(IMesh, move)

@@ -39,6 +39,9 @@ auto to_vk_buffer_usage(BitFlags<BufferUsage> usage) -> VkBufferUsageFlags{
     if (usage.contains_any(BufferUsage::acceleration_structure)) {
         vk_usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     }
+    if (usage.contains_any(BufferUsage::acceleration_structure_build)) {
+        vk_usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+    }
     return vk_usage;
 }
 

@@ -146,6 +146,19 @@ struct RenderGraph::Impl final {
         auto create(RenderGraph::Impl& rg) -> void override;
         auto destroy(RenderGraph::Impl& rg) -> void override;
     };
+    struct AccelerationStructureNode final : Node {
+        AccelerationStructureDesc desc;
+        AccelerationStructure accel;
+        bool imported = false;
+
+        Ptr<AccelerationStructureNode> prev_alias = nullptr;
+        Ptr<AccelerationStructureNode> next_alias = nullptr;
+
+        auto is_resource() const -> bool override { return true; }
+
+        auto create(RenderGraph::Impl& rg) -> void override;
+        auto destroy(RenderGraph::Impl& rg) -> void override;
+    };
     struct AliasPassNode final : Node {};
     struct GraphicsPassNode final : Node {
         GraphicsPassBuilder builder;
@@ -248,8 +261,12 @@ struct RenderGraph::Impl final {
     }
 
     auto add_acceleration_structure(AccelerationStructureDesc const& desc) -> AccelerationStructureHandle {
-        // TODO
-        return AccelerationStructureHandle::invalid;
+        auto node = Box<AccelerationStructureNode>::make();
+        node->index = graph_nodes_.size();
+        node->desc = desc;
+        graph_nodes_.push_back(std::move(node));
+
+        return static_cast<AccelerationStructureHandle>(graph_nodes_.size() - 1);
     }
 
     template <typename HandleT, typename NodeT>
@@ -533,8 +550,7 @@ struct RenderGraph::Impl final {
     }
 
     auto acceleration_structure(AccelerationStructureHandle handle) const -> Ref<AccelerationStructure> {
-        // TODO
-        unreachable();
+        return graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<AccelerationStructureNode>()->accel;
     }
 
     auto set_graphics_device(Ref<rhi::Device> device, uint32_t num_frames) -> void {
@@ -735,6 +751,15 @@ auto RenderGraph::Impl::TextureNode::destroy(RenderGraph::Impl& rg) -> void {
         rg.remove_texture(texture.value(), desc);
         texture.reset();
     }
+}
+
+auto RenderGraph::Impl::AccelerationStructureNode::create(RenderGraph::Impl& rg) -> void {
+    if (!accel.has_value()) {
+        accel = AccelerationStructure(desc);
+    }
+}
+auto RenderGraph::Impl::AccelerationStructureNode::destroy(RenderGraph::Impl& rg) -> void {
+    accel.reset();
 }
 
 auto get_shader_barriers(
