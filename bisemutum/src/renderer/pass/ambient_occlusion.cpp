@@ -3,6 +3,7 @@
 #include <bisemutum/prelude/misc.hpp>
 #include <bisemutum/prelude/math.hpp>
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 
@@ -21,6 +22,25 @@ BI_SHADER_PARAMETERS_BEGIN(SSAOPassParams)
 BI_SHADER_PARAMETERS_END(SSAOPassParams)
 
 struct SSAOPassData final {
+    gfx::TextureHandle normal_roughness;
+    gfx::TextureHandle depth;
+
+    gfx::TextureHandle output;
+};
+
+BI_SHADER_PARAMETERS_BEGIN(RTAOPassParams)
+    BI_SHADER_PARAMETER(float, ao_range)
+    BI_SHADER_PARAMETER(float, ao_strength)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER_SRV_ACCEL(RaytracingAccelerationStructure, scene_accel)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, ao_tex, ao_tex_format)
+BI_SHADER_PARAMETERS_END(RTAOPassParams)
+
+struct RTAOPassData final {
+    gfx::AccelerationStructureHandle scene_accel;
     gfx::TextureHandle normal_roughness;
     gfx::TextureHandle depth;
 
@@ -79,6 +99,13 @@ AmbientOcclusionPass::AmbientOcclusionPass() {
     screen_space_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     screen_space_shader_.depth_test = false;
 
+    if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
+        raytracing_shader_params_.initialize<RTAOPassParams>();
+        raytracing_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/ambient_occlusion_rt.hlsl";
+        raytracing_shader_.source_entry = "ambient_occlusion_rt_cs";
+        raytracing_shader_.set_shader_params_struct<RTAOPassParams>();
+    }
+
     temporal_accumulate_shader_params_.initialize<TemporalAccumulatePassParams>();
     temporal_accumulate_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/temporal_accumulate.hlsl";
     temporal_accumulate_shader_.source_entry = "ao_temporal_accumulate_cs";
@@ -110,6 +137,16 @@ auto AmbientOcclusionPass::render(
     BasicRenderer::AmbientOcclusionSettings const& settings
 ) -> gfx::TextureHandle {
     gfx::TextureHandle ao_tex;
+
+    auto mode = settings.mode;
+    if (
+        mode == BasicRenderer::AmbientOcclusionSettings::Mode::raytraced
+        && input.scene_accel == gfx::AccelerationStructureHandle::invalid
+    ) {
+        log::warn("general", "Hardware raytracing is not supported but is used.");
+        mode = BasicRenderer::AmbientOcclusionSettings::Mode::screen_space;
+    }
+
     switch (settings.mode) {
         case BasicRenderer::AmbientOcclusionSettings::Mode::screen_space:
             ao_tex = render_screen_space(camera, rg, input, settings);
@@ -168,8 +205,43 @@ auto AmbientOcclusionPass::render_raytraced(
     gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
     BasicRenderer::AmbientOcclusionSettings const& settings
 ) -> gfx::TextureHandle {
-    // TODO - RTAO
-    return gfx::TextureHandle::invalid;
+    auto width = camera.target_texture().desc().extent.width;
+    auto height = camera.target_texture().desc().extent.height;
+
+    auto [builder, pass_data] = rg.add_compute_pass<RTAOPassData>("RTAO Pass");
+
+    pass_data->scene_accel = builder.read(input.scene_accel);
+    pass_data->normal_roughness = builder.read(input.normal_roughness);
+    pass_data->depth = builder.read(input.depth);
+    auto ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(ao_tex_format, width, height)
+            .usage({
+                rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write
+            });
+    });
+    pass_data->output = builder.write(ao_tex);
+
+    builder.set_execution_function<RTAOPassData>(
+        [this, &camera, &settings, width, height](CRef<RTAOPassData> pass_data, gfx::ComputePassContext const& ctx) {
+            auto params = raytracing_shader_params_.mutable_typed_data<RTAOPassParams>();
+            params->ao_range = std::max(settings.range, 0.05f);
+            params->ao_strength = settings.strength;
+            params->tex_size = {width, height};
+            params->scene_accel = {ctx.rg->acceleration_structure(pass_data->scene_accel)};
+            params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness)};
+            params->depth_tex = {ctx.rg->texture(pass_data->depth)};
+            params->input_sampler = {sampler_};
+            params->ao_tex = {ctx.rg->texture(pass_data->output)};
+            raytracing_shader_params_.update_uniform_buffer();
+            ctx.dispatch(
+                camera, raytracing_shader_, raytracing_shader_params_,
+                ceil_div(width, 16u), ceil_div(height, 16u)
+            );
+        }
+    );
+
+    return ao_tex;
 }
 
 auto AmbientOcclusionPass::render_denoise(

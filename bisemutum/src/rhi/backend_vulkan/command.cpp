@@ -411,7 +411,7 @@ auto CommandEncoderVulkan::build_bottom_level_acceleration_structure(
     }
     vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, vk_build_infos.size(), vk_build_infos.data(), p_range_infos.data());
 
-    auto query_pools = device_->require_acceleration_structure_query_pools(query_pool_sizes);
+    auto query_pools = device_->require_acceleration_structure_query_pools(cmd_buffer_, query_pool_sizes);
     if (!query_accels_compactes_size.empty()) {
         vkCmdWriteAccelerationStructuresPropertiesKHR(
             cmd_buffer_, query_accels_compactes_size.size(), query_accels_compactes_size.data(),
@@ -470,7 +470,7 @@ auto CommandEncoderVulkan::build_top_level_acceleration_structure(
     }
     vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, vk_build_infos.size(), vk_build_infos.data(), p_range_infos.data());
 
-    auto query_pools = device_->require_acceleration_structure_query_pools(query_pool_sizes);
+    auto query_pools = device_->require_acceleration_structure_query_pools(cmd_buffer_, query_pool_sizes);
     if (!query_accels_compactes_size.empty()) {
         vkCmdWriteAccelerationStructuresPropertiesKHR(
             cmd_buffer_, query_accels_compactes_size.size(), query_accels_compactes_size.data(),

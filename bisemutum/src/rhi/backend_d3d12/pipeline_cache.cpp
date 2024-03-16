@@ -10,32 +10,15 @@ namespace bi::rhi {
 namespace {
 
 auto hash_bind_groups_layout(std::vector<BindGroupLayout> const& v) -> size_t {
-    auto h = hash(v.size());
-    for (auto const& group : v) {
-        h = hash_combine(h, group.size());
-        for (auto const& entry : group) {
-            h = hash_combine(
-                h,
-                hash(entry.space, entry.binding_or_register, entry.count, entry.type, entry.visibility)
-            );
-        }
-    }
-    return h;
+    return hash_linear_container(v);
 }
 
 auto hash_static_samplers(std::vector<StaticSampler> const& v) -> size_t {
-    auto h = hash(v.size());
-    for (auto const& sampler : v) {
-        h = hash_combine(
-            h,
-            hash(hash_by_byte(sampler.sampler->desc()), sampler.space, sampler.binding_or_register, sampler.visibility)
-        );
-    }
-    return h;
+    return hash_linear_container(v);
 }
 
 auto hash_push_constants(PushConstantsDesc const& v) -> size_t {
-    return hash(v.space, v.register_, v.visibility, v.size);
+    return hash(v);
 }
 
 auto hash_graphics_pipeline_desc(

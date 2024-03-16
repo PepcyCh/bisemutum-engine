@@ -319,4 +319,24 @@ protected:
     RaytracingPipelineDesc desc_;
 };
 
-}
+} // namespace bi::rhi
+
+template <>
+struct std::hash<bi::rhi::BindGroupLayoutEntry> final {
+    auto operator()(bi::rhi::BindGroupLayoutEntry const& v) const noexcept -> size_t;
+};
+
+template <>
+struct std::hash<bi::rhi::BindGroupLayout> final {
+    auto operator()(bi::rhi::BindGroupLayout const& v) const noexcept -> size_t;
+};
+
+template <>
+struct std::hash<bi::rhi::StaticSampler> final {
+    auto operator()(bi::rhi::StaticSampler const& v) const noexcept -> size_t;
+};
+
+template <>
+struct std::hash<bi::rhi::PushConstantsDesc> final {
+    auto operator()(bi::rhi::PushConstantsDesc const& v) const noexcept -> size_t;
+};

@@ -102,6 +102,7 @@ struct DeviceVulkan final : Device {
     auto immutable_samplers_heap() -> Ptr<DescriptorHeapVulkanLegacy>;
 
     auto require_acceleration_structure_query_pools(
+        VkCommandBuffer cmd_buffer,
         AccelerationStructureQueryPoolSizes const& sizes
     ) -> AccelerationStructureQueryPools const&;
     auto destroy_acceleration_structure_query_pools() -> void;

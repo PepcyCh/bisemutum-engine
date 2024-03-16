@@ -3,6 +3,7 @@
 #include <bisemutum/runtime/component_utils.hpp>
 #include <bisemutum/runtime/system_manager.hpp>
 #include <bisemutum/graphics/gpu_scene_system.hpp>
+#include <bisemutum/graphics/graphics_manager.hpp>
 
 #include "context/lights.hpp"
 #include "context/skybox.hpp"
@@ -40,7 +41,17 @@ struct BasicRenderer::Impl final {
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto& settings = rt::find_volume_component_for(camera.position, default_settings).settings;
 
-        auto drawables = frustum_culling(camera);
+        auto [drawble_handles, drawables] = frustum_culling(camera);
+
+        if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
+            gfx::AccelerationStructureDesc accel_desc{};
+            accel_desc.instances.resize(drawables.size());
+            for (size_t i = 0; i < drawables.size(); i++) {
+                accel_desc.instances[i].drawable = drawables[i];
+                accel_desc.instances[i].instance_id = static_cast<uint32_t>(drawble_handles[i]);
+            }
+            scene_accel = rg.add_acceleration_structure(accel_desc);
+        }
 
         auto skybox = skybox_precompute_pass.render(rg, {
             .skybox_ctx = skybox_ctx,
@@ -94,6 +105,7 @@ struct BasicRenderer::Impl final {
                 .depth = depth,
                 .normal_roughness = gbuffer.normal_roughness,
                 .velocity = velocity,
+                .scene_accel = scene_accel,
             }, settings.ambient_occlusion);
         }
 
@@ -103,23 +115,28 @@ struct BasicRenderer::Impl final {
         });
     }
 
-    auto frustum_culling(gfx::Camera const& camera) -> std::vector<Ref<gfx::Drawable>> {
+    auto frustum_culling(gfx::Camera const& camera) -> std::pair<std::vector<gfx::DrawableHandle>, std::vector<Ref<gfx::Drawable>>> {
+        std::vector<gfx::DrawableHandle> handles;
         std::vector<Ref<gfx::Drawable>> drawables;
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
 
         auto frustum_planes = camera.get_frustum_planes();
-        gpu_scene->for_each_drawable([&drawables, &frustum_planes](gfx::Drawable& drawable) {
-            auto bbox = drawable.bounding_box();
-            if (!bbox.test_with_planes(frustum_planes)) { return; }
-            drawables.push_back(drawable);
-        });
-        return drawables;
+        gpu_scene->for_each_drawable(
+            [&handles, &drawables, &frustum_planes](gfx::DrawableHandle handle, gfx::Drawable& drawable) {
+                auto bbox = drawable.bounding_box();
+                if (!bbox.test_with_planes(frustum_planes)) { return; }
+                handles.push_back(handle);
+                drawables.push_back(drawable);
+            }
+        );
+        return {handles, drawables};
     }
 
     inline static BasicRendererOverrideVolume default_settings;
 
     LightsContext lights_ctx;
     SkyboxContext skybox_ctx;
+    gfx::AccelerationStructureHandle scene_accel = gfx::AccelerationStructureHandle::invalid;
 
     SkyboxPrecomputePass skybox_precompute_pass;
     ShadowMappingPass shadow_mapping_pass;

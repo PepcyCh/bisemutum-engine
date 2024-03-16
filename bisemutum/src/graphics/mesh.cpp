@@ -114,6 +114,14 @@ auto MeshData::set_submesh_dirty(uint32_t index) -> void {
     }
 }
 
+auto MeshData::get_submesh_version(uint32_t index) const -> uint64_t {
+    if (index < submesh_versions_.size()) {
+        return submesh_versions_[index];
+    } else {
+        return 1;
+    }
+}
+
 auto MeshData::save_to_byte_stream(WriteByteStream& bs) const -> void {
     bs.write(positions_);
     bs.write(normals_);

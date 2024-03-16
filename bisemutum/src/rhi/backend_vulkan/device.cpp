@@ -24,7 +24,7 @@
 #include "shader.hpp"
 #include "pipeline.hpp"
 
-#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 1
+#define BI_VULKAN_USE_DESCRIPTOR_BUFFER 0
 
 namespace bi::rhi {
 
@@ -886,6 +886,7 @@ auto DeviceVulkan::get_acceleration_structure_memory_size(
 }
 
 auto DeviceVulkan::require_acceleration_structure_query_pools(
+        VkCommandBuffer cmd_buffer,
     AccelerationStructureQueryPoolSizes const& sizes
 ) -> AccelerationStructureQueryPools const& {
     auto& pools = accel_query_pools_.emplace_back();
@@ -901,6 +902,7 @@ auto DeviceVulkan::require_acceleration_structure_query_pools(
     query_pool_ci.queryCount = sizes.num_compacted_size;
     if (query_pool_ci.queryCount > 0) {
         vkCreateQueryPool(device_, &query_pool_ci, nullptr, &pools.compacted_size);
+        vkCmdResetQueryPool(cmd_buffer, pools.compacted_size, 0, query_pool_ci.queryCount);
     }
 
     return pools;

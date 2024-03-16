@@ -69,6 +69,8 @@ private:
     auto set_geometry_dirty() -> void;
     auto set_submesh_dirty(uint32_t index) -> void;
 
+    auto get_submesh_version(uint32_t index) const -> uint64_t;
+
     std::vector<float3> positions_;
     std::vector<float3> normals_;
     std::vector<float4> tangents_;

@@ -94,6 +94,10 @@ auto GraphicsPassBuilder::read(TextureHandle handle) -> TextureHandle {
     handle = rg_->add_read_edge(pass_index_, handle);
     return handle;
 }
+auto GraphicsPassBuilder::read(AccelerationStructureHandle handle) -> AccelerationStructureHandle {
+    handle = rg_->add_read_edge(pass_index_, handle);
+    return handle;
+}
 auto GraphicsPassBuilder::write(BufferHandle handle) -> BufferHandle {
     write_buffers_.push_back(handle);
     handle = rg_->add_write_edge(pass_index_, handle);
@@ -117,6 +121,10 @@ auto ComputePassBuilder::read(BufferHandle handle) -> BufferHandle {
 }
 auto ComputePassBuilder::read(TextureHandle handle) -> TextureHandle {
     read_textures_.push_back(handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
+    return handle;
+}
+auto ComputePassBuilder::read(AccelerationStructureHandle handle) -> AccelerationStructureHandle {
     handle = rg_->add_read_edge(pass_index_, handle);
     return handle;
 }

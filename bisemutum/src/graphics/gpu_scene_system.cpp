@@ -56,6 +56,16 @@ struct GpuSceneSystem::Impl final {
             func(drawable);
         }
     }
+    auto for_each_drawable(std::function<auto(DrawableHandle, Drawable&) -> void>&& func) -> void {
+        for (auto [handle, drawable] : drawables.pairs()) {
+            func(handle, drawable);
+        }
+    }
+    auto for_each_drawable(std::function<auto(DrawableHandle, Drawable const&) -> void>&& func) const -> void {
+        for (auto [handle, drawable] : drawables.pairs()) {
+            func(handle, drawable);
+        }
+    }
     auto for_each_drawable_with_shader_data(
         std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void>&& func
     ) -> void {
@@ -135,6 +145,12 @@ auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable&) -> void> fu
     impl()->for_each_drawable(std::move(func));
 }
 auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
+    impl()->for_each_drawable(std::move(func));
+}
+auto GpuSceneSystem::for_each_drawable(std::function<auto(DrawableHandle, Drawable&) -> void> func) -> void {
+    impl()->for_each_drawable(std::move(func));
+}
+auto GpuSceneSystem::for_each_drawable(std::function<auto(DrawableHandle, Drawable const&) -> void> func) const -> void {
     impl()->for_each_drawable(std::move(func));
 }
 auto GpuSceneSystem::for_each_drawable_with_shader_data(

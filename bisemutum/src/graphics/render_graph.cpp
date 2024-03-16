@@ -573,6 +573,10 @@ struct RenderGraph::Impl final {
         add_edge(graph_nodes_[static_cast<size_t>(handle)].ref(), graph_nodes_[pass_index].ref());
         return handle;
     }
+    auto add_read_edge(size_t pass_index, AccelerationStructureHandle handle) -> AccelerationStructureHandle {
+        add_edge(graph_nodes_[static_cast<size_t>(handle)].ref(), graph_nodes_[pass_index].ref());
+        return handle;
+    }
     auto add_write_edge(size_t pass_index, BufferHandle handle) -> BufferHandle {
         auto pass_node = graph_nodes_[pass_index].ref();
         auto to_node = graph_nodes_[static_cast<size_t>(handle)].ref();
@@ -653,6 +657,7 @@ struct RenderGraph::Impl final {
     auto take_buffer(BufferHandle handle) -> Box<Buffer> {
         auto node = graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<BufferNode>();
         if (node->imported) { return {}; }
+        node->imported = true;
         auto& pool = find_buffer_pool(node->desc);
         pool.recycled_indices.push_back(node->buffer.value().index);
         auto result = std::move(pool.resources[node->buffer.value().index]);
@@ -688,6 +693,7 @@ struct RenderGraph::Impl final {
     auto take_texture(TextureHandle handle) -> Box<Texture> {
         auto node = graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<TextureNode>();
         if (node->imported) { return {}; }
+        node->imported = true;
         auto& pool = texture_pools[node->desc];
         pool.recycled_indices.push_back(node->texture.value().index);
         auto result = std::move(pool.resources[node->texture.value().index]);
@@ -1186,6 +1192,9 @@ auto RenderGraph::add_read_edge(size_t pass_index, BufferHandle handle) -> Buffe
     return impl()->add_read_edge(pass_index, handle);
 }
 auto RenderGraph::add_read_edge(size_t pass_index, TextureHandle handle) -> TextureHandle {
+    return impl()->add_read_edge(pass_index, handle);
+}
+auto RenderGraph::add_read_edge(size_t pass_index, AccelerationStructureHandle handle) -> AccelerationStructureHandle {
     return impl()->add_read_edge(pass_index, handle);
 }
 auto RenderGraph::add_write_edge(size_t pass_index, BufferHandle handle) -> BufferHandle {

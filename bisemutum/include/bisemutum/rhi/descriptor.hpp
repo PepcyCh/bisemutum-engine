@@ -27,6 +27,8 @@ struct BindGroupLayoutEntry final {
     BitFlags<ShaderStage> visibility = ShaderStage::all_stages;
     uint32_t binding_or_register = 0;
     uint32_t space = 0;
+
+    auto operator==(BindGroupLayoutEntry const& rhs) const -> bool = default;
 };
 using BindGroupLayout = std::vector<BindGroupLayoutEntry>;
 
@@ -106,4 +108,9 @@ struct RenderTargetTextureDesc final {
     TextureViewType view_type = TextureViewType::automatic;
 };
 
-}
+} // namespace bi::rhi
+
+template <>
+struct std::hash<bi::rhi::DescriptorHandle> final {
+    auto operator()(bi::rhi::DescriptorHandle const& v) const noexcept -> size_t;
+};

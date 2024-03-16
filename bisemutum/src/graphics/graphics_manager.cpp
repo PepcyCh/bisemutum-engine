@@ -20,13 +20,6 @@
 #include "descriptor_sets.hpp"
 #include "command_helpers.hpp"
 
-template <>
-struct std::hash<bi::rhi::DescriptorHandle> final {
-    auto operator()(bi::rhi::DescriptorHandle const& v) const noexcept -> size_t {
-        return bi::hash(v.cpu, v.gpu);
-    }
-};
-
 namespace bi::gfx {
 
 namespace {
@@ -40,6 +33,37 @@ constexpr uint32_t gpu_resource_desc_heap_chunk_size = 16384;
 constexpr uint32_t gpu_sampler_desc_heap_chunk_size = 512;
 
 constexpr uint32_t max_num_mesh_total_vertices = 4 * 1024 * 1024;
+
+auto separate_samplers_from_bind_groups(
+    std::vector<rhi::BindGroupLayout>& bind_groups_layouts,
+    uint32_t samplers_set,
+    BitFlags<rhi::ShaderStage> visibility
+) -> void {
+    rhi::BindGroupLayout samplers_layout{};
+    for (uint32_t set = 0; auto& layout : bind_groups_layouts) {
+        for (auto& entry : layout) {
+            if (entry.type == rhi::DescriptorType::sampler) {
+                samplers_layout.push_back(entry);
+                samplers_layout.back().binding_or_register += samplers_binding_shift * set;
+                samplers_layout.back().space = samplers_set;
+                samplers_layout.back().visibility = visibility;
+            }
+        }
+        layout.erase(
+            std::remove_if(
+                layout.begin(), layout.end(),
+                [](rhi::BindGroupLayoutEntry const& entry) {
+                    return entry.type == rhi::DescriptorType::sampler;
+                }
+            ),
+            layout.end()
+        );
+        ++set;
+    }
+    if (!samplers_layout.empty()) {
+        bind_groups_layouts.push_back(std::move(samplers_layout));
+    }
+}
 
 } // namespace
 
@@ -73,8 +97,7 @@ struct GraphicsManager::Impl final {
         });
         swapchain_resize_callback = window->register_resize_callback(
             [this](Window const& window, WindowSize frame_size, WindowSize logic_size) {
-                immediate_execution_fence->signal_on(graphics_queue.value());
-                immediate_execution_fence->wait();
+                graphics_queue->wait_idle();
                 swapchain->resize(frame_size.width, frame_size.height);
             }
         );
@@ -109,7 +132,6 @@ struct GraphicsManager::Impl final {
             fd.graphics_cmd_pool = device->create_command_pool(cmd_pool_desc);
             fd.immediate_cmd_pool = device->create_command_pool(cmd_pool_desc);
         }
-        immediate_execution_fence = device->create_fence();
 
         render_graph.set_graphics_device(device.ref(), frame_data.size());
 
@@ -194,7 +216,10 @@ struct GraphicsManager::Impl final {
     auto initialize_mesh_buffers_suballocator() -> void {
         mesh_buffer_allocator.positions_buffer = BufferSuballocator(rhi::BufferDesc{
             .size = max_num_mesh_total_vertices * sizeof(float3),
-            .usages = {rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read},
+            .usages = {
+                rhi::BufferUsage::vertex, rhi::BufferUsage::storage_read,
+                rhi::BufferUsage::acceleration_structure_build,
+            },
         });
         mesh_buffer_allocator.normals_buffer = BufferSuballocator(rhi::BufferDesc{
             .size = max_num_mesh_total_vertices * sizeof(float3),
@@ -218,7 +243,10 @@ struct GraphicsManager::Impl final {
         });
         mesh_buffer_allocator.indices_buffer = BufferSuballocator(rhi::BufferDesc{
             .size = max_num_mesh_total_vertices * sizeof(uint32_t) * 3,
-            .usages = {rhi::BufferUsage::index, rhi::BufferUsage::storage_read},
+            .usages = {
+                rhi::BufferUsage::index, rhi::BufferUsage::storage_read,
+                rhi::BufferUsage::acceleration_structure_build,
+            },
         });
     }
 
@@ -380,8 +408,8 @@ struct GraphicsManager::Impl final {
         auto cmd_encoder = fd.immediate_cmd_pool->get_command_encoder();
         set_descriptor_heaps(cmd_encoder);
         func(cmd_encoder.ref());
-        graphics_queue->submit_command_buffer({cmd_encoder->finish()}, {}, {}, immediate_execution_fence.ref());
-        immediate_execution_fence->wait();
+        graphics_queue->submit_command_buffer({cmd_encoder->finish()}, {}, {});
+        graphics_queue->wait_idle();
     }
 
     auto set_descriptor_heaps(Box<rhi::CommandEncoder>& cmd_encoder) -> void {
@@ -519,8 +547,8 @@ struct GraphicsManager::Impl final {
         update_mesh_geometry_buffers(mesh_data);
 
         auto& mesh_blas = meshes_blas.try_emplace(std::make_pair(mesh_data.id_, drawable->submesh_index)).first->second;
-        if (mesh_blas.submesh_version < mesh_data.submesh_versions_[drawable->submesh_index]) {
-            mesh_blas.submesh_version = mesh_data.submesh_versions_[drawable->submesh_index];
+        if (mesh_blas.submesh_version < mesh_data.get_submesh_version(drawable->submesh_index)) {
+            mesh_blas.submesh_version = mesh_data.get_submesh_version(drawable->submesh_index);
             auto& mesh_buffers = meshes_buffers.at(mesh_data.id_);
 
             auto& submesh_desc = drawable->submesh_desc();
@@ -529,7 +557,7 @@ struct GraphicsManager::Impl final {
                     .vertex_format = rhi::ResourceFormat::rgb32_sfloat,
                     .index_type = rhi::IndexType::uint32,
                     .num_vertices = mesh_data.num_vertices(),
-                    .num_triangles = submesh_desc.num_indices / 3,
+                    .num_triangles = std::min(submesh_desc.num_indices, mesh_data.num_indices()) / 3,
                     .vertex_stride = sizeof(float3),
                     .vertex_buffer = mesh_buffers.positions_buffer.allocator()->base_buffer().rhi_buffer(),
                     .index_buffer = mesh_buffers.indices_buffer.allocator()->base_buffer().rhi_buffer(),
@@ -538,7 +566,10 @@ struct GraphicsManager::Impl final {
                 },
             };
             rhi::AccelerationStructureGeometryBuildInput build_input{
-                .flags = rhi::AccelerationStructureBuildFlag::fast_trace,
+                .flags = {
+                    rhi::AccelerationStructureBuildFlag::fast_trace,
+                    rhi::AccelerationStructureBuildFlag::allow_compaction,
+                },
                 .is_update = false,
                 .geometries = {std::move(geo_desc)},
             };
@@ -709,7 +740,7 @@ struct GraphicsManager::Impl final {
             fs->shader_params_metadata.generated_shader_definition(graphics_set_fragment, graphics_set_samplers)
         );
         shader_env.set_replace_arg(
-            "GRAPHICS_CAMERA_SHADER_PARAMS",
+            "CAMERA_SHADER_PARAMS",
             camera_shader_params.generated_shader_definition(graphics_set_camera, graphics_set_samplers)
         );
         shader_env.set_replace_arg(
@@ -873,30 +904,11 @@ struct GraphicsManager::Impl final {
             camera_shader_params.bind_group_layout(graphics_set_camera, graphics_set_visibility_camera)
         );
         if (device->properties().separate_sampler_heap) {
-            rhi::BindGroupLayout samplers_layout{};
-            for (uint32_t set = 0; auto& layout : pipeline_desc.bind_groups_layout) {
-                for (auto& entry : layout) {
-                    if (entry.type == rhi::DescriptorType::sampler) {
-                        samplers_layout.push_back(entry);
-                        samplers_layout.back().binding_or_register += samplers_binding_shift * set;
-                        samplers_layout.back().space = graphics_set_samplers;
-                        samplers_layout.back().visibility = graphics_set_visibility_samplers;
-                    }
-                }
-                layout.erase(
-                    std::remove_if(
-                        layout.begin(), layout.end(),
-                        [](rhi::BindGroupLayoutEntry const& entry) {
-                            return entry.type == rhi::DescriptorType::sampler;
-                        }
-                    ),
-                    layout.end()
-                );
-                ++set;
-            }
-            if (!samplers_layout.empty()) {
-                pipeline_desc.bind_groups_layout.push_back(std::move(samplers_layout));
-            }
+            separate_samplers_from_bind_groups(
+                pipeline_desc.bind_groups_layout,
+                graphics_set_samplers,
+                graphics_set_visibility_samplers
+            );
         }
 
         pipeline_it = graphics_pipelines.insert(
@@ -905,16 +917,17 @@ struct GraphicsManager::Impl final {
         return pipeline_it->second.ref();
     }
 
-    auto compile_pipeline_compute(CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
+    auto compile_pipeline_compute(CPtr<Camera> camera, CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
         ShaderCompilationEnvironment shader_env;
         cs->modify_compiler_environment(shader_env);
         auto shader_env_id = shader_env.get_config_identifier();
 
         auto pipeline_id = fmt::format(
-            "CS '{}' {} {}",
+            "CS '{}' {} {} CAM {}",
             cs->source_path,
             cs->source_entry,
-            shader_env_id
+            shader_env_id,
+            camera ? 1 : 0
         );
         auto pipeline_it = compute_pipelines.find(pipeline_id);
         if (pipeline_it != compute_pipelines.end()) {
@@ -924,6 +937,12 @@ struct GraphicsManager::Impl final {
         shader_env.set_replace_arg(
             "COMPUTE_SHADER_PARAMS",
             cs->shader_params_metadata.generated_shader_definition(compute_set_normal, compute_set_samplers)
+        );
+        shader_env.set_replace_arg(
+            "CAMERA_SHADER_PARAMS",
+            camera
+                ? camera->shader_params_metadata().generated_shader_definition(compute_set_camera, compute_set_samplers)
+                : "#define NO_CAMERA_SHADER_PARAMS"
         );
 
         auto cs_id = pipeline_id + "cs";
@@ -945,31 +964,19 @@ struct GraphicsManager::Impl final {
         pipeline_desc.bind_groups_layout.push_back(
             cs->shader_params_metadata.bind_group_layout(compute_set_normal, rhi::ShaderStage::compute)
         );
+        if (camera) {
+            pipeline_desc.bind_groups_layout.push_back(
+                camera->shader_params_metadata().bind_group_layout(compute_set_camera, rhi::ShaderStage::compute)
+            );
+        } else {
+            pipeline_desc.bind_groups_layout.emplace_back();
+        }
         if (device->properties().separate_sampler_heap) {
-            rhi::BindGroupLayout samplers_layout{};
-            for (uint32_t set = 0; auto& layout : pipeline_desc.bind_groups_layout) {
-                for (auto& entry : layout) {
-                    if (entry.type == rhi::DescriptorType::sampler) {
-                        samplers_layout.push_back(entry);
-                        samplers_layout.back().binding_or_register += samplers_binding_shift * set;
-                        samplers_layout.back().space = compute_set_samplers;
-                        samplers_layout.back().visibility = rhi::ShaderStage::compute;
-                    }
-                }
-                layout.erase(
-                    std::remove_if(
-                        layout.begin(), layout.end(),
-                        [](rhi::BindGroupLayoutEntry const& entry) {
-                            return entry.type == rhi::DescriptorType::sampler;
-                        }
-                    ),
-                    layout.end()
-                );
-                ++set;
-            }
-            if (!samplers_layout.empty()) {
-                pipeline_desc.bind_groups_layout.push_back(std::move(samplers_layout));
-            }
+            separate_samplers_from_bind_groups(
+                pipeline_desc.bind_groups_layout,
+                compute_set_samplers,
+                rhi::ShaderStage::compute
+            );
         }
 
         pipeline_it = compute_pipelines.insert(
@@ -979,11 +986,13 @@ struct GraphicsManager::Impl final {
     }
 
     auto get_gpu_descriptor_for(
-        std::vector<rhi::DescriptorHandle>&& cpu_descriptors,
+        std::vector<rhi::DescriptorHandle> const& cpu_descriptors,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle {
+        auto key = std::make_pair(cpu_descriptors, layout);
+
         auto& fd = curr_frame_data();
-        if (auto it = fd.cached_descriptors.find(cpu_descriptors); it != fd.cached_descriptors.end()) {
+        if (auto it = fd.cached_descriptors.find(key); it != fd.cached_descriptors.end()) {
             return it->second;
         }
 
@@ -994,7 +1003,7 @@ struct GraphicsManager::Impl final {
             handle = gpu_resource_descriptor_allocator->allocate(layout, curr_frame_index());
         }
         device->copy_descriptors(handle, cpu_descriptors, layout);
-        fd.cached_descriptors.insert({std::move(cpu_descriptors), handle});
+        fd.cached_descriptors.insert({std::move(key), handle});
         return handle;
     }
 
@@ -1037,11 +1046,13 @@ struct GraphicsManager::Impl final {
 
         Box<rhi::CommandPool> graphics_cmd_pool;
         Box<rhi::CommandPool> immediate_cmd_pool;
-        std::unordered_map<std::vector<rhi::DescriptorHandle>, rhi::DescriptorHandle> cached_descriptors;
+        std::unordered_map<
+            std::pair<std::vector<rhi::DescriptorHandle>, rhi::BindGroupLayout>,
+            rhi::DescriptorHandle
+        > cached_descriptors;
     };
     uint32_t frame_index = 0;
     std::vector<FrameData> frame_data;
-    Box<rhi::Fence> immediate_execution_fence;
     Ptr<rhi::CommandEncoder> curr_cmd_encoder;
 
     std::vector<std::vector<MoveOnlyFunction<auto() -> void>>> delayed_destroys;
@@ -1226,15 +1237,15 @@ auto GraphicsManager::compile_pipeline_for_drawable(
     return impl()->compile_pipeline_for_drawable(graphics_context, camera, drawable, fs);
 }
 
-auto GraphicsManager::compile_pipeline_compute(CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
-    return impl()->compile_pipeline_compute(cs);
+auto GraphicsManager::compile_pipeline_compute(CPtr<Camera> camera, CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
+    return impl()->compile_pipeline_compute(camera, cs);
 }
 
 auto GraphicsManager::get_gpu_descriptor_for(
-    std::vector<rhi::DescriptorHandle> cpu_descriptors,
+    std::vector<rhi::DescriptorHandle> const& cpu_descriptors,
     rhi::BindGroupLayout const& layout
 ) -> rhi::DescriptorHandle {
-    return impl()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
+    return impl()->get_gpu_descriptor_for(cpu_descriptors, layout);
 }
 
 auto GraphicsManager::add_delayed_destroy(MoveOnlyFunction<auto() -> void> destroy) -> void {

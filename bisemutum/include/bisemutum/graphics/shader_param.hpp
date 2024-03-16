@@ -459,6 +459,12 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
             ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::shader::ty, #ty, #name, int arr>>(XParamsTuple<__LINE__ - 1>::type{}) \
         ); \
     };
+#define BI_SHADER_PARAMETER_SRV_ACCEL(ty, name) ::bi::gfx::shader::ty name; \
+    template <> struct XParamsTuple<__LINE__> { \
+        using type = decltype( \
+            ::bi::type_push_back<::bi::gfx::TShaderParameterMetadata<::bi::gfx::shader::ty, #ty, #name>>(XParamsTuple<__LINE__ - 1>::type{}) \
+        ); \
+    };
 
 #define BI_SHADER_PARAMETER_UAV_BUFFER(ty, name) ::bi::gfx::TUavBuffer<::bi::gfx::shader::ty> name; \
     template <> struct XParamsTuple<__LINE__> { \

@@ -143,8 +143,7 @@ private:
 };
 
 template <>
-class Option<bool> final {
-public:
+struct Option<bool> final {
     Option() = default;
 
     static auto make(bool value) -> Option {

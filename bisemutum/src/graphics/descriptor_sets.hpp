@@ -12,7 +12,8 @@ inline constexpr uint32_t graphics_set_camera = 3;
 inline constexpr uint32_t graphics_set_samplers = 4;
 
 inline constexpr uint32_t compute_set_normal = 0;
-inline constexpr uint32_t compute_set_samplers = 1;
+inline constexpr uint32_t compute_set_camera = 1;
+inline constexpr uint32_t compute_set_samplers = 2;
 
 inline constexpr uint32_t samplers_binding_shift = 32;
 

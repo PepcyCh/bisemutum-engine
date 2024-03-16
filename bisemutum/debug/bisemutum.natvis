@@ -63,14 +63,15 @@
     </Type>
     <!-- bisemutum -->
     <Type Name="bi::Option&lt;*&gt;">
-        <DisplayString>{{}}</DisplayString>
+        <DisplayString Condition="has_value_ == false">empty</DisplayString>
+        <DisplayString>{*(($T1*)memory_)}</DisplayString>
         <Expand>
-            <Item Name="[has_value]" Optional="true">has_value_</Item>
-            <Item Name="[value]">*($T1 const*)(memory_)</Item>
+            <Item Name="[has_value]">has_value_</Item>
+            <Item Name="[value]" Condition="has_value_ == true">*(($T1*)memory_)</Item>
         </Expand>
     </Type>
     <Type Name="bi::Span&lt;*&gt;">
-        <DisplayString>{{ size = size_ }}</DisplayString>
+        <DisplayString>{{ size={size_} }}</DisplayString>
         <Expand>
             <Item Name="[size]">size_</Item>
             <ArrayItems>

@@ -67,6 +67,8 @@ auto to_vk_accel_build_info(
     vk_build_info.geometryCount = static_cast<uint32_t>(vk_geometries.size());
     vk_build_info.pGeometries = vk_geometries.data();
     vk_build_info.ppGeometries = nullptr;
+    vk_build_info.srcAccelerationStructure = VK_NULL_HANDLE;
+    vk_build_info.dstAccelerationStructure = VK_NULL_HANDLE;
 }
 
 auto to_vk_accel_build_info(
@@ -77,6 +79,7 @@ auto to_vk_accel_build_info(
 ) -> void {
     vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
     vk_geometry.pNext = nullptr;
+    vk_geometry.flags = 0;
     vk_geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
     vk_geometry.geometry = {
         .instances = {
@@ -105,6 +108,8 @@ auto to_vk_accel_build_info(
     vk_build_info.geometryCount = 1;
     vk_build_info.pGeometries = &vk_geometry;
     vk_build_info.ppGeometries = nullptr;
+    vk_build_info.srcAccelerationStructure = VK_NULL_HANDLE;
+    vk_build_info.dstAccelerationStructure = VK_NULL_HANDLE;
 }
 
 }

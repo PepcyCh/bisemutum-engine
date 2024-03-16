@@ -159,7 +159,7 @@ auto set_shader_params_helper(
         curr_binding += count;
     }
 
-    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
+    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(cpu_descriptors, layout);
     cmd_encoder->set_descriptors(set, {descriptor});
 }
 
@@ -193,7 +193,7 @@ auto set_samplers_helper(
         p_entries += set_samplers.layout.size();
     }
 
-    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(std::move(cpu_descriptors), layout);
+    auto descriptor = g_engine->graphics_manager()->get_gpu_descriptor_for(cpu_descriptors, layout);
     cmd_encoder->set_descriptors(set, {descriptor});
 }
 
@@ -303,10 +303,26 @@ auto ComputePassContext::dispatch(
     CRef<ComputeShader> compute_shader, ShaderParameter& params,
     uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z
 ) const -> void {
-    auto pipeline = g_engine->graphics_manager()->compile_pipeline_compute(compute_shader);
+    auto pipeline = g_engine->graphics_manager()->compile_pipeline_compute(nullptr, compute_shader);
     cmd_encoder->set_pipeline(pipeline);
     resource_binding_ctx_->set_shader_params(
         cmd_encoder, compute_set_normal, rhi::ShaderStage::compute, params
+    );
+    resource_binding_ctx_->set_samplers(cmd_encoder, compute_set_samplers);
+    cmd_encoder->dispatch(num_groups_x, num_groups_y, num_groups_z);
+}
+
+auto ComputePassContext::dispatch(
+    CRef<Camera> camera, CRef<ComputeShader> compute_shader, ShaderParameter& params,
+    uint32_t num_groups_x, uint32_t num_groups_y, uint32_t num_groups_z
+) const -> void {
+    auto pipeline = g_engine->graphics_manager()->compile_pipeline_compute(camera, compute_shader);
+    cmd_encoder->set_pipeline(pipeline);
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, compute_set_normal, rhi::ShaderStage::compute, params
+    );
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, compute_set_camera, rhi::ShaderStage::compute, camera.remove_const()->shader_params()
     );
     resource_binding_ctx_->set_samplers(cmd_encoder, compute_set_samplers);
     cmd_encoder->dispatch(num_groups_x, num_groups_y, num_groups_z);

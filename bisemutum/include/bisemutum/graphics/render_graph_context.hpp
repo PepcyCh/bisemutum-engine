@@ -67,6 +67,11 @@ struct ComputePassContext final {
         uint32_t num_groups_x = 1, uint32_t num_groups_y = 1, uint32_t num_groups_z = 1
     ) const -> void;
 
+    auto dispatch(
+        CRef<Camera> camera, CRef<ComputeShader> compute_shader, ShaderParameter& params,
+        uint32_t num_groups_x = 1, uint32_t num_groups_y = 1, uint32_t num_groups_z = 1
+    ) const -> void;
+
     CRef<RenderGraph> rg;
     Ref<rhi::ComputeCommandEncoder> cmd_encoder;
 

@@ -90,6 +90,7 @@ struct GraphicsPassBuilder final {
 
     auto read(BufferHandle handle) -> BufferHandle;
     auto read(TextureHandle handle) -> TextureHandle;
+    auto read(AccelerationStructureHandle handle) -> AccelerationStructureHandle;
 
     auto write(BufferHandle handle) -> BufferHandle;
     auto write(TextureHandle handle) -> TextureHandle;
@@ -129,6 +130,7 @@ private:
 struct ComputePassBuilder final {
     auto read(BufferHandle handle) -> BufferHandle;
     auto read(TextureHandle handle) -> TextureHandle;
+    auto read(AccelerationStructureHandle handle) -> AccelerationStructureHandle;
 
     auto write(BufferHandle handle) -> BufferHandle;
     auto write(TextureHandle handle) -> TextureHandle;

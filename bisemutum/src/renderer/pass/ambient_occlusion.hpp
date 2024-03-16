@@ -11,6 +11,8 @@ struct AmbientOcclusionPass final {
         gfx::TextureHandle depth;
         gfx::TextureHandle normal_roughness;
         gfx::TextureHandle velocity;
+
+        gfx::AccelerationStructureHandle scene_accel;
     };
 
     AmbientOcclusionPass();
@@ -44,6 +46,9 @@ private:
 
     gfx::FragmentShader screen_space_shader_;
     gfx::ShaderParameter screen_space_shader_params_;
+
+    gfx::ComputeShader raytracing_shader_;
+    gfx::ShaderParameter raytracing_shader_params_;
 
     gfx::ComputeShader temporal_accumulate_shader_;
     gfx::ShaderParameter temporal_accumulate_shader_params_;

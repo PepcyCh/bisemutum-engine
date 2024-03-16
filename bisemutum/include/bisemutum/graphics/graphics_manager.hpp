@@ -131,7 +131,7 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto curr_frame_index() const -> uint32_t;
 
     auto get_gpu_descriptor_for(
-        std::vector<rhi::DescriptorHandle> cpu_descriptors,
+        std::vector<rhi::DescriptorHandle> const& cpu_descriptors,
         rhi::BindGroupLayout const& layout
     ) -> rhi::DescriptorHandle;
 
@@ -165,7 +165,7 @@ private:
     ) -> Ref<rhi::GraphicsPipeline>;
 
     friend ComputePassContext;
-    auto compile_pipeline_compute(CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline>;
+    auto compile_pipeline_compute(CPtr<Camera> camera, CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline>;
 };
 
 }
