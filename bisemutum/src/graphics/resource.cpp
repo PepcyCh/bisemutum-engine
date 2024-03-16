@@ -114,7 +114,7 @@ auto Buffer::update_staging_buffer_size() -> void {
     }
 }
 
-auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> void {
+auto Buffer::set_data_raw_impl(void const* data, uint64_t size, uint64_t offset, bool immediately) -> void {
     if (staging_buffers_.empty() || size == 0) { return; }
     update_staging_buffer_size();
 
@@ -136,31 +136,34 @@ auto Buffer::set_data_raw(void const* data, uint64_t size, uint64_t offset) -> v
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
 
-        g_engine->graphics_manager()->execute_in_this_frame(
-            [this, size, offset, target_access](Ref<rhi::CommandEncoder> cmd) {
-                cmd->resource_barriers({
-                    rhi::BufferBarrier{
-                        .buffer = buffer_.ref(),
-                        .src_access_type = target_access,
-                        .dst_access_type = rhi::ResourceAccessType::transfer_write,
-                    },
-                }, {});
-                cmd->copy_buffer_to_buffer(
-                    rhi_staging_buffer(), buffer_.ref(),
-                    {offset, offset, size}
-                );
-                cmd->resource_barriers({
-                    rhi::BufferBarrier{
-                        .buffer = buffer_.ref(),
-                        .src_access_type = rhi::ResourceAccessType::transfer_write,
-                        .dst_access_type = target_access,
-                    },
-                }, {});
-            }
-        );
+        auto execute_func = [this, size, offset, target_access](Ref<rhi::CommandEncoder> cmd) {
+            cmd->resource_barriers({
+                rhi::BufferBarrier{
+                    .buffer = buffer_.ref(),
+                    .src_access_type = target_access,
+                    .dst_access_type = rhi::ResourceAccessType::transfer_write,
+                },
+            }, {});
+            cmd->copy_buffer_to_buffer(
+                rhi_staging_buffer(), buffer_.ref(),
+                {offset, offset, size}
+            );
+            cmd->resource_barriers({
+                rhi::BufferBarrier{
+                    .buffer = buffer_.ref(),
+                    .src_access_type = rhi::ResourceAccessType::transfer_write,
+                    .dst_access_type = target_access,
+                },
+            }, {});
+        };
+        if (immediately) {
+            g_engine->graphics_manager()->execute_immediately(std::move(execute_func));
+        } else {
+            g_engine->graphics_manager()->execute_in_this_frame(std::move(execute_func));
+        }
     }
 }
-auto Buffer::set_multiple_data_raw(CSpan<DataSetDesc> descs) -> void {
+auto Buffer::set_multiple_data_raw(CSpan<DataSetDesc> descs, bool immediately) -> void {
     if (staging_buffers_.empty()) { return; }
     update_staging_buffer_size();
 
@@ -181,25 +184,28 @@ auto Buffer::set_multiple_data_raw(CSpan<DataSetDesc> descs) -> void {
             target_access.set(rhi::ResourceAccessType::storage_resource_read);
         }
 
-        g_engine->graphics_manager()->execute_in_this_frame(
-            [this, target_access](Ref<rhi::CommandEncoder> cmd) {
-                cmd->resource_barriers({
-                    rhi::BufferBarrier{
-                        .buffer = buffer_.ref(),
-                        .src_access_type = target_access,
-                        .dst_access_type = rhi::ResourceAccessType::transfer_write,
-                    },
-                }, {});
-                cmd->copy_buffer_to_buffer(rhi_staging_buffer(), buffer_.ref(), {});
-                cmd->resource_barriers({
-                    rhi::BufferBarrier{
-                        .buffer = buffer_.ref(),
-                        .src_access_type = rhi::ResourceAccessType::transfer_write,
-                        .dst_access_type = target_access,
-                    },
-                }, {});
-            }
-        );
+        auto execute_func = [this, target_access](Ref<rhi::CommandEncoder> cmd) {
+            cmd->resource_barriers({
+                rhi::BufferBarrier{
+                    .buffer = buffer_.ref(),
+                    .src_access_type = target_access,
+                    .dst_access_type = rhi::ResourceAccessType::transfer_write,
+                },
+            }, {});
+            cmd->copy_buffer_to_buffer(rhi_staging_buffer(), buffer_.ref(), {});
+            cmd->resource_barriers({
+                rhi::BufferBarrier{
+                    .buffer = buffer_.ref(),
+                    .src_access_type = rhi::ResourceAccessType::transfer_write,
+                    .dst_access_type = target_access,
+                },
+            }, {});
+        };
+        if (immediately) {
+            g_engine->graphics_manager()->execute_immediately(std::move(execute_func));
+        } else {
+            g_engine->graphics_manager()->execute_in_this_frame(std::move(execute_func));
+        }
     }
 }
 

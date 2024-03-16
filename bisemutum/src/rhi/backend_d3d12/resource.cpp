@@ -31,6 +31,7 @@ auto to_dx_resource_flags(BitFlags<BufferUsage> usage) -> D3D12_RESOURCE_FLAGS {
         flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
     if (usage.contains_any(BufferUsage::acceleration_structure)) {
+        flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE;
     }
     return flags;
@@ -89,6 +90,9 @@ BufferD3D12::BufferD3D12(Ref<DeviceD3D12> device, const BufferDesc &desc) : devi
         state_restricted_ = true;
     } else if (desc_.memory_property == BufferMemoryProperty::gpu_to_cpu) {
         initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
+        state_restricted_ = true;
+    } else if (desc_.usages.contains_any(BufferUsage::acceleration_structure)) {
+        initial_state = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
         state_restricted_ = true;
     }
     device_->allocator()->CreateResource(

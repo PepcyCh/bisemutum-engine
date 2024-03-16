@@ -95,9 +95,10 @@ DeviceD3D12::DeviceD3D12(DeviceDesc const& desc) {
         info_queue_->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
         info_queue_->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
 
-        // see https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
         D3D12_MESSAGE_ID denied_id[]{
+            // see https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
             D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
+            D3D12_MESSAGE_ID_EMPTY_ROOT_DESCRIPTOR_TABLE,
         };
         D3D12_INFO_QUEUE_FILTER filter{
             .DenyList = D3D12_INFO_QUEUE_FILTER_DESC{
@@ -443,7 +444,7 @@ auto DeviceD3D12::create_descriptor(Ref<AccelerationStructure> accel, Descriptor
             .Location = accel_dx->gpu_reference(),
         },
     };
-    device_->CreateShaderResourceView(accel_dx->raw_base_buffer(), &srv_desc, {handle.cpu});
+    device_->CreateShaderResourceView(nullptr, &srv_desc, {handle.cpu});
 }
 
 auto DeviceD3D12::copy_descriptors(

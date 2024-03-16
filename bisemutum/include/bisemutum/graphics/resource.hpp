@@ -68,7 +68,17 @@ struct Buffer final {
     auto set_data(T const* data, uint64_t count = 1, uint64_t offset = 0) -> void {
         set_data_raw(data, count * sizeof(T), offset);
     }
-    auto set_data_raw(void const* data, uint64_t size, uint64_t offset = 0) -> void;
+    auto set_data_raw(void const* data, uint64_t size, uint64_t offset = 0) -> void {
+        set_data_raw_impl(data, size, offset, false);
+    }
+
+    template <typename T>
+    auto set_data_immediately(T const* data, uint64_t count = 1, uint64_t offset = 0) -> void {
+        set_data_raw_immediately(data, count * sizeof(T), offset);
+    }
+    auto set_data_raw_immediately(void const* data, uint64_t size, uint64_t offset = 0) -> void {
+        set_data_raw_impl(data, size, offset, true);
+    }
 
     auto get_data_raw(void* dst_data, uint64_t size, uint64_t offset = 0) -> void;
 
@@ -77,7 +87,7 @@ struct Buffer final {
         uint64_t size;
         uint64_t offset;
     };
-    auto set_multiple_data_raw(CSpan<DataSetDesc> descs) -> void;
+    auto set_multiple_data_raw(CSpan<DataSetDesc> descs, bool immediately = false) -> void;
 
     auto get_cbv() -> rhi::DescriptorHandle;
     auto get_descriptor(
@@ -111,6 +121,8 @@ struct Buffer final {
     }
 
 private:
+    auto set_data_raw_impl(void const* data, uint64_t size, uint64_t offset, bool immediately) -> void;
+
     auto rhi_staging_buffer() -> Ref<rhi::Buffer>;
     auto rhi_staging_buffer() const -> CRef<rhi::Buffer>;
 

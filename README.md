@@ -19,7 +19,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
   * Rect light via LTC (anisotropic GGX)
   * Skybox & IBL
-  * Basic SSAO
+  * Basic SSAO & RTAO
   * Bloom
 * Core
   * Custom static reflection
@@ -37,8 +37,8 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Raytracing pipeline in RHI and helpers
-* Screen space & raytraced ambient occlusion, reflection
+* Raytracing pipeline in gfx
+* Screen space & raytraced reflection
 * Basic resource browser
 
 ## Gallary

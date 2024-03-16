@@ -52,7 +52,10 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
         }, false);
         Buffer emit_buffer(rhi::BufferDesc{
             .size = blas_to_be_built.size() * sizeof(uint64_t),
-            .usages = rhi::BufferUsage::acceleration_structure,
+            .usages = rhi::BufferUsage::storage_read_write,
+        }, false);
+        Buffer emit_download_buffer(rhi::BufferDesc{
+            .size = blas_to_be_built.size() * sizeof(uint64_t),
             .memory_property = rhi::BufferMemoryProperty::gpu_to_cpu,
         });
         uint32_t emit_i = 0;
@@ -78,21 +81,29 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
         }
         g_engine->graphics_manager()->execute_immediately([&](Ref<rhi::CommandEncoder> cmd) {
             cmd->build_bottom_level_acceleration_structure(blas_build_descs);
+            cmd->resource_barriers({
+                rhi::BufferBarrier{
+                    .buffer = emit_buffer.rhi_buffer(),
+                    .src_access_type = rhi::ResourceAccessType::acceleration_structure_build_emit_data_write,
+                    .dst_access_type = rhi::ResourceAccessType::transfer_read,
+                }
+            }, {});
+            cmd->copy_buffer_to_buffer(emit_buffer.rhi_buffer(), emit_download_buffer.rhi_buffer(), {});
         });
-        // if (emit_i > 0) {
-        //     std::vector<uint64_t> compacted_sizes(emit_i);
-        //     emit_buffer.get_data_raw(compacted_sizes.data(), compacted_sizes.size() * sizeof(uint64_t));
-        //     emit_i = 0;
-        //     for (size_t i = 0; i < blas_to_be_built.size(); i++, emit_i++) {
-        //         if (blas_build_descs[i].build_input.is_update) { continue; }
-        //         if (compacted_sizes[emit_i] < blas_to_be_built[i]->blas_buffer_.desc().size) {
-        //             auto original_blas = blas_to_be_built[i]->compact_buffer(compacted_sizes[emit_i]);
-        //             g_engine->graphics_manager()->execute_immediately([&](Ref<rhi::CommandEncoder> cmd) {
-        //                 cmd->compact_acceleration_structure(original_blas.ref(), blas_to_be_built[i]->blas_.ref());
-        //             });
-        //         }
-        //     }
-        // }
+        if (emit_i > 0) {
+            std::vector<uint64_t> compacted_sizes(emit_i);
+            emit_download_buffer.get_data_raw(compacted_sizes.data(), compacted_sizes.size() * sizeof(uint64_t));
+            emit_i = 0;
+            for (size_t i = 0; i < blas_to_be_built.size(); i++, emit_i++) {
+                if (blas_build_descs[i].build_input.is_update) { continue; }
+                if (compacted_sizes[emit_i] < blas_to_be_built[i]->blas_buffer_.desc().size) {
+                    auto original_blas = blas_to_be_built[i]->compact_buffer(compacted_sizes[emit_i]);
+                    g_engine->graphics_manager()->execute_immediately([&](Ref<rhi::CommandEncoder> cmd) {
+                        cmd->compact_acceleration_structure(original_blas.ref(), blas_to_be_built[i]->blas_.ref());
+                    });
+                }
+            }
+        }
     }
 
     std::vector<rhi::AccelerationStructureInstanceDesc> tlas_instances;
@@ -132,7 +143,7 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
         .size = tlas_instances.size() * sizeof(rhi::AccelerationStructureInstanceDesc),
         .usages = rhi::BufferUsage::acceleration_structure_build,
     });
-    tlas_instance_buffer.set_data(tlas_instances.data(), tlas_instances.size());
+    tlas_instance_buffer.set_data_immediately(tlas_instances.data(), tlas_instances.size());
     rhi::AccelerationStructureInstanceBuildInput tlas_build_input{
         .flags = rhi::AccelerationStructureBuildFlag::fast_trace,
         .is_update = false,
