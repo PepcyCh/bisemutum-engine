@@ -11,7 +11,7 @@ namespace bi::gfx {
 
 struct ScreenTriangle final {
     BI_SHADER_PARAMETERS_BEGIN(ShaderParams)
-    BI_SHADER_PARAMETERS_END(ShaderParams)
+    BI_SHADER_PARAMETERS_END()
 
     ScreenTriangle() {
         mesh_.set_submesh(0, {.num_indices = 3});

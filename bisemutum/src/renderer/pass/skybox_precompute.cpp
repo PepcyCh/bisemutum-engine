@@ -13,7 +13,7 @@ BI_SHADER_PARAMETERS_BEGIN(SkyboxPrecomputeBrdfParams)
     BI_SHADER_PARAMETER(uint, resolution)
     BI_SHADER_PARAMETER(float, inv_resolution)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, brdf_lut, rhi::ResourceFormat::rg8_unorm)
-BI_SHADER_PARAMETERS_END(SkyboxPrecomputeBrdfParams)
+BI_SHADER_PARAMETERS_END()
 
 struct SkyboxPrecomputeBrdfPassData final {
     gfx::TextureHandle brdf_lut;
@@ -25,7 +25,7 @@ BI_SHADER_PARAMETERS_BEGIN(SkyboxPrecomputeDiffuseParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2DArray<float4>, diffuse_irradiance, rhi::ResourceFormat::rgba16_sfloat)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
-BI_SHADER_PARAMETERS_END(SkyboxPrecomputeDiffuseParams)
+BI_SHADER_PARAMETERS_END()
 
 struct SkyboxPrecomputeDiffusePassData final {
     gfx::TextureHandle skybox;
@@ -39,7 +39,7 @@ BI_SHADER_PARAMETERS_BEGIN(SkyboxPrecomputeSpecularParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2DArray<float4>, specular_filtered, rhi::ResourceFormat::rgba16_sfloat)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
-BI_SHADER_PARAMETERS_END(SkyboxPrecomputeSpecularParams)
+BI_SHADER_PARAMETERS_END()
 
 struct SkyboxPrecomputeSpecularPassData final {
     gfx::TextureHandle skybox;

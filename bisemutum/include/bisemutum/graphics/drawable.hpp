@@ -23,6 +23,6 @@ BI_SHADER_PARAMETERS_BEGIN(DrawableShaderData)
     BI_SHADER_PARAMETER(float4x4, matrix_object_to_world)
     BI_SHADER_PARAMETER(float4x4, matrix_world_to_object_transposed)
     BI_SHADER_PARAMETER(float4x4, history_matrix_object_to_world)
-BI_SHADER_PARAMETERS_END(DrawableShaderData)
+BI_SHADER_PARAMETERS_END()
 
 }

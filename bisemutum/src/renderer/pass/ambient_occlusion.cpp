@@ -19,7 +19,7 @@ BI_SHADER_PARAMETERS_BEGIN(SSAOPassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
-BI_SHADER_PARAMETERS_END(SSAOPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct SSAOPassData final {
     gfx::TextureHandle normal_roughness;
@@ -37,7 +37,7 @@ BI_SHADER_PARAMETERS_BEGIN(RTAOPassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, ao_tex, ao_tex_format)
-BI_SHADER_PARAMETERS_END(RTAOPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct RTAOPassData final {
     gfx::AccelerationStructureHandle scene_accel;
@@ -53,7 +53,7 @@ BI_SHADER_PARAMETERS_BEGIN(TemporalAccumulatePassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, history_ao_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, velocity_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
-BI_SHADER_PARAMETERS_END(TemporalAccumulatePassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct TemporalAccumulatePassData final {
     gfx::TextureHandle ao_value;
@@ -67,7 +67,7 @@ BI_SHADER_PARAMETERS_BEGIN(SpatialFilterPassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, output_ao_tex, ao_tex_format)
-BI_SHADER_PARAMETERS_END(SpatialFilterPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct SpatialFilterPassData final {
     gfx::TextureHandle input;
@@ -81,7 +81,7 @@ BI_SHADER_PARAMETERS_BEGIN(MergePassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, color_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, ao_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
-BI_SHADER_PARAMETERS_END(MergePassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct MergePassData final {
     gfx::TextureHandle color_tex;

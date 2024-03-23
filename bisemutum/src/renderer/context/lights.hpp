@@ -87,7 +87,7 @@ BI_SHADER_PARAMETERS_BEGIN(LightsContextShaderData)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture3D, ltc_matrix_lut2)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture3D, ltc_norm_lut)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, ltc_sampler)
-BI_SHADER_PARAMETERS_END(LightsContextShaderData)
+BI_SHADER_PARAMETERS_END()
 
 struct LightsContext final {
     LightsContext();

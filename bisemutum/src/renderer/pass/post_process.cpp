@@ -12,7 +12,7 @@ BI_SHADER_PARAMETERS_BEGIN(PostProcessPassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_color)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_depth)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, sampler_input)
-BI_SHADER_PARAMETERS_END(PostProcessPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct PostProcessPassData final {
     gfx::TextureHandle input_color;
@@ -25,7 +25,7 @@ BI_SHADER_PARAMETERS_BEGIN(BloomPrePassParams)
     BI_SHADER_PARAMETER(float4, bloom_weight)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_color)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, sampler_input)
-BI_SHADER_PARAMETERS_END(BloomPrePassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct BloomPrePassData final {
     gfx::TextureHandle input_color;
@@ -36,7 +36,7 @@ BI_SHADER_PARAMETERS_BEGIN(BloomFilterPassParams)
     BI_SHADER_PARAMETER(float2, texel_size)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_color)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, sampler_input)
-BI_SHADER_PARAMETERS_END(BloomFilterPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct BloomFilterPassData final {
     gfx::TextureHandle input_color;
@@ -47,7 +47,7 @@ BI_SHADER_PARAMETERS_BEGIN(BloomCombinePassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_color1)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_color2)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, sampler_input)
-BI_SHADER_PARAMETERS_END(BloomCombinePassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct BloomCombinePassData final {
     gfx::TextureHandle input_color1;

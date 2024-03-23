@@ -504,7 +504,7 @@ auto shader_parameter_metadata_list_of() -> ShaderParameterMetadataList {
         ); \
     };
 
-#define BI_SHADER_PARAMETERS_END(name) using ParamsTypeList = name::XParamsTuple<__LINE__ - 1>::type; };
+#define BI_SHADER_PARAMETERS_END() using ParamsTypeList = XParamsTuple<__LINE__ - 1>::type; };
 
 
 struct GraphicsManager;

@@ -5,7 +5,7 @@ namespace bi {
 namespace {
 
 BI_SHADER_PARAMETERS_BEGIN(GBufferPassParams)
-BI_SHADER_PARAMETERS_END(GBufferPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct PassData final {
     gfx::TextureHandle velocity;

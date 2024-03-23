@@ -14,7 +14,7 @@ BI_SHADER_PARAMETERS_BEGIN(SkyboxContextShaderData)
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox_specular_filtered)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, skybox_brdf_lut)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
-BI_SHADER_PARAMETERS_END(SkyboxContextShaderData)
+BI_SHADER_PARAMETERS_END()
 
 struct SkyboxContext final {
     SkyboxContext();

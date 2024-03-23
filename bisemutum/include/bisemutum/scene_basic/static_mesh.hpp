@@ -23,7 +23,7 @@ struct StaticMesh final {
     // -- For IMesh --
     BI_SHADER_PARAMETERS_BEGIN(ShaderParams)
         BI_SHADER_PARAMETER_INCLUDE(gfx::DrawableShaderData, drawable_data)
-    BI_SHADER_PARAMETERS_END(ShaderParams)
+    BI_SHADER_PARAMETERS_END()
 
     auto mesh_type_name() const -> std::string_view { return asset_type_name; }
     auto get_mesh_data() const -> gfx::MeshData const& { return mesh_; }

@@ -11,7 +11,7 @@ BI_SHADER_PARAMETERS_BEGIN(DeferredLightingPassParams)
 
     BI_SHADER_PARAMETER_INCLUDE(LightsContextShaderData, lights_ctx)
     BI_SHADER_PARAMETER_INCLUDE(SkyboxContextShaderData, skybox_ctx)
-BI_SHADER_PARAMETERS_END(DeferredLightingPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct PassData final {
     gfx::TextureHandle output;

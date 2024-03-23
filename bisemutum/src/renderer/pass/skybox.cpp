@@ -13,7 +13,7 @@ BI_SHADER_PARAMETERS_BEGIN(SkyboxPassParams)
     BI_SHADER_PARAMETER(float4x4, skybox_transform)
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, skybox_sampler)
-BI_SHADER_PARAMETERS_END(SkyboxPassParams)
+BI_SHADER_PARAMETERS_END()
 
 struct PassData final {
     gfx::TextureHandle output;

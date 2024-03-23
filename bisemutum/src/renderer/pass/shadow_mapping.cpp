@@ -5,7 +5,7 @@ namespace bi {
 namespace {
 
 BI_SHADER_PARAMETERS_BEGIN(ShadowMappingParams)
-BI_SHADER_PARAMETERS_END(ShadowMappingParams)
+BI_SHADER_PARAMETERS_END()
 
 struct PassData final {
     gfx::RenderedObjectListHandle list;

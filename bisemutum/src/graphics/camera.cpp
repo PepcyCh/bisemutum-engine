@@ -15,12 +15,12 @@ BI_SHADER_PARAMETERS_BEGIN(FrameInfo)
     BI_SHADER_PARAMETER(uint, index)
     BI_SHADER_PARAMETER(float, time_seconds)
     BI_SHADER_PARAMETER(float2, _pad)
-BI_SHADER_PARAMETERS_END(FrameInfo)
+BI_SHADER_PARAMETERS_END()
 
 BI_SHADER_PARAMETERS_BEGIN(Viewport)
     BI_SHADER_PARAMETER(uint2, size)
     BI_SHADER_PARAMETER(uint2, offset)
-BI_SHADER_PARAMETERS_END(Viewport)
+BI_SHADER_PARAMETERS_END()
 
 BI_SHADER_PARAMETERS_BEGIN(CameraData)
     BI_SHADER_PARAMETER(float4x4, matrix_view)
@@ -30,13 +30,13 @@ BI_SHADER_PARAMETERS_BEGIN(CameraData)
     BI_SHADER_PARAMETER(float4x4, matrix_proj_view)
     BI_SHADER_PARAMETER(float4x4, matrix_prev_proj_view)
     BI_SHADER_PARAMETER(float4x4, history_matrix_proj_view)
-BI_SHADER_PARAMETERS_END(CameraData)
+BI_SHADER_PARAMETERS_END()
 
 BI_SHADER_PARAMETERS_BEGIN(GraphicsInput)
     BI_SHADER_PARAMETER(FrameInfo, frame);
     BI_SHADER_PARAMETER(Viewport, viewport);
     BI_SHADER_PARAMETER_INCLUDE(CameraData, camera);
-BI_SHADER_PARAMETERS_END(GraphicsInput)
+BI_SHADER_PARAMETERS_END()
 
 } // namespace
 
