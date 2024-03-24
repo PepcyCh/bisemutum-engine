@@ -59,33 +59,33 @@ struct BloomCombinePassData final {
 
 PostProcessPass::PostProcessPass() {
     bloom_pre_shader_params_.initialize<BloomPrePassParams>();
-    bloom_pre_shader_.source_path = "/bisemutum/shaders/renderer/bloom_pre.hlsl";
-    bloom_pre_shader_.source_entry = "bloom_pre_fs";
+    bloom_pre_shader_.source.path = "/bisemutum/shaders/renderer/bloom_pre.hlsl";
+    bloom_pre_shader_.source.entry = "bloom_pre_fs";
     bloom_pre_shader_.set_shader_params_struct<BloomPrePassParams>();
     bloom_pre_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     bloom_pre_shader_.depth_test = false;
 
-    bloom_filter_shader_[0].source_path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
-    bloom_filter_shader_[0].source_entry = "bloom_horizontal_fs";
+    bloom_filter_shader_[0].source.path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
+    bloom_filter_shader_[0].source.entry = "bloom_horizontal_fs";
     bloom_filter_shader_[0].set_shader_params_struct<BloomFilterPassParams>();
     bloom_filter_shader_[0].needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     bloom_filter_shader_[0].depth_test = false;
 
-    bloom_filter_shader_[1].source_path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
-    bloom_filter_shader_[1].source_entry = "bloom_vertical_fs";
+    bloom_filter_shader_[1].source.path = "/bisemutum/shaders/renderer/bloom_filter.hlsl";
+    bloom_filter_shader_[1].source.entry = "bloom_vertical_fs";
     bloom_filter_shader_[1].set_shader_params_struct<BloomFilterPassParams>();
     bloom_filter_shader_[1].needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     bloom_filter_shader_[1].depth_test = false;
 
-    bloom_combine_shader_.source_path = "/bisemutum/shaders/renderer/bloom_combine.hlsl";
-    bloom_combine_shader_.source_entry = "bloom_combine_fs";
+    bloom_combine_shader_.source.path = "/bisemutum/shaders/renderer/bloom_combine.hlsl";
+    bloom_combine_shader_.source.entry = "bloom_combine_fs";
     bloom_combine_shader_.set_shader_params_struct<BloomCombinePassParams>();
     bloom_combine_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     bloom_combine_shader_.depth_test = false;
 
     fragment_shader_params_.initialize<PostProcessPassParams>();
-    fragment_shader_.source_path = "/bisemutum/shaders/renderer/post_process.hlsl";
-    fragment_shader_.source_entry = "post_process_pass_fs";
+    fragment_shader_.source.path = "/bisemutum/shaders/renderer/post_process.hlsl";
+    fragment_shader_.source.entry = "post_process_pass_fs";
     fragment_shader_.set_shader_params_struct<PostProcessPassParams>();
     fragment_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     fragment_shader_.depth_test = false;

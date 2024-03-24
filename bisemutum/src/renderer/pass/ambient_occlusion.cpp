@@ -93,32 +93,32 @@ struct MergePassData final {
 
 AmbientOcclusionPass::AmbientOcclusionPass() {
     screen_space_shader_params_.initialize<SSAOPassParams>();
-    screen_space_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/ambient_occlusion_ss.hlsl";
-    screen_space_shader_.source_entry = "ambient_occlusion_ss_fs";
+    screen_space_shader_.source.path = "/bisemutum/shaders/renderer/ambient_occlusion/ambient_occlusion_ss.hlsl";
+    screen_space_shader_.source.entry = "ambient_occlusion_ss_fs";
     screen_space_shader_.set_shader_params_struct<SSAOPassParams>();
     screen_space_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     screen_space_shader_.depth_test = false;
 
     if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
         raytracing_shader_params_.initialize<RTAOPassParams>();
-        raytracing_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/ambient_occlusion_rt.hlsl";
-        raytracing_shader_.source_entry = "ambient_occlusion_rt_cs";
+        raytracing_shader_.source.path = "/bisemutum/shaders/renderer/ambient_occlusion/ambient_occlusion_rt.hlsl";
+        raytracing_shader_.source.entry = "ambient_occlusion_rt_cs";
         raytracing_shader_.set_shader_params_struct<RTAOPassParams>();
     }
 
     temporal_accumulate_shader_params_.initialize<TemporalAccumulatePassParams>();
-    temporal_accumulate_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/temporal_accumulate.hlsl";
-    temporal_accumulate_shader_.source_entry = "ao_temporal_accumulate_cs";
+    temporal_accumulate_shader_.source.path = "/bisemutum/shaders/renderer/ambient_occlusion/temporal_accumulate.hlsl";
+    temporal_accumulate_shader_.source.entry = "ao_temporal_accumulate_cs";
     temporal_accumulate_shader_.set_shader_params_struct<TemporalAccumulatePassParams>();
 
     spatial_filter_shader_params_.initialize<SpatialFilterPassParams>();
-    spatial_filter_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/spatial_filter.hlsl";
-    spatial_filter_shader_.source_entry = "ao_spatial_filter_cs";
+    spatial_filter_shader_.source.path = "/bisemutum/shaders/renderer/ambient_occlusion/spatial_filter.hlsl";
+    spatial_filter_shader_.source.entry = "ao_spatial_filter_cs";
     spatial_filter_shader_.set_shader_params_struct<SpatialFilterPassParams>();
 
     merge_ao_shader_params_.initialize<MergePassParams>();
-    merge_ao_shader_.source_path = "/bisemutum/shaders/renderer/ambient_occlusion/merge.hlsl";
-    merge_ao_shader_.source_entry = "merge_ao_fs";
+    merge_ao_shader_.source.path = "/bisemutum/shaders/renderer/ambient_occlusion/merge.hlsl";
+    merge_ao_shader_.source.entry = "merge_ao_fs";
     merge_ao_shader_.set_shader_params_struct<MergePassParams>();
     merge_ao_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
     merge_ao_shader_.depth_test = false;

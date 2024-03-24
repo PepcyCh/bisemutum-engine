@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include "shader_source.hpp"
 #include "vertex_attributes_type.hpp"
 #include "shader_param.hpp"
 #include "shader_compilation_environment.hpp"
@@ -15,8 +16,7 @@ struct FragmentShader final {
 
     auto modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void;
 
-    std::string source_path;
-    std::string source_entry;
+    ShaderSource source;
     ShaderParameterMetadataList shader_params_metadata;
     std::function<auto(ShaderCompilationEnvironment&) -> void> modify_compiler_environment_func;
     BitFlags<VertexAttributesType> needed_vertex_attributes = VertexAttributesType::full;
@@ -44,8 +44,23 @@ struct ComputeShader final {
 
     auto modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void;
 
-    std::string source_path;
-    std::string source_entry;
+    ShaderSource source;
+    ShaderParameterMetadataList shader_params_metadata;
+    std::function<auto(ShaderCompilationEnvironment&) -> void> modify_compiler_environment_func;
+};
+
+struct RaytracingShaders final {
+    template <typename ParamsStruct>
+    auto set_shader_params_struct() { shader_params_metadata = shader_parameter_metadata_list_of<ParamsStruct>(); }
+
+    auto modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void;
+
+    ShaderSource raygen_source;
+
+    ShaderSource closest_hit_source;
+    ShaderSource any_hit_source;
+    ShaderSource miss_source;
+
     ShaderParameterMetadataList shader_params_metadata;
     std::function<auto(ShaderCompilationEnvironment&) -> void> modify_compiler_environment_func;
 };

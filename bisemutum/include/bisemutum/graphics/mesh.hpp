@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shader_source.hpp"
 #include "shader_param.hpp"
 #include "shader_compilation_environment.hpp"
 #include "../prelude/poly.hpp"
@@ -130,11 +131,8 @@ BI_TRAIT_BEGIN(IMesh, move)
             requires (self.shader_params_metadata(submesh_index)) -> ShaderParameterMetadataList const&
     )
 
-    BI_TRAIT_METHOD(source_path,
-        (const& self, rhi::ShaderStage stage) requires (self.source_path(stage)) -> std::string_view
-    )
-    BI_TRAIT_METHOD(source_entry,
-        (const& self, rhi::ShaderStage stage) requires (self.source_entry(stage)) -> std::string_view
+    BI_TRAIT_METHOD(source,
+        (const& self, rhi::ShaderStage stage) requires (self.source(stage)) -> ShaderSource
     )
     BI_TRAIT_METHOD(modify_compiler_environment,
         (const& self, ShaderCompilationEnvironment& compilation_environment)

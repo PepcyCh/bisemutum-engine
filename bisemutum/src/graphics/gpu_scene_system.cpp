@@ -6,6 +6,36 @@
 
 namespace bi::gfx {
 
+namespace {
+
+struct DrawableSbtData final {
+    uint32_t position_offset;
+    uint32_t normal_offset;
+    uint32_t tangent_offset;
+    uint32_t color_offset;
+    uint32_t texcoord_offset;
+    uint32_t texcoord2_offset;
+    uint32_t index_offset;
+    uint32_t material_offset;
+};
+
+BI_SHADER_PARAMETERS_BEGIN(GpuSceneData)
+    // BI_SHADER_PARAMETER_SRV_ACCEL(RaytracingAccelerationStructure, scene_accel)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, positions_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, normals_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, tangents_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, colors_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, texcoords_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, texcoords2_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, indices_buffer)
+
+    BI_SHADER_PARAMETER_SRV_BUFFER(ByteAddressBuffer, material_params)
+
+    BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, material_textures, [1024])
+BI_SHADER_PARAMETERS_END()
+
+}
+
 struct GpuSceneSystem::Impl final {
     auto init_on(Ref<rt::Scene> scene) -> void {}
 
@@ -37,7 +67,9 @@ struct GpuSceneSystem::Impl final {
     }
 
     auto add_drawable() -> DrawableHandle {
-        return drawables.emplace();
+        auto handle = drawables.emplace();
+        drawables.get(handle).handle_ = handle;
+        return handle;
     }
     auto remove_drawable(DrawableHandle handle) -> void {
         drawables.remove(handle);
@@ -54,16 +86,6 @@ struct GpuSceneSystem::Impl final {
     auto for_each_drawable(std::function<auto(Drawable const&) -> void>&& func) const -> void {
         for (auto const& drawable : drawables) {
             func(drawable);
-        }
-    }
-    auto for_each_drawable(std::function<auto(DrawableHandle, Drawable&) -> void>&& func) -> void {
-        for (auto [handle, drawable] : drawables.pairs()) {
-            func(handle, drawable);
-        }
-    }
-    auto for_each_drawable(std::function<auto(DrawableHandle, Drawable const&) -> void>&& func) const -> void {
-        for (auto [handle, drawable] : drawables.pairs()) {
-            func(handle, drawable);
         }
     }
     auto for_each_drawable_with_shader_data(
@@ -145,12 +167,6 @@ auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable&) -> void> fu
     impl()->for_each_drawable(std::move(func));
 }
 auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void {
-    impl()->for_each_drawable(std::move(func));
-}
-auto GpuSceneSystem::for_each_drawable(std::function<auto(DrawableHandle, Drawable&) -> void> func) -> void {
-    impl()->for_each_drawable(std::move(func));
-}
-auto GpuSceneSystem::for_each_drawable(std::function<auto(DrawableHandle, Drawable const&) -> void> func) const -> void {
     impl()->for_each_drawable(std::move(func));
 }
 auto GpuSceneSystem::for_each_drawable_with_shader_data(

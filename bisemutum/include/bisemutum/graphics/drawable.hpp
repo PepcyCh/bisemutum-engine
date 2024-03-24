@@ -1,14 +1,19 @@
 #pragma once
 
+#include "handles.hpp"
 #include "mesh.hpp"
 #include "material.hpp"
 #include "../math/transform.hpp"
 
 namespace bi::gfx {
 
+struct GpuSceneSystem;
+
 struct Drawable final {
     auto bounding_box() const -> BoundingBox;
     auto submesh_desc() const -> SubmeshDesc const&;
+
+    auto handle() const -> DrawableHandle { return handle_; }
 
     Dyn<IMesh>::Ptr mesh;
     uint32_t submesh_index = 0;
@@ -17,6 +22,10 @@ struct Drawable final {
     Transform transform;
 
     ShaderParameter shader_params;
+
+private:
+    friend GpuSceneSystem;
+    DrawableHandle handle_ = DrawableHandle::invalid;
 };
 
 BI_SHADER_PARAMETERS_BEGIN(DrawableShaderData)

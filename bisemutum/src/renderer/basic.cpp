@@ -41,15 +41,10 @@ struct BasicRenderer::Impl final {
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto& settings = rt::find_volume_component_for(camera.position, default_settings).settings;
 
-        auto [drawble_handles, drawables] = frustum_culling(camera);
+        auto drawables = frustum_culling(camera);
 
         if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
-            gfx::AccelerationStructureDesc accel_desc{};
-            accel_desc.instances.resize(drawables.size());
-            for (size_t i = 0; i < drawables.size(); i++) {
-                accel_desc.instances[i].drawable = drawables[i];
-                accel_desc.instances[i].instance_id = static_cast<uint32_t>(drawble_handles[i]);
-            }
+            gfx::AccelerationStructureDesc accel_desc{drawables};
             scene_accel = rg.add_acceleration_structure(accel_desc);
         }
 
@@ -115,21 +110,19 @@ struct BasicRenderer::Impl final {
         });
     }
 
-    auto frustum_culling(gfx::Camera const& camera) -> std::pair<std::vector<gfx::DrawableHandle>, std::vector<Ref<gfx::Drawable>>> {
-        std::vector<gfx::DrawableHandle> handles;
+    auto frustum_culling(gfx::Camera const& camera) -> std::vector<Ref<gfx::Drawable>> {
         std::vector<Ref<gfx::Drawable>> drawables;
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
 
         auto frustum_planes = camera.get_frustum_planes();
         gpu_scene->for_each_drawable(
-            [&handles, &drawables, &frustum_planes](gfx::DrawableHandle handle, gfx::Drawable& drawable) {
+            [&drawables, &frustum_planes](gfx::Drawable& drawable) {
                 auto bbox = drawable.bounding_box();
                 if (!bbox.test_with_planes(frustum_planes)) { return; }
-                handles.push_back(handle);
                 drawables.push_back(drawable);
             }
         );
-        return {handles, drawables};
+        return drawables;
     }
 
     inline static BasicRendererOverrideVolume default_settings;

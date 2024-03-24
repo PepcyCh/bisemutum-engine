@@ -5,18 +5,8 @@
 
 namespace bi::gfx {
 
-struct AccelerationStructureInstance final {
-    Ptr<Drawable> drawable = nullptr;
-    Ptr<Buffer> aabb_buffer = nullptr;
-    uint32_t aabb_buffer_offset = 0;
-    uint32_t aabb_num_primitives = 0;
-
-    uint32_t instance_id = 0;
-    uint32_t instance_mask = 0xff;
-};
-
 struct AccelerationStructureDesc final {
-    std::vector<AccelerationStructureInstance> instances;
+    std::vector<Ref<Drawable>> drawables;
 };
 
 struct AccelerationStructure final {

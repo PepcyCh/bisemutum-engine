@@ -16,8 +16,8 @@ struct PassData final {
 ShadowMappingPass::ShadowMappingPass() {
     fragment_shader_params_.initialize<ShadowMappingParams>();
 
-    fragment_shader_.source_path = "/bisemutum/shaders/renderer/depth_only.hlsl";
-    fragment_shader_.source_entry = "depth_only_fs";
+    fragment_shader_.source.path = "/bisemutum/shaders/renderer/depth_only.hlsl";
+    fragment_shader_.source.entry = "depth_only_fs";
     fragment_shader_.set_shader_params_struct<ShadowMappingParams>();
 }
 

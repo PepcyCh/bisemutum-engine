@@ -2,13 +2,9 @@
 
 #include <string_view>
 
-#include "../math/bbox.hpp"
 #include "../runtime/asset.hpp"
 #include "../graphics/shader_param.hpp"
 #include "../graphics/drawable.hpp"
-#include "../graphics/vertex_attributes_type.hpp"
-#include "../rhi/command.hpp"
-#include "../rhi/pipeline.hpp"
 
 namespace bi {
 
@@ -32,18 +28,14 @@ struct StaticMesh final {
     auto shader_params_metadata(uint32_t submesh_index) const -> gfx::ShaderParameterMetadataList const& {
         return ShaderParams::metadata_list();
     }
-    auto source_path(rhi::ShaderStage stage) const -> std::string_view {
+    auto source(rhi::ShaderStage stage) const -> gfx::ShaderSource {
         if (stage == rhi::ShaderStage::vertex) {
-            return "/bisemutum/shaders/scene_basic/static_mesh.hlsl";
+            return gfx::ShaderSource{
+                .path = "/bisemutum/shaders/scene_basic/static_mesh.hlsl",
+                .entry = "static_mesh_vs",
+            };
         } else {
-            return "";
-        }
-    }
-    auto source_entry(rhi::ShaderStage stage) const -> std::string_view {
-        if (stage == rhi::ShaderStage::vertex) {
-            return "static_mesh_vs";
-        } else {
-            return "";
+            return {};
         }
     }
 

@@ -271,9 +271,8 @@ auto GraphicsPassContext::render_full_screen(
     CRef<Camera> camera, CRef<FragmentShader> fragment_shader, ShaderParameter& params
 ) const -> void {
     ScreenTriangle screen_triangle{};
-    Drawable drawable{
-        .mesh = &screen_triangle,
-    };
+    Drawable drawable{};
+    drawable.mesh = &screen_triangle;
     auto pipeline = g_engine->graphics_manager()->compile_pipeline_for_drawable(
         this, camera, drawable, fragment_shader
     );

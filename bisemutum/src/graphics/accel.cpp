@@ -9,14 +9,9 @@ namespace bi::gfx {
 
 AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& desc) {
     std::unordered_set<CRef<Drawable>> drawables;
-    std::unordered_set<std::tuple<CRef<Buffer>, uint32_t, uint32_t>> aabbs;
-    for (auto& inst : desc.instances) {
-        if (inst.drawable) {
-            if (inst.drawable->submesh_desc().topology == rhi::PrimitiveTopology::triangle_list) {
-                drawables.insert(inst.drawable.value());
-            }
-        } else {
-            aabbs.insert({inst.aabb_buffer.value(), inst.aabb_buffer_offset, inst.aabb_num_primitives});
+    for (auto& drawable : desc.drawables) {
+        if (drawable->submesh_desc().topology == rhi::PrimitiveTopology::triangle_list) {
+            drawables.insert(drawable);
         }
     }
 
@@ -44,7 +39,6 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
         }
         drawables_blas.insert({drawable, blas});
     }
-    // TODO - aabbs
     if (!blas_to_be_built.empty()) {
         Buffer scratch_buffer(rhi::BufferDesc{
             .size = blas_scratch_buffer_size,
@@ -107,37 +101,32 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
     }
 
     std::vector<rhi::AccelerationStructureInstanceDesc> tlas_instances;
-    for (uint32_t inst_id = 0; auto& inst : desc.instances) {
-        if (inst.drawable) {
-            auto& blas = drawables_blas.at(inst.drawable.value());
-            tlas_instances.push_back(rhi::AccelerationStructureInstanceDesc{
-                .instance_id = inst.instance_id,
-                .mask = inst.instance_mask,
-                .sbt_offset = inst_id * 3,
-                .flags = BitFlags{
-                    inst.drawable.value()->material->blend_mode == BlendMode::opaque
-                        ? rhi::AccelerationStructureInstanceFlag::force_opaque
-                        : rhi::AccelerationStructureInstanceFlag::force_non_opaque
-                    }.raw_value(),
-                .blas = blas->blas_->gpu_reference(),
-            });
-            auto transform = inst.drawable->transform.matrix();
-            tlas_instances.back().transform[0][0] = transform[0][0];
-            tlas_instances.back().transform[0][1] = transform[1][0];
-            tlas_instances.back().transform[0][2] = transform[2][0];
-            tlas_instances.back().transform[0][3] = transform[3][0];
-            tlas_instances.back().transform[1][0] = transform[0][1];
-            tlas_instances.back().transform[1][1] = transform[1][1];
-            tlas_instances.back().transform[1][2] = transform[2][1];
-            tlas_instances.back().transform[1][3] = transform[3][1];
-            tlas_instances.back().transform[2][0] = transform[0][2];
-            tlas_instances.back().transform[2][1] = transform[1][2];
-            tlas_instances.back().transform[2][2] = transform[2][2];
-            tlas_instances.back().transform[2][3] = transform[3][2];
-        } else {
-            // TODO - aabb
-        }
-        ++inst_id;
+    for (auto& drawable : desc.drawables) {
+        auto& blas = drawables_blas.at(drawable);
+        tlas_instances.push_back(rhi::AccelerationStructureInstanceDesc{
+            .instance_id = static_cast<uint32_t>(drawable->handle()),
+            .mask = 0xff,
+            .sbt_offset = static_cast<uint32_t>(drawable->handle()),
+            .flags = BitFlags{
+                drawable->material->blend_mode == BlendMode::opaque
+                    ? rhi::AccelerationStructureInstanceFlag::force_opaque
+                    : rhi::AccelerationStructureInstanceFlag::force_non_opaque
+                }.raw_value(),
+            .blas = blas->blas_->gpu_reference(),
+        });
+        auto transform = drawable->transform.matrix();
+        tlas_instances.back().transform[0][0] = transform[0][0];
+        tlas_instances.back().transform[0][1] = transform[1][0];
+        tlas_instances.back().transform[0][2] = transform[2][0];
+        tlas_instances.back().transform[0][3] = transform[3][0];
+        tlas_instances.back().transform[1][0] = transform[0][1];
+        tlas_instances.back().transform[1][1] = transform[1][1];
+        tlas_instances.back().transform[1][2] = transform[2][1];
+        tlas_instances.back().transform[1][3] = transform[3][1];
+        tlas_instances.back().transform[2][0] = transform[0][2];
+        tlas_instances.back().transform[2][1] = transform[1][2];
+        tlas_instances.back().transform[2][2] = transform[2][2];
+        tlas_instances.back().transform[2][3] = transform[3][2];
     }
     Buffer tlas_instance_buffer(rhi::BufferDesc{
         .size = tlas_instances.size() * sizeof(rhi::AccelerationStructureInstanceDesc),

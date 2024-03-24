@@ -22,8 +22,8 @@ struct PassData final {
 ForwardPass::ForwardPass() {
     fragment_shader_params_.initialize<ForwardPassParams>();
 
-    fragment_shader_.source_path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
-    fragment_shader_.source_entry = "forward_pass_fs";
+    fragment_shader_.source.path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
+    fragment_shader_.source.entry = "forward_pass_fs";
     fragment_shader_.set_shader_params_struct<ForwardPassParams>();
     fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }

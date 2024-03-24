@@ -24,18 +24,14 @@ struct ScreenTriangle final {
     auto shader_params_metadata(uint32_t submesh_index) const -> ShaderParameterMetadataList const& {
         return ShaderParams::metadata_list();
     }
-    auto source_path(rhi::ShaderStage stage) const -> std::string_view {
+    auto source(rhi::ShaderStage stage) const -> ShaderSource {
         if (stage == rhi::ShaderStage::vertex) {
-            return "/bisemutum/shaders/core/screen_triangle.hlsl";
+            return {
+                .path = "/bisemutum/shaders/core/screen_triangle.hlsl",
+                .entry = "screen_triangle_vs",
+            };
         } else {
-            return "";
-        }
-    }
-    auto source_entry(rhi::ShaderStage stage) const -> std::string_view {
-        if (stage == rhi::ShaderStage::vertex) {
-            return "screen_triangle_vs";
-        } else {
-            return "";
+            return {};
         }
     }
 

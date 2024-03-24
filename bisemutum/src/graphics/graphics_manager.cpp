@@ -711,8 +711,8 @@ struct GraphicsManager::Impl final {
         );
         auto fs_id = fmt::format(
             "FS '{}' {} {} {}",
-            fs->source_path,
-            fs->source_entry,
+            fs->source.path,
+            fs->source.entry,
             drawable->material ? drawable->material->get_shader_identifier() : "X",
             shader_env_id
         );
@@ -754,29 +754,31 @@ struct GraphicsManager::Impl final {
 
         auto vs_id = mesh_shaders_id + "vs";
         auto vs_it = cached_shaders.find(vs_id);
+        auto vs_source = drawable->mesh->source(rhi::ShaderStage::vertex);
         if (vs_it == cached_shaders.end()) {
             auto vs = shader_compiler.compile_shader(
-                drawable->mesh->source_path(rhi::ShaderStage::vertex),
-                drawable->mesh->source_entry(rhi::ShaderStage::vertex),
+                vs_source.path,
+                vs_source.entry,
                 rhi::ShaderStage::vertex,
                 shader_env
             );
             BI_ASSERT_MSG(vs.has_value(), vs.error());
             vs_it = cached_shaders.insert({std::move(vs_id), vs.value()}).first;
         }
-        rhi::PipelineShader pipeline_vs{vs_it->second, drawable->mesh->source_entry(rhi::ShaderStage::vertex)};
+        rhi::PipelineShader pipeline_vs{vs_it->second, vs_source.entry};
 
-        auto compile_mesh_opt_shader = [this, &mesh_shaders_id, &shader_env, &drawable](
+        std::list<std::string> owned_entries;
+        auto compile_mesh_opt_shader = [this, &mesh_shaders_id, &shader_env, &drawable, &owned_entries](
             rhi::ShaderStage stage,
             char const* id_suffix,
             Option<rhi::PipelineShader>& pipeline_shader
         ) {
-            if (auto entry = drawable->mesh->source_path(stage); !entry.empty()) {
+            if (auto entry = drawable->mesh->source(stage).entry; !entry.empty()) {
                 auto id = mesh_shaders_id + id_suffix;
                 auto it = cached_shaders.find(id);
                 if (it == cached_shaders.end()) {
                     auto shader = shader_compiler.compile_shader(
-                        drawable->mesh->source_path(stage),
+                        drawable->mesh->source(stage).path,
                         entry,
                         stage,
                         shader_env
@@ -784,7 +786,8 @@ struct GraphicsManager::Impl final {
                     BI_ASSERT_MSG(shader.has_value(), shader.error());
                     it = cached_shaders.insert({std::move(id), shader.value()}).first;
                 }
-                pipeline_shader = rhi::PipelineShader{it->second, entry};
+                owned_entries.push_back(entry);
+                pipeline_shader = rhi::PipelineShader{it->second, owned_entries.back()};
             }
         };
         Option<rhi::PipelineShader> pipeline_tcs;
@@ -797,15 +800,15 @@ struct GraphicsManager::Impl final {
         auto fs_it = cached_shaders.find(fs_id);
         if (fs_it == cached_shaders.end()) {
             auto shader = shader_compiler.compile_shader(
-                fs->source_path,
-                fs->source_entry,
+                fs->source.path,
+                fs->source.entry,
                 rhi::ShaderStage::fragment,
                 shader_env
             );
             BI_ASSERT_MSG(shader.has_value(), shader.error());
             fs_it = cached_shaders.insert({std::move(fs_id), shader.value()}).first;
         }
-        rhi::PipelineShader pipeline_fs{fs_it->second, fs->source_entry};
+        rhi::PipelineShader pipeline_fs{fs_it->second, fs->source.entry};
 
         rhi::GraphicsPipelineDesc pipeline_desc{
             .vertex_input_buffers = std::move(vertex_input_desc),
@@ -924,8 +927,8 @@ struct GraphicsManager::Impl final {
 
         auto pipeline_id = fmt::format(
             "CS '{}' {} {} CAM {}",
-            cs->source_path,
-            cs->source_entry,
+            cs->source.path,
+            cs->source.entry,
             shader_env_id,
             camera ? 1 : 0
         );
@@ -949,8 +952,8 @@ struct GraphicsManager::Impl final {
         auto cs_it = cached_shaders.find(cs_id);
         if (cs_it == cached_shaders.end()) {
             auto shader = shader_compiler.compile_shader(
-                cs->source_path,
-                cs->source_entry,
+                cs->source.path,
+                cs->source.entry,
                 rhi::ShaderStage::compute,
                 shader_env
             );
@@ -959,7 +962,7 @@ struct GraphicsManager::Impl final {
         }
 
         rhi::ComputePipelineDesc pipeline_desc{
-            .compute = {cs_it->second, cs->source_entry},
+            .compute = {cs_it->second, cs->source.entry},
         };
         pipeline_desc.bind_groups_layout.push_back(
             cs->shader_params_metadata.bind_group_layout(compute_set_normal, rhi::ShaderStage::compute)

@@ -20,8 +20,8 @@ struct PassData final {
 GBufferdPass::GBufferdPass() {
     fragment_shader_params_.initialize<GBufferPassParams>();
 
-    fragment_shader_.source_path = "/bisemutum/shaders/renderer/gbuffer_pass.hlsl";
-    fragment_shader_.source_entry = "gbuffer_pass_fs";
+    fragment_shader_.source.path = "/bisemutum/shaders/renderer/gbuffer_pass.hlsl";
+    fragment_shader_.source.entry = "gbuffer_pass_fs";
     fragment_shader_.set_shader_params_struct<GBufferPassParams>();
     fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }

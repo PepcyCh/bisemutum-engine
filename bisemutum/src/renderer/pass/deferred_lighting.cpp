@@ -24,8 +24,8 @@ struct PassData final {
 DeferredLightingPass::DeferredLightingPass() {
     fragment_shader_params_.initialize<DeferredLightingPassParams>();
 
-    fragment_shader_.source_path = "/bisemutum/shaders/renderer/deferred_lighting.hlsl";
-    fragment_shader_.source_entry = "deferred_lighting_pass_fs";
+    fragment_shader_.source.path = "/bisemutum/shaders/renderer/deferred_lighting.hlsl";
+    fragment_shader_.source.entry = "deferred_lighting_pass_fs";
     fragment_shader_.set_shader_params_struct<DeferredLightingPassParams>();
     fragment_shader_.depth_test = false;
     fragment_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;

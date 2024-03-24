@@ -37,8 +37,6 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
 
     auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void;
     auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void;
-    auto for_each_drawable(std::function<auto(DrawableHandle, Drawable&) -> void> func) -> void;
-    auto for_each_drawable(std::function<auto(DrawableHandle, Drawable const&) -> void> func) const -> void;
 
     auto for_each_drawable_with_shader_data(
         std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void> func
