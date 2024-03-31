@@ -19,4 +19,10 @@ auto ComputeShader::modify_compiler_environment(ShaderCompilationEnvironment& co
     }
 }
 
+auto RaytracingShaders::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) const -> void {
+    if (modify_compiler_environment_func) {
+        modify_compiler_environment_func(compilation_environment);
+    }
+}
+
 }

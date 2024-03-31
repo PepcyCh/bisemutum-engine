@@ -87,6 +87,10 @@ auto to_vk_buffer_access_type(
         type_vk |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
         stage_vk |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
+    if (type.contains_any(ResourceAccessType::shader_binding_table_read)) {
+        type_vk |= VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR;
+        stage_vk |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+    }
 }
 
 auto to_vk_image_access_type(

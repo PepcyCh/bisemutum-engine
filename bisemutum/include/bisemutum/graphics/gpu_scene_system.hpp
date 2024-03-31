@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "handles.hpp"
+#include "shader_param.hpp"
 #include "../prelude/idiom.hpp"
 #include "../runtime/scene.hpp"
 
@@ -11,6 +12,7 @@ namespace bi::gfx {
 struct Camera;
 struct Drawable;
 struct DrawableShaderData;
+struct RaytracingPassContext;
 
 struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     struct Impl;
@@ -34,7 +36,11 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     auto add_drawable() -> DrawableHandle;
     auto remove_drawable(DrawableHandle handle) -> void;
     auto get_drawable(DrawableHandle handle) -> Ref<Drawable>;
+    auto get_drawable(DrawableHandle handle) const -> CRef<Drawable>;
 
+    auto drawables_hash() -> size_t;
+
+    auto num_drawables() const -> size_t;
     auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void;
     auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void;
 
@@ -44,6 +50,16 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     auto for_each_drawable_with_shader_data(
         std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void> func
     ) const -> void;
+
+    auto drawable_data_of(DrawableHandle handle) const -> DrawableShaderData;
+    auto drawable_data_of(Drawable const& drawable) const -> DrawableShaderData;
+
+private:
+    friend GraphicsManager;
+    friend RaytracingPassContext;
+    auto shader_params() -> ShaderParameter&;
+    auto shader_params_metadata() const -> ShaderParameterMetadataList const&;
+    auto update_shader_params() -> void;
 };
 
 }

@@ -4,6 +4,7 @@
 #include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/render_graph.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/rhi/device.hpp>
 #include <bisemutum/prelude/math.hpp>
 
@@ -150,6 +151,8 @@ auto set_shader_params_helper(
                 resource_binding_ctx.temp_set_samplers[set].layout.back().visibility = graphics_set_visibility_samplers;
             } else if constexpr (std::is_same_v<CommandBuffer, rhi::ComputeCommandEncoder>) {
                 resource_binding_ctx.temp_set_samplers[set].layout.back().visibility = rhi::ShaderStage::compute;
+            } else if constexpr (std::is_same_v<CommandBuffer, rhi::RaytracingCommandEncoder>) {
+                resource_binding_ctx.temp_set_samplers[set].layout.back().visibility = rhi::ShaderStage::all_ray_tracing;
             } else {
                 static_assert(traits::AlwaysFalse<CommandBuffer>, "Invalid template parameter value 'CommandBuffer'.");
             }
@@ -218,6 +221,16 @@ auto ResourceBindingContext::set_shader_params(
     set_shader_params_helper(*this, cmd_encoder, set, visibility, params);
 }
 auto ResourceBindingContext::set_samplers(Ref<rhi::ComputeCommandEncoder> cmd_encoder, uint32_t set) -> void {
+    set_samplers_helper(*this, cmd_encoder, set);
+}
+
+auto ResourceBindingContext::set_shader_params(
+    Ref<rhi::RaytracingCommandEncoder> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
+    ShaderParameter& params
+) -> void {
+    set_shader_params_helper(*this, cmd_encoder, set, visibility, params);
+}
+auto ResourceBindingContext::set_samplers(Ref<rhi::RaytracingCommandEncoder> cmd_encoder, uint32_t set) -> void {
     set_samplers_helper(*this, cmd_encoder, set);
 }
 
@@ -325,6 +338,39 @@ auto ComputePassContext::dispatch(
     );
     resource_binding_ctx_->set_samplers(cmd_encoder, compute_set_samplers);
     cmd_encoder->dispatch(num_groups_x, num_groups_y, num_groups_z);
+}
+
+
+RaytracingPassContext::RaytracingPassContext(
+    CRef<RenderGraph> rg,
+    Ref<rhi::RaytracingCommandEncoder> cmd_encoder,
+    Ref<GpuSceneSystem> gpu_scene
+)
+    : rg(rg)
+    , cmd_encoder(cmd_encoder)
+    , gpu_scene(gpu_scene)
+{
+    resource_binding_ctx_ = Box<ResourceBindingContext>::make();
+}
+
+auto RaytracingPassContext::dispatch_rays(
+    CRef<Camera> camera, CRef<RaytracingShaders> raytracing_shaders, ShaderParameter& params,
+    uint32_t width, uint32_t height, uint32_t depth
+) const -> void {
+    auto [pipeline, sbt] = g_engine->graphics_manager()->compile_pipeline_raytracing(this, camera, raytracing_shaders);
+    cmd_encoder->set_pipeline(pipeline);
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, raytracing_set_normal, rhi::ShaderStage::all_ray_tracing, params
+    );
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, raytracing_set_camera, rhi::ShaderStage::all_ray_tracing, camera.remove_const()->shader_params()
+    );
+    resource_binding_ctx_->set_shader_params(
+        cmd_encoder, raytracing_set_scene, raytracing_set_visibility_scene, gpu_scene->shader_params()
+    );
+    resource_binding_ctx_->set_samplers(cmd_encoder, raytracing_set_samplers);
+
+    cmd_encoder->dispatch_rays(sbt, width, height, depth);
 }
 
 }

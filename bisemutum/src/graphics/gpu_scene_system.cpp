@@ -1,6 +1,8 @@
 #include <bisemutum/graphics/gpu_scene_system.hpp>
 
 #include <bisemutum/containers/slotmap.hpp>
+#include <bisemutum/engine/engine.hpp>
+#include <bisemutum/window/window.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/graphics/drawable.hpp>
 
@@ -8,26 +10,15 @@ namespace bi::gfx {
 
 namespace {
 
-struct DrawableSbtData final {
-    uint32_t position_offset;
-    uint32_t normal_offset;
-    uint32_t tangent_offset;
-    uint32_t color_offset;
-    uint32_t texcoord_offset;
-    uint32_t texcoord2_offset;
-    uint32_t index_offset;
-    uint32_t material_offset;
-};
-
 BI_SHADER_PARAMETERS_BEGIN(GpuSceneData)
-    // BI_SHADER_PARAMETER_SRV_ACCEL(RaytracingAccelerationStructure, scene_accel)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, positions_buffer)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, normals_buffer)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, tangents_buffer)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, colors_buffer)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, texcoords_buffer)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, texcoords2_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, indices_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<uint>, indices_buffer)
+    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, history_transforms_buffer)
 
     BI_SHADER_PARAMETER_SRV_BUFFER(ByteAddressBuffer, material_params)
 
@@ -77,6 +68,24 @@ struct GpuSceneSystem::Impl final {
     auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
         return drawables.get(handle);
     }
+    auto get_drawable(DrawableHandle handle) const -> CRef<Drawable> {
+        return drawables.get(handle);
+    }
+
+    auto get_drawables_hash() -> size_t {
+        auto frame_count = g_engine->window()->frame_count();
+        if (drawables_hash_frame_count != frame_count) {
+            drawables_hash = hash(drawables.size());
+            for (auto const& drawable : drawables) {
+                drawables_hash = hash_combine(
+                    drawables_hash,
+                    hash(drawable.mesh->mesh_type_name(), drawable.material ? drawable.material->get_shader_identifier() : "")
+                );
+            }
+            drawables_hash_frame_count = frame_count;
+        }
+        return drawables_hash;
+    }
 
     auto for_each_drawable(std::function<auto(Drawable&) -> void>&& func) -> void {
         for (auto& drawable : drawables) {
@@ -92,20 +101,20 @@ struct GpuSceneSystem::Impl final {
         std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void>&& func
     ) -> void {
         for (auto [handle, drawable] : drawables.pairs()) {
-            func(drawable, drawable_data_of(handle, drawable));
+            func(drawable, drawable_data_of(drawable));
         }
     }
     auto for_each_drawable_with_shader_data(
         std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void>&& func
     ) const -> void {
         for (auto [handle, drawable] : drawables.pairs()) {
-            func(drawable, drawable_data_of(handle, drawable));
+            func(drawable, drawable_data_of(drawable));
         }
     }
 
-    auto drawable_data_of(DrawableHandle handle, Drawable const& drawable) const -> DrawableShaderData {
+    auto drawable_data_of(Drawable const& drawable) const -> DrawableShaderData {
         float4x4 history_matrix_object_to_world(1.0f);
-        if (auto history_it = history_transforms.find(handle); history_it != history_transforms.end()) {
+        if (auto history_it = history_transforms.find(drawable.handle()); history_it != history_transforms.end()) {
             history_matrix_object_to_world = history_it->second;
         }
         return DrawableShaderData{
@@ -119,6 +128,11 @@ struct GpuSceneSystem::Impl final {
     SlotMap<Drawable, DrawableHandle> drawables;
 
     std::unordered_map<DrawableHandle, float4x4> history_transforms;
+
+    size_t drawables_hash = 0;
+    uint64_t drawables_hash_frame_count = static_cast<uint64_t>(-1);
+
+    TShaderParameter<GpuSceneData> shader_parameter;
 };
 
 GpuSceneSystem::GpuSceneSystem() = default;
@@ -162,7 +176,17 @@ auto GpuSceneSystem::remove_drawable(DrawableHandle handle) -> void {
 auto GpuSceneSystem::get_drawable(DrawableHandle handle) -> Ref<Drawable> {
     return impl()->get_drawable(handle);
 }
+auto GpuSceneSystem::get_drawable(DrawableHandle handle) const -> CRef<Drawable> {
+    return impl()->get_drawable(handle);
+}
 
+auto GpuSceneSystem::drawables_hash() -> size_t {
+    return impl()->get_drawables_hash();
+}
+
+auto GpuSceneSystem::num_drawables() const -> size_t {
+    return impl()->drawables.size();
+}
 auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
     impl()->for_each_drawable(std::move(func));
 }
@@ -178,6 +202,23 @@ auto GpuSceneSystem::for_each_drawable_with_shader_data(
     std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void> func
 ) const -> void {
     impl()->for_each_drawable_with_shader_data(std::move(func));
+}
+
+auto GpuSceneSystem::drawable_data_of(DrawableHandle handle) const -> DrawableShaderData {
+    return impl()->drawable_data_of(*get_drawable(handle));
+}
+auto GpuSceneSystem::drawable_data_of(Drawable const& drawable) const -> DrawableShaderData {
+    return impl()->drawable_data_of(drawable);
+}
+
+auto GpuSceneSystem::shader_params() -> ShaderParameter& {
+    return impl()->shader_parameter;
+}
+auto GpuSceneSystem::shader_params_metadata() const -> ShaderParameterMetadataList const& {
+    return impl()->shader_parameter.metadata_list();
+}
+auto GpuSceneSystem::update_shader_params() -> void {
+    // TODO - update gpu scene shader params
 }
 
 }

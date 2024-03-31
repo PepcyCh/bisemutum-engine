@@ -25,10 +25,11 @@ enum class ResourceAccessType : uint32_t {
     acceleration_structure_read = 0x80000,
     acceleration_structure_write = 0x100000,
     acceleration_structure_build_emit_data_write = 0x200000,
-    present = 0x400000,
+    shader_binding_table_read = 0x400000,
+    present = 0x800000,
 };
 
-enum class BufferUsage : uint8_t {
+enum class BufferUsage : uint32_t {
     none = 0x0,
     vertex = 0x1,
     index = 0x2,
@@ -38,6 +39,7 @@ enum class BufferUsage : uint8_t {
     indirect = 0x20,
     acceleration_structure = 0x40,
     acceleration_structure_build = 0x80,
+    shader_binding_table = 0x100,
 };
 
 enum class BufferMemoryProperty : uint8_t {

@@ -49,7 +49,7 @@ struct MeshData final {
 
     auto texcoords2() const -> std::vector<float2> const& { return texcoords2_; }
     auto mutable_texcoords2() -> std::vector<float2>&;
-    auto has_texcoords() const -> bool { return !texcoords2_.empty(); }
+    auto has_texcoord2() const -> bool { return !texcoords2_.empty(); }
 
     auto indices() const -> std::vector<uint32_t> const& { return indices_; }
     auto mutable_indices() -> std::vector<uint32_t>&;

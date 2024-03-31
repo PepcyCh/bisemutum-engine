@@ -18,6 +18,7 @@
 
 #include "descriptor_allocator.hpp"
 #include "descriptor_sets.hpp"
+#include "drawable_stb_data.hpp"
 #include "command_helpers.hpp"
 
 namespace bi::gfx {
@@ -582,7 +583,7 @@ struct GraphicsManager::Impl final {
     auto bind_mesh_buffers(
         Ref<rhi::GraphicsCommandEncoder> cmd_encoder, CRef<MeshData> mesh
     ) -> void {
-        auto& mesh_buffers = meshes_buffers.try_emplace(mesh->id_).first->second;
+        auto& mesh_buffers = meshes_buffers.at(mesh->id_);
 
         std::vector<Ref<rhi::Buffer>> vertex_buffers;
         std::vector<uint64_t> vertex_buffers_offset;
@@ -988,6 +989,243 @@ struct GraphicsManager::Impl final {
         return pipeline_it->second.ref();
     }
 
+    auto compile_pipeline_raytracing(
+        RaytracingPassContext const* rt_context, CRef<Camera> camera, CRef<RaytracingShaders> shaders
+    ) -> std::pair<Ref<rhi::RaytracingPipeline>, rhi::RaytracingShaderBindingTableBuffers> {
+        auto gpu_scene = rt_context->gpu_scene;
+        auto& scene_raytracing_pipelines = raytracing_pipelines.try_emplace(gpu_scene).first->second;
+
+        auto drawables_hash = gpu_scene->drawables_hash();
+
+        ShaderCompilationEnvironment shader_env;
+        shaders->modify_compiler_environment(shader_env);
+        auto shader_env_id = shader_env.get_config_identifier();
+
+        auto raygen_id = fmt::format("RG '{}' {}", shaders->raygen_source.path, shaders->raygen_source.entry);
+        auto closest_hit_id = fmt::format("CH '{}' {}", shaders->closest_hit_source.path, shaders->closest_hit_source.entry);
+        auto any_hit_id = fmt::format("AH '{}' {}", shaders->any_hit_source.path, shaders->any_hit_source.entry);
+        auto miss_id = fmt::format("MS '{}' {}", shaders->miss_source.path, shaders->miss_source.entry);
+        auto pipeline_id = fmt::format(
+            "{} {} {} {}",
+            raygen_id, closest_hit_id, any_hit_id, miss_id
+        );
+        auto [pipeline_it, need_to_create] = scene_raytracing_pipelines.try_emplace(pipeline_id);
+        if (need_to_create || pipeline_it->second.drawables_hash != drawables_hash) {
+            shader_env.set_replace_arg(
+                "RAYTRACING_SHADER_PARAMS",
+                shaders->shader_params_metadata.generated_shader_definition(raytracing_set_normal, raytracing_set_samplers)
+            );
+            shader_env.set_replace_arg(
+                "CAMERA_SHADER_PARAMS",
+                camera->shader_params_metadata().generated_shader_definition(raytracing_set_camera, raytracing_set_samplers)
+            );
+            auto raygen_it = cached_shaders.find(raygen_id);
+            if (raygen_it == cached_shaders.end()) {
+                auto shader = shader_compiler.compile_shader(
+                    shaders->raygen_source.path,
+                    shaders->raygen_source.entry,
+                    rhi::ShaderStage::ray_generation,
+                    shader_env
+                );
+                BI_ASSERT_MSG(shader.has_value(), shader.error());
+                raygen_it = cached_shaders.insert({std::move(raygen_id), shader.value()}).first;
+            }
+            rhi::RaytracingPipelineDesc pipeline_desc{
+                .shaders = {
+                    .raygen = {
+                        .shader = {raygen_it->second, shaders->raygen_source.entry},
+                    },
+                },
+            };
+            if (!shaders->miss_source.path.empty()) {
+                auto miss_it = cached_shaders.find(miss_id);
+                if (miss_it == cached_shaders.end()) {
+                    auto shader = shader_compiler.compile_shader(
+                        shaders->miss_source.path,
+                        shaders->miss_source.entry,
+                        rhi::ShaderStage::ray_miss,
+                        shader_env
+                    );
+                    BI_ASSERT_MSG(shader.has_value(), shader.error());
+                    miss_it = cached_shaders.insert({std::move(miss_id), shader.value()}).first;
+                }
+                pipeline_desc.shaders.miss = {{
+                    .shader = {miss_it->second, shaders->miss_source.entry},
+                }};
+            }
+            std::vector<std::string> owned_shader_entries;
+            const auto num_drawables = gpu_scene->num_drawables();
+            const auto has_hit_groups = !shaders->closest_hit_source.path.empty() || !shaders->any_hit_source.path.empty();
+            if (has_hit_groups) {
+                pipeline_desc.shaders.hit_group.resize(num_drawables);
+                gpu_scene->for_each_drawable([&](Drawable& drawable) {
+                    update_mesh_buffers(drawable.mesh->get_mesh_data());
+                    auto& hit_group = pipeline_desc.shaders.hit_group[static_cast<size_t>(drawable.handle())];
+                    auto hit_shader_env = shader_env;
+                    drawable.mesh->modify_compiler_environment(hit_shader_env);
+                    BitFlags<VertexAttributesType> input_vertex_attributes{};
+                    if (drawable.mesh->get_mesh_data().has_position()) { input_vertex_attributes.set(VertexAttributesType::position); }
+                    if (drawable.mesh->get_mesh_data().has_normal()) { input_vertex_attributes.set(VertexAttributesType::normal); }
+                    if (drawable.mesh->get_mesh_data().has_tangent()) { input_vertex_attributes.set(VertexAttributesType::tangent); }
+                    if (drawable.mesh->get_mesh_data().has_color()) { input_vertex_attributes.set(VertexAttributesType::color); }
+                    if (drawable.mesh->get_mesh_data().has_texcoord()) { input_vertex_attributes.set(VertexAttributesType::texcoord); }
+                    if (drawable.mesh->get_mesh_data().has_texcoord2()) { input_vertex_attributes.set(VertexAttributesType::texcoord2); }
+                    hit_shader_env.set_define("VERTEX_ATTRIBUTES_IN", std::to_string(input_vertex_attributes.raw_value()));
+                    hit_shader_env.set_define("VERTEX_ATTRIBUTES_OUT", std::to_string(0xff));
+                    if (drawable.material) {
+                        // TODO - material struct
+                        drawable.material->modify_compiler_environment(hit_shader_env);
+                    } else {
+                        hit_shader_env.set_replace_arg("MATERIAL_FUNCTION", "");
+                    }
+                    if (!shaders->closest_hit_source.path.empty()) {
+                        auto chit_id = fmt::format("{}-{}", closest_hit_id, hit_shader_env.get_config_identifier());
+                        auto chit_it = cached_shaders.find(chit_id);
+                        if (chit_it == cached_shaders.end()) {
+                            auto shader = shader_compiler.compile_shader(
+                                shaders->closest_hit_source.path,
+                                shaders->closest_hit_source.entry,
+                                rhi::ShaderStage::ray_closest_hit,
+                                shader_env
+                            );
+                            BI_ASSERT_MSG(shader.has_value(), shader.error());
+                            chit_it = cached_shaders.insert({std::move(chit_id), shader.value()}).first;
+                        }
+                        hit_group.closest_hit = rhi::PipelineShader{
+                            chit_it->second, shaders->closest_hit_source.entry,
+                        };
+                    }
+                    if (!shaders->any_hit_source.path.empty()) {
+                        auto ahit_id = fmt::format("{}-{}", any_hit_id, hit_shader_env.get_config_identifier());
+                        auto ahit_it = cached_shaders.find(ahit_id);
+                        if (ahit_it == cached_shaders.end()) {
+                            auto shader = shader_compiler.compile_shader(
+                                shaders->any_hit_source.path,
+                                shaders->any_hit_source.entry,
+                                rhi::ShaderStage::ray_any_hit,
+                                shader_env
+                            );
+                            BI_ASSERT_MSG(shader.has_value(), shader.error());
+                            ahit_it = cached_shaders.insert({std::move(ahit_id), shader.value()}).first;
+                        }
+                        hit_group.any_hit = rhi::PipelineShader{
+                            ahit_it->second, shaders->any_hit_source.entry,
+                        };
+                    }
+                    auto rint_shader = drawable.mesh->source(rhi::ShaderStage::ray_intersection);
+                    if (!rint_shader.path.empty()) {
+                        auto rint_id = fmt::format(
+                            "IS '{}' {}-{}", rint_shader.path, rint_shader.entry, hit_shader_env.get_config_identifier()
+                        );
+                        auto rint_it = cached_shaders.find(rint_id);
+                        if (rint_it == cached_shaders.end()) {
+                            auto shader = shader_compiler.compile_shader(
+                                rint_shader.path,
+                                rint_shader.entry,
+                                rhi::ShaderStage::ray_intersection,
+                                shader_env
+                            );
+                            BI_ASSERT_MSG(shader.has_value(), shader.error());
+                            rint_it = cached_shaders.insert({std::move(rint_id), shader.value()}).first;
+                        }
+                        owned_shader_entries.push_back(rint_shader.entry);
+                        hit_group.intersection = rhi::PipelineShader{
+                            rint_it->second, owned_shader_entries.back(),
+                        };
+                    }
+                });
+                pipeline_desc.shader_record_sizes.hit_group = sizeof(DrawableSbtData);
+            }
+
+            pipeline_desc.bind_groups_layout.push_back(
+                shaders->shader_params_metadata.bind_group_layout(raytracing_set_normal, rhi::ShaderStage::all_ray_tracing)
+            );
+            pipeline_desc.bind_groups_layout.push_back(
+                camera->shader_params_metadata().bind_group_layout(raytracing_set_camera, rhi::ShaderStage::all_ray_tracing)
+            );
+            pipeline_desc.bind_groups_layout.push_back(
+                gpu_scene->shader_params_metadata().bind_group_layout(raytracing_set_scene, raytracing_set_visibility_scene)
+            );
+            if (device->properties().separate_sampler_heap) {
+                separate_samplers_from_bind_groups(
+                    pipeline_desc.bind_groups_layout,
+                    raytracing_set_samplers,
+                    rhi::ShaderStage::all_ray_tracing
+                );
+            }
+
+            pipeline_it->second.pipeline = device->create_raytracing_pipeline(pipeline_desc);
+
+            auto sbt_req = device->raytracing_shader_binding_table_requirements();
+            auto sbt_sizes = pipeline_it->second.pipeline->get_shader_binding_table_sizes();
+
+            pipeline_it->second.sbt.raygen_offset = 0;
+            pipeline_it->second.sbt.miss_offset = aligned_size(
+                pipeline_it->second.sbt.raygen_offset + sbt_sizes.raygen_size, sbt_req.base_alignment
+            );
+            if (has_hit_groups) {
+                pipeline_it->second.sbt.hit_group_offset = aligned_size(
+                    pipeline_it->second.sbt.miss_offset + sbt_sizes.miss_stride, sbt_req.base_alignment
+                );
+            }
+            auto sbt_buffer_size = aligned_size<uint32_t>(
+                pipeline_it->second.sbt.hit_group_offset + (has_hit_groups ? sbt_sizes.hit_group_stride * num_drawables : 0),
+                sbt_req.base_alignment
+            );
+
+            pipeline_it->second.sbt_buffer = Buffer(rhi::BufferDesc{
+                .size = sbt_buffer_size,
+                .usages = rhi::BufferUsage::shader_binding_table,
+            });
+            pipeline_it->second.sbt.raygen_buffer = pipeline_it->second.sbt_buffer.rhi_buffer();
+            pipeline_it->second.sbt.miss_buffer = pipeline_it->second.sbt_buffer.rhi_buffer();
+            if (has_hit_groups) {
+                pipeline_it->second.sbt.hit_group_buffer = pipeline_it->second.sbt_buffer.rhi_buffer();
+            } else {
+                pipeline_it->second.sbt.hit_group_buffer = nullptr;
+            }
+            pipeline_it->second.sbt.callable_buffer = nullptr;
+
+            std::vector<std::byte> sbt_data{sbt_buffer_size};
+            pipeline_it->second.pipeline->get_shader_handle(
+                rhi::RaytracingShaderBindingTableType::raygen, 0, 1, sbt_data.data()
+            );
+            pipeline_it->second.pipeline->get_shader_handle(
+                rhi::RaytracingShaderBindingTableType::miss, 0, 1,
+                sbt_data.data() + pipeline_it->second.sbt.miss_offset
+            );
+            if (has_hit_groups) {
+                std::vector<std::byte> sbt_hit_handles{sbt_req.handle_size * num_drawables};
+                pipeline_it->second.pipeline->get_shader_handle(
+                    rhi::RaytracingShaderBindingTableType::hit_group, 0, num_drawables,
+                    sbt_hit_handles.data()
+                );
+                auto p_sbt_data = sbt_data.data() + pipeline_it->second.sbt.hit_group_offset;
+                gpu_scene->for_each_drawable([&](Drawable const& drawable) {
+                    auto drawable_index = static_cast<uint32_t>(drawable.handle());
+                    auto p_drawable_sbt_data = p_sbt_data + drawable_index * sbt_sizes.hit_group_stride;
+                    std::copy_n(sbt_hit_handles.data() + drawable_index * sbt_req.handle_size, sbt_req.handle_size, p_sbt_data);
+                    auto sbt_data = new (p_sbt_data + sbt_req.handle_size) DrawableSbtData{};
+                    sbt_data->drawable_index = drawable_index;
+                    const auto submesh_base_vertex = drawable.submesh_desc().base_vertex;
+                    auto& mesh_buffers = meshes_buffers.at(drawable.mesh->get_mesh_data().id_);
+                    sbt_data->position_offset = mesh_buffers.positions_buffer.offset() + submesh_base_vertex;
+                    sbt_data->normal_offset = mesh_buffers.normals_buffer.offset() + submesh_base_vertex;
+                    sbt_data->tangent_offset = mesh_buffers.tangents_buffer.offset() + submesh_base_vertex;
+                    sbt_data->color_offset = mesh_buffers.colors_buffer.offset() + submesh_base_vertex;
+                    sbt_data->texcoord_offset = mesh_buffers.texcoords_buffer.offset() + submesh_base_vertex;
+                    sbt_data->texcoord2_offset = mesh_buffers.texcoords2_buffer.offset() + submesh_base_vertex;
+                    sbt_data->index_offset = mesh_buffers.indices_buffer.offset() + drawable.submesh_desc().index_offset;
+                    // TODO - sbt_data->material_offset
+                });
+            }
+            pipeline_it->second.sbt_buffer.set_data_immediately(sbt_data.data(), sbt_buffer_size);
+
+            pipeline_it->second.drawables_hash = drawables_hash;
+        }
+        return {pipeline_it->second.pipeline.ref(), pipeline_it->second.sbt};
+    }
+
     auto get_gpu_descriptor_for(
         std::vector<rhi::DescriptorHandle> const& cpu_descriptors,
         rhi::BindGroupLayout const& layout
@@ -1069,6 +1307,14 @@ struct GraphicsManager::Impl final {
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;
     StringHashMap<Box<rhi::GraphicsPipeline>> graphics_pipelines;
     StringHashMap<Box<rhi::ComputePipeline>> compute_pipelines;
+
+    struct RaytracingPipeline final {
+        size_t drawables_hash = 0;
+        Box<rhi::RaytracingPipeline> pipeline;
+        Buffer sbt_buffer;
+        rhi::RaytracingShaderBindingTableBuffers sbt;
+    };
+    std::unordered_map<Ref<GpuSceneSystem>, StringHashMap<RaytracingPipeline>> raytracing_pipelines;
 
     struct MeshBuffersSuballocator final {
         BufferSuballocator positions_buffer;
@@ -1242,6 +1488,12 @@ auto GraphicsManager::compile_pipeline_for_drawable(
 
 auto GraphicsManager::compile_pipeline_compute(CPtr<Camera> camera, CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline> {
     return impl()->compile_pipeline_compute(camera, cs);
+}
+
+auto GraphicsManager::compile_pipeline_raytracing(
+    RaytracingPassContext const* rt_context, CRef<Camera> camera, CRef<RaytracingShaders> shaders
+) -> std::pair<Ref<rhi::RaytracingPipeline>, rhi::RaytracingShaderBindingTableBuffers> {
+    return impl()->compile_pipeline_raytracing(rt_context, camera, shaders);
 }
 
 auto GraphicsManager::get_gpu_descriptor_for(

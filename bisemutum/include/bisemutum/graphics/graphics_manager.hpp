@@ -40,13 +40,14 @@ struct Sampler;
 
 struct ShaderCompiler;
 struct RenderGraph;
-struct ResourceBindingContext;
 struct GraphicsPassContext;
 struct ComputePassContext;
+struct RaytracingPassContext;
 struct CommandHelpers;
 
 struct FragmentShader;
 struct ComputeShader;
+struct RaytracingShaders;
 
 struct Camera;
 struct Drawable;
@@ -166,6 +167,11 @@ private:
 
     friend ComputePassContext;
     auto compile_pipeline_compute(CPtr<Camera> camera, CRef<ComputeShader> cs) -> Ref<rhi::ComputePipeline>;
+
+    friend RaytracingPassContext;
+    auto compile_pipeline_raytracing(
+        RaytracingPassContext const* rt_context, CRef<Camera> camera, CRef<RaytracingShaders> shaders
+    ) -> std::pair<Ref<rhi::RaytracingPipeline>, rhi::RaytracingShaderBindingTableBuffers>;
 };
 
 }

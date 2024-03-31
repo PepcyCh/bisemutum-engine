@@ -9,7 +9,7 @@ namespace bi::gfx {
 
 struct RenderGraph;
 struct Camera;
-struct FragmentShader;
+struct GpuSceneSystem;
 
 struct ResourceBindingContext final {
     ResourceBindingContext();
@@ -25,6 +25,12 @@ struct ResourceBindingContext final {
         ShaderParameter& params
     ) -> void;
     auto set_samplers(Ref<rhi::ComputeCommandEncoder> cmd_encoder, uint32_t set) -> void;
+
+    auto set_shader_params(
+        Ref<rhi::RaytracingCommandEncoder> cmd_encoder, uint32_t set, BitFlags<rhi::ShaderStage> visibility,
+        ShaderParameter& params
+    ) -> void;
+    auto set_samplers(Ref<rhi::RaytracingCommandEncoder> cmd_encoder, uint32_t set) -> void;
 
     struct SetSamplers final {
         std::vector<rhi::DescriptorHandle> cpu_descriptors;
@@ -74,6 +80,26 @@ struct ComputePassContext final {
 
     CRef<RenderGraph> rg;
     Ref<rhi::ComputeCommandEncoder> cmd_encoder;
+
+private:
+    Box<ResourceBindingContext> resource_binding_ctx_;
+};
+
+struct RaytracingPassContext final {
+    RaytracingPassContext(
+        CRef<RenderGraph> rg,
+        Ref<rhi::RaytracingCommandEncoder> cmd_encoder,
+        Ref<GpuSceneSystem> gpu_scene
+    );
+
+    auto dispatch_rays(
+        CRef<Camera> camera, CRef<RaytracingShaders> raytracing_shaders, ShaderParameter& params,
+        uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1
+    ) const -> void;
+
+    CRef<RenderGraph> rg;
+    Ref<rhi::RaytracingCommandEncoder> cmd_encoder;
+    Ref<GpuSceneSystem> gpu_scene;
 
 private:
     Box<ResourceBindingContext> resource_binding_ctx_;
