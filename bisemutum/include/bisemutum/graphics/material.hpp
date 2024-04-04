@@ -2,6 +2,7 @@
 
 #include <variant>
 
+#include "buffer_suballocator.hpp"
 #include "resource.hpp"
 #include "shader_param.hpp"
 #include "shader_compilation_environment.hpp"
@@ -41,6 +42,7 @@ struct Material final {
     auto shader_params_metadata() const -> ShaderParameterMetadataList const&;
 
     auto modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) -> void;
+    auto modify_compiler_environment_for_gpu_scene(ShaderCompilationEnvironment& compilation_environment) -> void;
 
     auto get_shader_identifier() const -> std::string;
 
@@ -53,6 +55,17 @@ struct Material final {
     std::string material_function;
 
     Ptr<Material> referenced_material;
+
+private:
+    auto modify_compiler_environment_common(ShaderCompilationEnvironment& compilation_environment) -> void;
+
+    auto update_shader_struct() -> void;
+
+    friend GraphicsManager;
+
+    std::string gpu_scene_struct_;
+    std::string gpu_scene_material_function_;
+    SuballocatedBuffer gpu_scene_struct_buffer_;
 };
 
 }

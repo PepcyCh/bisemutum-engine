@@ -33,9 +33,6 @@ concept Hashable = requires (T v1, T v2) {
 };
 
 template <typename T>
-concept Sized = requires { sizeof(T); };
-
-template <typename T>
 concept Range = requires (T v) {
     std::is_same_v<decltype(v.begin()), decltype(v.end())>;
 };

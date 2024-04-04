@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sbt_record_utils.hlsl"
+#include "../material.hlsl"
 #include "../vertex_attributes.hlsl"
 
 struct DrawableSbtData {
@@ -17,7 +18,9 @@ struct DrawableSbtData {
 [[vk::shader_record_ext]]
 ConstantBuffer<DrawableSbtData> drawable_sbt_record : register(SBT_RECORD_SPACE, SBT_RECORD_REGISTER_RAYGEN);
 
+struct MaterialParams {
 $RAYTRACING_MATERIAL_STRUCT
+};
 
 $RAYTRACING_SCENE_SHADER_PARAMS
 
@@ -155,4 +158,13 @@ VertexAttributesOutput fetch_vertex_attributes(float2 bary) {
     vert.texcoord = texcoord;
     vert.texcoord2 = texcoord2;
     return vert;
+}
+
+SurfaceData material_function(VertexAttributesOutput vertex) {
+    SurfaceData surface = surface_data_default();
+    MaterialParams PARAM = material_params.Load<MaterialParams>(drawable_sbt_record.material_offset);
+
+    $MATERIAL_FUNCTION
+
+    return surface;
 }

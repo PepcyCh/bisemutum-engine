@@ -2,8 +2,16 @@
 
 #include <bisemutum/prelude/math.hpp>
 #include <bisemutum/prelude/misc.hpp>
+#include <bisemutum/engine/engine.hpp>
+#include <bisemutum/graphics/graphics_manager.hpp>
 
 namespace bi::gfx {
+
+namespace {
+
+constexpr std::string_view parameter_prefix = "PARAM_";
+
+} // namespace
 
 auto Material::base_material() -> Ref<Material> {
     return referenced_material ? referenced_material.value() : unsafe_make_ref(this);
@@ -72,7 +80,7 @@ auto Material::update_shader_parameter() -> void {
                 value_params[i].second
             );
             list.params[i].cpu_alignment = list.params[i].alignment;
-            list.params[i].var_name = value_params[i].first;
+            list.params[i].var_name = fmt::format("{}{}", parameter_prefix, value_params[i].first);
         }
         for (size_t i = 0; i < texture_params.size(); i++) {
             auto list_i = i + value_params.size();
@@ -81,7 +89,7 @@ auto Material::update_shader_parameter() -> void {
             list.params[list_i].size = sizeof(TextureParam);
             list.params[list_i].alignment = alignof(TextureParam);
             list.params[list_i].cpu_alignment = list.params[list_i].alignment;
-            list.params[list_i].var_name = texture_params[i].first;
+            list.params[list_i].var_name = fmt::format("{}{}", parameter_prefix, texture_params[i].first);
         }
         for (size_t i = 0; i < sampler_params.size(); i++) {
             auto list_i = i + value_params.size() + texture_params.size();
@@ -90,7 +98,7 @@ auto Material::update_shader_parameter() -> void {
             list.params[list_i].size = sizeof(shader::SamplerState);
             list.params[list_i].alignment = alignof(shader::SamplerState);
             list.params[list_i].cpu_alignment = list.params[list_i].alignment;
-            list.params[list_i].var_name = sampler_params[i].first;
+            list.params[list_i].var_name = fmt::format("{}{}", parameter_prefix, sampler_params[i].first);
         }
         shader_parameters.initialize(std::move(list), true);
     }
@@ -159,12 +167,178 @@ auto Material::update_shader_parameter() -> void {
         sampler->sampler = samp;
         cpu_size += sizeof(shader::SamplerState);
     }
+
+    update_shader_struct();
 }
 auto Material::shader_params_metadata() const -> ShaderParameterMetadataList const& {
     return shader_parameters.metadata_list();
 }
 
+auto Material::update_shader_struct() -> void {
+    // update gpu_scene_struct_
+    gpu_scene_struct_.clear();
+
+    size_t cpu_size = 0;
+    std::vector<std::byte> cpu_data{};
+    uint32_t num_padding = 0;
+    auto add_field = [&](std::string_view type, std::string_view name) {
+        gpu_scene_struct_ += fmt::format("    {} {};\n", type, name);
+    };
+    auto add_padding = [&](size_t size, size_t alignment) {
+        auto new_size = aligned_size(size, alignment);
+        for (size_t i = size; i < new_size; i++) {
+            add_field("float", fmt::format("_padding_{}", num_padding++));
+        }
+        return new_size;
+    };
+    auto add_value = [&] <typename T> (T const& value) {
+        cpu_data.resize(cpu_size + sizeof(T));
+        new (cpu_data.data() + cpu_size) T{value};
+        cpu_size += sizeof(T);
+    };
+
+    for (auto& [name, value] : value_params) {
+        std::visit(
+            FunctorsHelper{
+                [&](float value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(float));
+                    add_field("float", name);
+                    add_value(value);
+                },
+                [&](float2 const& value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(float2));
+                    add_field("float2", name);
+                    add_value(value);
+                },
+                [&](float3 const& value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(float4));
+                    add_field("float3", name);
+                    add_value(value);
+                },
+                [&](float4 const& value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(float4));
+                    add_field("float4", name);
+                    add_value(value);
+                },
+                [&](int value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(int));
+                    add_field("int", name);
+                    add_value(value);
+                },
+                [&](int2 const& value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(int2));
+                    add_field("int2", name);
+                    add_value(value);
+                },
+                [&](int3 const& value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(int4));
+                    add_field("int3", name);
+                    add_value(value);
+                },
+                [&](int4 const& value) -> void {
+                    cpu_size = add_padding(cpu_size, sizeof(int4));
+                    add_field("int4", name);
+                    add_value(value);
+                },
+            },
+            value
+        );
+    }
+    std::unordered_set<std::string_view> texture_param_names;
+    for (auto& [name, tex] : texture_params) {
+        uint32_t tex_index = g_engine->graphics_manager()->add_material_texture(tex);
+        cpu_size = add_padding(cpu_size, sizeof(uint32_t));
+        add_field("uint", name);
+        add_value(tex_index);
+        texture_param_names.insert(name);
+    }
+    std::unordered_set<std::string_view> sampler_param_names;
+    for (auto& [name, samp] : sampler_params) {
+        uint32_t samp_index = g_engine->graphics_manager()->add_material_sampler(samp);
+        cpu_size = add_padding(cpu_size, sizeof(uint32_t));
+        add_field("uint", name);
+        add_value(samp_index);
+        sampler_param_names.insert(name);
+    }
+    cpu_size = add_padding(cpu_size, sizeof(float4));
+
+    // update gpu_scene_struct_buffer_
+    gpu_scene_struct_buffer_ =
+        g_engine->graphics_manager()->get_material_params_buffers()->allocate(cpu_size, sizeof(float4)).value();
+    auto temp_buffer = Buffer(rhi::BufferDesc{
+        .size = cpu_size,
+        .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
+    });
+    temp_buffer.set_data(cpu_data.data(), cpu_data.size());
+    g_engine->graphics_manager()->execute_in_this_frame(
+        [this, &temp_buffer](Ref<rhi::CommandEncoder> cmd) {
+            rhi::BufferBarrier before_barrier{
+                .buffer = gpu_scene_struct_buffer_.allocator()->base_buffer().rhi_buffer(),
+                .src_access_type = rhi::ResourceAccessType::storage_resource_read,
+                .dst_access_type = rhi::ResourceAccessType::transfer_write,
+            };
+            cmd->resource_barriers({before_barrier}, {});
+            cmd->copy_buffer_to_buffer(
+                temp_buffer.rhi_buffer(),
+                gpu_scene_struct_buffer_.allocator()->base_buffer().rhi_buffer(),
+                rhi::BufferCopyDesc{
+                    .src_offset = 0,
+                    .dst_offset = gpu_scene_struct_buffer_.offset(),
+                    .length = gpu_scene_struct_buffer_.size(),
+                }
+            );
+            rhi::BufferBarrier after_barrier{
+                .buffer = gpu_scene_struct_buffer_.allocator()->base_buffer().rhi_buffer(),
+                .src_access_type = rhi::ResourceAccessType::transfer_write,
+                .dst_access_type = rhi::ResourceAccessType::storage_resource_read,
+            };
+            cmd->resource_barriers({after_barrier}, {});
+        }
+    );
+
+    // update gpu_scene_material_function_
+    gpu_scene_material_function_.clear();
+    size_t p_mat_func = 0;
+    for (
+        size_t pos = 0;
+        (pos = material_function.find(parameter_prefix.data(), pos, parameter_prefix.size())) != std::string::npos;
+    ) {
+        gpu_scene_material_function_ += material_function.substr(p_mat_func, pos - p_mat_func);
+
+        auto name_l = pos + parameter_prefix.size();
+        auto name_r = name_l;
+        while (name_r < material_function.size() && is_identifier_ch(material_function[name_r])) { ++name_r; }
+        auto name = std::string_view{material_function.data() + name_l, name_r - name_l};
+
+        if (texture_param_names.contains(name)) {
+            gpu_scene_material_function_ += fmt::format("material_textures[NonUniformResourceIndex(PARAM.{})]", name);
+        } else if (sampler_param_names.contains(name)) {
+            gpu_scene_material_function_ += fmt::format("material_samplers[NonUniformResourceIndex(PARAM.{})]", name);
+        } else {
+            gpu_scene_material_function_ += fmt::format("PARAM.{}", name);
+        }
+
+        pos += parameter_prefix.size() + name.size();
+        p_mat_func = pos;
+    }
+    gpu_scene_material_function_ += material_function.substr(p_mat_func);
+}
+
 auto Material::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) -> void {
+    modify_compiler_environment_common(compilation_environment);
+
+    compilation_environment.set_replace_arg("MATERIAL_FUNCTION", material_function);
+}
+
+auto Material::modify_compiler_environment_for_gpu_scene(ShaderCompilationEnvironment& compilation_environment) -> void {
+    modify_compiler_environment_common(compilation_environment);
+
+    compilation_environment.set_replace_arg("MATERIAL_FUNCTION", gpu_scene_material_function_);
+
+    compilation_environment.set_replace_arg("RAYTRACING_MATERIAL_STRUCT", gpu_scene_struct_);
+}
+
+auto Material::modify_compiler_environment_common(ShaderCompilationEnvironment& compilation_environment) -> void {
     compilation_environment.set_define("MATERIAL_SURFACE_MODEL", static_cast<uint32_t>(surface_model));
 
     switch (blend_mode) {
@@ -184,8 +358,6 @@ auto Material::modify_compiler_environment(ShaderCompilationEnvironment& compila
             compilation_environment.set_define("MATERIAL_BLEND_MODE_MODULATE");
             break;
     }
-
-    compilation_environment.set_replace_arg("MATERIAL_FUNCTION", material_function);
 }
 
 auto Material::get_shader_identifier() const -> std::string {

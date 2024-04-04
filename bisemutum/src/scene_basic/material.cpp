@@ -115,15 +115,12 @@ auto MaterialAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         }
     }
 
-    MaterialAsset mat{
-        .material = {
-            .surface_model = desc.surface_model,
-            .blend_mode = desc.blend_mode,
-            .value_params = std::move(desc.value_params),
-            .material_function = std::move(desc.material_function),
-            .referenced_material = &desc.referenced_material.asset()->material,
-        },
-    };
+    MaterialAsset mat{};
+    mat.material.surface_model = desc.surface_model;
+    mat.material.blend_mode = desc.blend_mode;
+    mat.material.value_params = std::move(desc.value_params);
+    mat.material.material_function = std::move(desc.material_function);
+    mat.material.referenced_material = &desc.referenced_material.asset()->material;
     mat.referenced_material = desc.referenced_material.asset_id();
     mat.referenced_textures.reserve(desc.texture_params.size());
     mat.material.texture_params.reserve(desc.texture_params.size());

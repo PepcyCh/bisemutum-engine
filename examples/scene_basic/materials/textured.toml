@@ -1,7 +1,7 @@
 blend_mode = 'opaque'
-material_function = '''surface.base_color = base_color_tex.Sample(base_color_tex_sampler, vertex.texcoord).xyz;
-surface.normal_map_value = normal_map.Sample(normal_map_sampler, vertex.texcoord).xyz;
-surface.roughness = roughness;
+material_function = '''surface.base_color = PARAM_base_color_tex.Sample(PARAM_base_color_tex_sampler, vertex.texcoord).xyz;
+surface.normal_map_value = PARAM_normal_map.Sample(PARAM_normal_map_sampler, vertex.texcoord).xyz;
+surface.roughness = PARAM_roughness;
 '''
 surface_model = 'lit'
 

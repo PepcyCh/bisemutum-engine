@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include "buffer_suballocator.hpp"
 #include "renderer.hpp"
 #include "displayer.hpp"
 #include "mipmap_mode.hpp"
@@ -50,6 +51,7 @@ struct ComputeShader;
 struct RaytracingShaders;
 
 struct Camera;
+struct Material;
 struct Drawable;
 struct MeshData;
 
@@ -148,6 +150,13 @@ private:
     auto allocate_cpu_descriptor(rhi::DescriptorType type) -> rhi::DescriptorHandle;
     auto free_cpu_resource_descriptor(rhi::DescriptorHandle descriptor) -> void;
     auto free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void;
+
+    friend Material;
+    auto get_material_params_buffers() -> Ref<BufferSuballocator>;
+    auto add_material_texture(Ref<Texture> texture) -> size_t;
+    auto remove_material_texture(size_t index) -> void;
+    auto add_material_sampler(Ref<Sampler> sampler) -> size_t;
+    auto remove_material_sampler(size_t index) -> void;
 
     friend RenderGraph;
     auto update_mesh_buffers(CRef<MeshData> mesh) -> void;

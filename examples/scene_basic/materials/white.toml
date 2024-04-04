@@ -1,5 +1,5 @@
 blend_mode = 'opaque'
-material_function = '''surface.base_color = base_color;
+material_function = '''surface.base_color = PARAM_base_color;
 '''
 surface_model = 'lit'
 

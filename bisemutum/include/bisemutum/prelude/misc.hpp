@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <cstdlib>
+#include <cctype>
 
 namespace bi {
 
@@ -14,5 +15,9 @@ struct FunctorsHelper final : Ts... {
 };
 template <typename... Ts>
 FunctorsHelper(Ts...) -> FunctorsHelper<Ts...>;
+
+inline auto is_identifier_ch(char ch) -> bool {
+    return std::isalnum(ch) || ch == '_';
+}
 
 }

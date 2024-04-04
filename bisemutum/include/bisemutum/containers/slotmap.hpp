@@ -9,7 +9,7 @@ namespace bi {
 template <typename T>
 concept SlotMapHandle = traits::StaticCastConvertibleTo<T, size_t> && traits::StaticCastConvertibleFrom<T, size_t>;
 
-template <traits::Sized T, SlotMapHandle Handle = size_t>
+template <typename T, SlotMapHandle Handle = size_t>
 struct SlotMap final {
     template <bool is_const>
     struct Iterator final {
@@ -125,6 +125,17 @@ struct SlotMap final {
     auto const_pairs() const -> PairsHelper<true> { return PairsHelper<true>(*this); }
     auto pairs() const -> PairsHelper<true> { return PairsHelper<true>(*this); }
 
+    auto insert(T const& value) -> Handle {
+        if (!freed_indices_.empty()) {
+            auto index = freed_indices_.back();
+            freed_indices_.pop_back();
+            data_[index] = value;
+            return static_cast<Handle>(index);
+        } else {
+            data_.push_back(value);
+            return static_cast<Handle>(data_.size() - 1);
+        }
+    }
     auto insert(T&& value) -> Handle {
         if (!freed_indices_.empty()) {
             auto index = freed_indices_.back();

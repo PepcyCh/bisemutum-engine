@@ -35,6 +35,8 @@ constexpr uint32_t gpu_sampler_desc_heap_chunk_size = 512;
 
 constexpr uint32_t max_num_mesh_total_vertices = 4 * 1024 * 1024;
 
+constexpr uint32_t max_material_params_buffer_size = 16 * 1024 * 1024;
+
 auto separate_samplers_from_bind_groups(
     std::vector<rhi::BindGroupLayout>& bind_groups_layouts,
     uint32_t samplers_set,
@@ -139,6 +141,7 @@ struct GraphicsManager::Impl final {
         initialize_default_resources();
 
         initialize_mesh_buffers_suballocator();
+        initialize_material_resources();
     }
 
     auto initialize_default_resources() -> void {
@@ -213,7 +216,6 @@ struct GraphicsManager::Impl final {
         temp_buffer.set_data_raw(normal.data(), normal.size() * sizeof(uint16_t));
         update_texture(default_textures[static_cast<size_t>(DefaultTexture::normal_1x1)]);
     }
-
     auto initialize_mesh_buffers_suballocator() -> void {
         mesh_buffer_allocator.positions_buffer = BufferSuballocator(rhi::BufferDesc{
             .size = max_num_mesh_total_vertices * sizeof(float3),
@@ -248,6 +250,12 @@ struct GraphicsManager::Impl final {
                 rhi::BufferUsage::index, rhi::BufferUsage::storage_read,
                 rhi::BufferUsage::acceleration_structure_build,
             },
+        });
+    }
+    auto initialize_material_resources() -> void {
+        material_resources.params_buffers = BufferSuballocator(rhi::BufferDesc{
+            .size = max_material_params_buffer_size,
+            .usages = {rhi::BufferUsage::storage_read},
         });
     }
 
@@ -1073,10 +1081,10 @@ struct GraphicsManager::Impl final {
                     hit_shader_env.set_define("VERTEX_ATTRIBUTES_IN", std::to_string(input_vertex_attributes.raw_value()));
                     hit_shader_env.set_define("VERTEX_ATTRIBUTES_OUT", std::to_string(0xff));
                     if (drawable.material) {
-                        // TODO - material struct
-                        drawable.material->modify_compiler_environment(hit_shader_env);
+                        drawable.material->modify_compiler_environment_for_gpu_scene(hit_shader_env);
                     } else {
                         hit_shader_env.set_replace_arg("MATERIAL_FUNCTION", "");
+                        hit_shader_env.set_replace_arg("RAYTRACING_MATERIAL_STRUCT", "");
                     }
                     if (!shaders->closest_hit_source.path.empty()) {
                         auto chit_id = fmt::format("{}-{}", closest_hit_id, hit_shader_env.get_config_identifier());
@@ -1216,7 +1224,7 @@ struct GraphicsManager::Impl final {
                     sbt_data->texcoord_offset = mesh_buffers.texcoords_buffer.offset() + submesh_base_vertex;
                     sbt_data->texcoord2_offset = mesh_buffers.texcoords2_buffer.offset() + submesh_base_vertex;
                     sbt_data->index_offset = mesh_buffers.indices_buffer.offset() + drawable.submesh_desc().index_offset;
-                    // TODO - sbt_data->material_offset
+                    sbt_data->material_offset = drawable.material ? drawable.material->gpu_scene_struct_buffer_.offset() : 0;
                 });
             }
             pipeline_it->second.sbt_buffer.set_data_immediately(sbt_data.data(), sbt_buffer_size);
@@ -1339,6 +1347,12 @@ struct GraphicsManager::Impl final {
     };
     std::unordered_map<uint64_t, MeshBuffers> meshes_buffers;
 
+    struct MaterialResources final {
+        BufferSuballocator params_buffers;
+        SlotMap<Ref<Texture>> textures;
+        SlotMap<Ref<Sampler>> samplers;
+    } material_resources;
+
     struct MeshBlas final {
         uint64_t submesh_version = 0;
         GeometryAccelerationStructure blas;
@@ -1457,6 +1471,22 @@ auto GraphicsManager::free_cpu_resource_descriptor(rhi::DescriptorHandle descrip
 }
 auto GraphicsManager::free_cpu_sampler_descriptor(rhi::DescriptorHandle descriptor) -> void {
     impl()->free_cpu_sampler_descriptor(descriptor);
+}
+
+auto GraphicsManager::get_material_params_buffers() -> Ref<BufferSuballocator> {
+    return impl()->material_resources.params_buffers;
+}
+auto GraphicsManager::add_material_texture(Ref<Texture> texture) -> size_t {
+    return impl()->material_resources.textures.insert(texture);
+}
+auto GraphicsManager::remove_material_texture(size_t index) -> void {
+    impl()->material_resources.textures.remove(index);
+}
+auto GraphicsManager::add_material_sampler(Ref<Sampler> sampler) -> size_t {
+    return impl()->material_resources.samplers.insert(sampler);
+}
+auto GraphicsManager::remove_material_sampler(size_t index) -> void {
+    impl()->material_resources.samplers.remove(index);
 }
 
 auto GraphicsManager::update_mesh_buffers(CRef<MeshData> mesh) -> void {
