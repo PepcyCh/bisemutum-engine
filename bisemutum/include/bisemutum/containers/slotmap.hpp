@@ -64,8 +64,8 @@ struct SlotMap final {
     public:
         using SlotMapRef = std::conditional_t<is_const, SlotMap<T, Handle> const&, SlotMap<T, Handle>&>;
 
-        auto operator*() -> std::pair<Handle, std::conditional_t<is_const, T const&, T&>> {
-            return {static_cast<Handle>(index_), slotmap_.data_[index_].value()};
+        auto operator*() -> decltype(auto) {
+            return std::make_pair(static_cast<Handle>(index_), make_ref(slotmap_.data_[index_].value()));
         }
 
         auto operator++() -> PairIterator& {

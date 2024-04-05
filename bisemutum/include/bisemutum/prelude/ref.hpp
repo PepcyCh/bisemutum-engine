@@ -65,22 +65,18 @@ template <typename T>
 using CRef = Ref<std::add_const_t<T>>;
 
 template <typename T>
-auto make_ref(T& object) -> Ref<T> {
-    return Ref<T>(object);
-}
+auto make_ref(T& object) -> Ref<T> { return Ref<T>(object); }
 template <typename T>
-auto make_cref(T const& object) -> CRef<T> {
-    return CRef<T>(object);
-}
+auto make_ref(Ref<T> object) -> Ref<T> { return object; }
+template <typename T>
+auto make_cref(T const& object) -> CRef<T> { return CRef<T>(object); }
+template <typename T>
+auto make_cref(CRef<T> object) -> CRef<T> { return object; }
 
 template <typename T>
-auto unsafe_make_ref(T* ptr) -> Ref<T> {
-    return Ref<T>::unsafe_make(ptr);
-}
+auto unsafe_make_ref(T* ptr) -> Ref<T> { return Ref<T>::unsafe_make(ptr); }
 template <typename T>
-auto unsafe_make_cref(T* ptr) -> CRef<T> {
-    return CRef<T>::unsafe_make(ptr);
-}
+auto unsafe_make_cref(T* ptr) -> CRef<T> { return CRef<T>::unsafe_make(ptr); }
 
 template <typename T>
 struct Option<Ref<T>> final {
@@ -97,9 +93,18 @@ struct Option<Ref<T>> final {
     template <typename T2> requires std::convertible_to<T2*, T*>
     Option(Ref<T2> ref) noexcept : ptr_(ref.get()) {}
 
+    Option(T& object) noexcept : ptr_(&object) {}
+    template <typename T2> requires std::convertible_to<T2*, T*>
+    Option(T2& object) noexcept : ptr_(&object) {}
+
     auto operator=(Ref<T> rhs) noexcept -> Option& { ptr_ = rhs.get(); return *this; }
     template <typename T2> requires std::convertible_to<T2*, T*>
     auto operator=(Ref<T2> rhs) noexcept -> Option& { ptr_ = rhs.get(); return *this; }
+
+    auto operator=(T& rhs) noexcept -> Option& { ptr_ = &rhs; return *this; }
+    template <typename T2> requires std::convertible_to<T2*, T*>
+    auto operator=(T2& rhs) noexcept -> Option& { ptr_ = &rhs; return *this; }
+
     auto operator=(T* ptr) noexcept -> Option& { ptr_ = ptr; return *this; }
     auto operator=(std::nullptr_t) noexcept -> Option& { ptr_ = nullptr; return *this; }
 

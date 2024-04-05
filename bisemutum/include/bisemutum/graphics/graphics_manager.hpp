@@ -55,6 +55,9 @@ struct Material;
 struct Drawable;
 struct MeshData;
 
+struct GpuSceneData;
+struct GpuSceneSystem;
+
 enum class DefaultTexture : uint8_t {
     white_1x1,
     black_1x1,
@@ -157,6 +160,9 @@ private:
     auto remove_material_texture(size_t index) -> void;
     auto add_material_sampler(Ref<Sampler> sampler) -> size_t;
     auto remove_material_sampler(size_t index) -> void;
+
+    friend GpuSceneSystem;
+    auto fill_gpu_scene_data(Ref<GpuSceneData> gpu_scene_data) -> void;
 
     friend RenderGraph;
     auto update_mesh_buffers(CRef<MeshData> mesh) -> void;

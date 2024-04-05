@@ -20,6 +20,7 @@
 #include "descriptor_sets.hpp"
 #include "drawable_stb_data.hpp"
 #include "command_helpers.hpp"
+#include "gpu_scene_data.hpp"
 
 namespace bi::gfx {
 
@@ -322,6 +323,7 @@ struct GraphicsManager::Impl final {
 
         renderer.prepare_renderer_per_frame_data();
 
+        gpu_scene->update_shader_params();
         gpu_scene->for_each_drawable_with_shader_data(
             [](Drawable& drawable, DrawableShaderData const& drawable_data) {
                 drawable.mesh->fill_shader_params(drawable, drawable_data);
@@ -585,6 +587,26 @@ struct GraphicsManager::Impl final {
             return {build_input, mesh_blas.blas};
         } else {
             return {{}, mesh_blas.blas};
+        }
+    }
+
+    auto fill_gpu_scene_data(Ref<GpuSceneData> gpu_scene_data) -> void {
+        gpu_scene_data->positions_buffer = {mesh_buffer_allocator.positions_buffer.base_buffer()};
+        gpu_scene_data->normals_buffer = {mesh_buffer_allocator.normals_buffer.base_buffer()};
+        gpu_scene_data->tangents_buffer = {mesh_buffer_allocator.tangents_buffer.base_buffer()};
+        gpu_scene_data->colors_buffer = {mesh_buffer_allocator.colors_buffer.base_buffer()};
+        gpu_scene_data->texcoords_buffer = {mesh_buffer_allocator.texcoords_buffer.base_buffer()};
+        gpu_scene_data->texcoords2_buffer = {mesh_buffer_allocator.texcoords2_buffer.base_buffer()};
+        gpu_scene_data->indices_buffer = {mesh_buffer_allocator.indices_buffer.base_buffer()};
+
+        gpu_scene_data->material_params = {material_resources.params_buffers.base_buffer()};
+        for (auto [index, tex] : material_resources.textures.pairs()) {
+            if (index >= max_num_material_textures) { break; }
+            gpu_scene_data->material_textures[index] = {tex};
+        }
+        for (auto [index, samp] : material_resources.samplers.pairs()) {
+            if (index >= max_num_material_textures) { break; }
+            gpu_scene_data->material_samplers[index] = {samp};
         }
     }
 
@@ -1497,6 +1519,10 @@ auto GraphicsManager::require_blas_build_desc(CRef<Drawable> drawable)
     -> std::pair<Option<rhi::AccelerationStructureGeometryBuildInput>, Ref<GeometryAccelerationStructure>>
 {
     return impl()->require_blas_build_desc(drawable);
+}
+
+auto GraphicsManager::fill_gpu_scene_data(Ref<GpuSceneData> gpu_scene_data) -> void {
+    impl()->fill_gpu_scene_data(gpu_scene_data);
 }
 
 auto GraphicsManager::bind_mesh_buffers(

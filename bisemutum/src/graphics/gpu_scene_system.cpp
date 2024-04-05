@@ -3,40 +3,37 @@
 #include <bisemutum/containers/slotmap.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/window/window.hpp>
+#include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/camera.hpp>
 #include <bisemutum/graphics/drawable.hpp>
 
+#include "gpu_scene_data.hpp"
+
 namespace bi::gfx {
 
-namespace {
-
-constexpr size_t max_num_material_textures = 1024;
-
-BI_SHADER_PARAMETERS_BEGIN(GpuSceneData)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, positions_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, normals_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, tangents_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, colors_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, texcoords_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, texcoords2_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<uint>, indices_buffer)
-    BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float4x4>, history_transforms_buffer)
-
-    BI_SHADER_PARAMETER_SRV_BUFFER(ByteAddressBuffer, material_params)
-
-    BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, material_textures, [max_num_material_textures])
-    BI_SHADER_PARAMETER_SAMPLER_ARRAY(SamplerState, material_samplers, [max_num_material_textures])
-BI_SHADER_PARAMETERS_END()
-
-}
-
 struct GpuSceneSystem::Impl final {
-    auto init_on(Ref<rt::Scene> scene) -> void {}
+    auto init_on(Ref<rt::Scene> scene) -> void {
+        shader_parameter.initialize();
+    }
 
-    auto update() -> void {}
+    auto update() -> void {
+        std::vector<float4x4> linear_history_transforms(drawables.size(), float4x4{1.0f});
+        for (auto& [handle, transform] : history_transforms) {
+            linear_history_transforms[static_cast<size_t>(handle)] = transform;
+        }
+        auto history_transforms_buffer_size = linear_history_transforms.size() * sizeof(float4x4);
+        if (!history_transforms_buffer.has_value() || history_transforms_buffer.desc().size < history_transforms_buffer_size) {
+            history_transforms_buffer = Buffer{rhi::BufferDesc{
+                .size = history_transforms_buffer_size,
+                .usages = {rhi::BufferUsage::storage_read},
+            }};
+        }
+        history_transforms_buffer.set_data_immediately(linear_history_transforms.data(), linear_history_transforms.size());
+    }
+
     auto post_update() -> void {
         for (auto [handle, drawable] : drawables.pairs()) {
-            history_transforms[handle] = drawable.transform.matrix();
+            history_transforms[handle] = drawable->transform.matrix();
         }
     }
 
@@ -104,14 +101,14 @@ struct GpuSceneSystem::Impl final {
         std::function<auto(Drawable&, DrawableShaderData const& drawable_data) -> void>&& func
     ) -> void {
         for (auto [handle, drawable] : drawables.pairs()) {
-            func(drawable, drawable_data_of(drawable));
+            func(*drawable, drawable_data_of(*drawable));
         }
     }
     auto for_each_drawable_with_shader_data(
         std::function<auto(Drawable const&, DrawableShaderData const& drawable_data) -> void>&& func
     ) const -> void {
         for (auto [handle, drawable] : drawables.pairs()) {
-            func(drawable, drawable_data_of(drawable));
+            func(*drawable, drawable_data_of(*drawable));
         }
     }
 
@@ -127,10 +124,18 @@ struct GpuSceneSystem::Impl final {
         };
     }
 
+    auto update_shader_params() -> void {
+        auto gpu_scene_data = shader_parameter.mutable_typed_data();
+        gpu_scene_data->history_transforms_buffer = {&history_transforms_buffer};
+        g_engine->graphics_manager()->fill_gpu_scene_data(*gpu_scene_data);
+        shader_parameter.update_uniform_buffer();
+    }
+
     SlotMap<Camera, CameraHandle> cameras;
     SlotMap<Drawable, DrawableHandle> drawables;
 
     std::unordered_map<DrawableHandle, float4x4> history_transforms;
+    Buffer history_transforms_buffer;
 
     size_t drawables_hash = 0;
     uint64_t drawables_hash_frame_count = static_cast<uint64_t>(-1);
@@ -222,6 +227,7 @@ auto GpuSceneSystem::shader_params_metadata() const -> ShaderParameterMetadataLi
 }
 auto GpuSceneSystem::update_shader_params() -> void {
     // TODO - update gpu scene shader params
+    impl()->update_shader_params();
 }
 
 }
