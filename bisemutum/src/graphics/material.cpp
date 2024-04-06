@@ -297,13 +297,13 @@ auto Material::update_shader_struct() -> void {
     );
 
     // update gpu_scene_material_function_
-    gpu_scene_material_function_.clear();
+    std::string temp_gpu_scene_material_function{};
     size_t p_mat_func = 0;
     for (
         size_t pos = 0;
         (pos = material_function.find(parameter_prefix.data(), pos, parameter_prefix.size())) != std::string::npos;
     ) {
-        gpu_scene_material_function_ += material_function.substr(p_mat_func, pos - p_mat_func);
+        temp_gpu_scene_material_function += material_function.substr(p_mat_func, pos - p_mat_func);
 
         auto name_l = pos + parameter_prefix.size();
         auto name_r = name_l;
@@ -311,17 +311,45 @@ auto Material::update_shader_struct() -> void {
         auto name = std::string_view{material_function.data() + name_l, name_r - name_l};
 
         if (texture_param_names.contains(name)) {
-            gpu_scene_material_function_ += fmt::format("material_textures[NonUniformResourceIndex(PARAM.{})]", name);
+            temp_gpu_scene_material_function += fmt::format("material_textures[NonUniformResourceIndex(PARAM.{})]", name);
         } else if (sampler_param_names.contains(name)) {
-            gpu_scene_material_function_ += fmt::format("material_samplers[NonUniformResourceIndex(PARAM.{})]", name);
+            temp_gpu_scene_material_function += fmt::format("material_samplers[NonUniformResourceIndex(PARAM.{})]", name);
         } else {
-            gpu_scene_material_function_ += fmt::format("PARAM.{}", name);
+            temp_gpu_scene_material_function += fmt::format("PARAM.{}", name);
         }
 
         pos += parameter_prefix.size() + name.size();
         p_mat_func = pos;
     }
-    gpu_scene_material_function_ += material_function.substr(p_mat_func);
+    temp_gpu_scene_material_function += material_function.substr(p_mat_func);
+
+    gpu_scene_material_function_.clear();
+    p_mat_func = 0;
+    for (
+        size_t pos = 0;
+        (pos = temp_gpu_scene_material_function.find(".Sample(", pos, 8)) != std::string::npos;
+    ) {
+        gpu_scene_material_function_ += temp_gpu_scene_material_function.substr(p_mat_func, pos - p_mat_func);
+
+        auto pos_r = pos + 8;
+        size_t num_paren = 0;
+        while (pos_r < temp_gpu_scene_material_function.size()) {
+            if (temp_gpu_scene_material_function[pos_r] == '(') {
+                ++num_paren;
+            } else if (temp_gpu_scene_material_function[pos_r] == ')') {
+                if (num_paren == 0) { break; }
+                --num_paren;
+            }
+            ++pos_r;
+        }
+        gpu_scene_material_function_ += ".SampleLevel(";
+        gpu_scene_material_function_ += temp_gpu_scene_material_function.substr(pos + 8, pos_r - (pos + 8));
+        gpu_scene_material_function_ += ", 0)";
+
+        pos = pos_r + 1;
+        p_mat_func = pos;
+    }
+    gpu_scene_material_function_ += temp_gpu_scene_material_function.substr(p_mat_func);
 }
 
 auto Material::modify_compiler_environment(ShaderCompilationEnvironment& compilation_environment) -> void {

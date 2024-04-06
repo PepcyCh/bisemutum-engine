@@ -5,26 +5,28 @@
 
 namespace bi {
 
-auto GBufferTextures::add_textures(gfx::RenderGraph& rg, uint32_t width, uint32_t height) -> void {
-    base_color = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+auto GBufferTextures::add_textures(
+    gfx::RenderGraph& rg, uint32_t width, uint32_t height, BitFlags<rhi::TextureUsage> usages
+) -> void {
+    base_color = rg.add_texture([width, height, usages](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(rhi::ResourceFormat::rgba16_sfloat, width, height)
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+            .dim_2d(base_color_format, width, height)
+            .usage(usages);
     });
-    normal_roughness = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    normal_roughness = rg.add_texture([width, height, usages](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(rhi::ResourceFormat::rgba16_sfloat, width, height)
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+            .dim_2d(normal_roughness_format, width, height)
+            .usage(usages);
     });
-    fresnel = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    fresnel = rg.add_texture([width, height, usages](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(rhi::ResourceFormat::rgba16_unorm, width, height)
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+            .dim_2d(fresnel_format, width, height)
+            .usage(usages);
     });
-    material_0 = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    material_0 = rg.add_texture([width, height, usages](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(rhi::ResourceFormat::rgba8_unorm, width, height)
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+            .dim_2d(material_0_format, width, height)
+            .usage(usages);
     });
 }
 
@@ -35,7 +37,40 @@ auto GBufferTextures::use_color(gfx::GraphicsPassBuilder& builder) -> void {
     material_0 = builder.use_color(3, gfx::GraphicsPassColorTargetBuilder{material_0}.clear_color());
 }
 
+auto GBufferTextures::write(gfx::ComputePassBuilder& builder) const -> GBufferTextures {
+    GBufferTextures ret;
+    ret.base_color = builder.write(base_color);
+    ret.normal_roughness = builder.write(normal_roughness);
+    ret.fresnel = builder.write(fresnel);
+    ret.material_0 = builder.write(material_0);
+    return ret;
+}
+auto GBufferTextures::write(gfx::RaytracingPassBuilder& builder) const -> GBufferTextures {
+    GBufferTextures ret;
+    ret.base_color = builder.write(base_color);
+    ret.normal_roughness = builder.write(normal_roughness);
+    ret.fresnel = builder.write(fresnel);
+    ret.material_0 = builder.write(material_0);
+    return ret;
+}
+
 auto GBufferTextures::read(gfx::GraphicsPassBuilder& builder) const -> GBufferTextures {
+    GBufferTextures ret;
+    ret.base_color = builder.read(base_color);
+    ret.normal_roughness = builder.read(normal_roughness);
+    ret.fresnel = builder.read(fresnel);
+    ret.material_0 = builder.read(material_0);
+    return ret;
+}
+auto GBufferTextures::read(gfx::ComputePassBuilder& builder) const -> GBufferTextures {
+    GBufferTextures ret;
+    ret.base_color = builder.read(base_color);
+    ret.normal_roughness = builder.read(normal_roughness);
+    ret.fresnel = builder.read(fresnel);
+    ret.material_0 = builder.read(material_0);
+    return ret;
+}
+auto GBufferTextures::read(gfx::RaytracingPassBuilder& builder) const -> GBufferTextures {
     GBufferTextures ret;
     ret.base_color = builder.read(base_color);
     ret.normal_roughness = builder.read(normal_roughness);

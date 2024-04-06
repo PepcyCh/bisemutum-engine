@@ -604,12 +604,6 @@ RaytracingPipelineVulkan::RaytracingPipelineVulkan(Ref<DeviceVulkan> device, Ray
         );
     }
 
-    VkRayTracingPipelineInterfaceCreateInfoKHR pipeline_interface_ci{
-        .sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR,
-        .pNext = nullptr,
-        .maxPipelineRayPayloadSize = desc_.state.max_ray_payload_size,
-        .maxPipelineRayHitAttributeSize = desc_.state.max_hit_attribute_size,
-    };
     VkPipelineCreateFlags flags = (device_->use_descriptor_buffer() ? VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT : 0u)
         | (desc_.state.skip_procedural ? VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR : 0u);
     VkRayTracingPipelineCreateInfoKHR pipeline_ci{
@@ -622,7 +616,7 @@ RaytracingPipelineVulkan::RaytracingPipelineVulkan(Ref<DeviceVulkan> device, Ray
         .pGroups = shader_groups.data(),
         .maxPipelineRayRecursionDepth = desc_.state.max_recursive_depth,
         .pLibraryInfo = nullptr,
-        .pLibraryInterface = &pipeline_interface_ci,
+        .pLibraryInterface = nullptr,
         .pDynamicState = nullptr,
         .layout = pipeline_layout_,
         .basePipelineHandle = VK_NULL_HANDLE,

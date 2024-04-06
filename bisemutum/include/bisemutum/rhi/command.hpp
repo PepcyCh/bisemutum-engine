@@ -166,7 +166,7 @@ struct CommandEncoder : public CommandEncoderBase {
     ) -> void = 0;
 
     virtual auto build_top_level_acceleration_structure(
-        CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+        AccelerationStructureInstanceBuildDesc const& build_info
     ) -> void = 0;
 
     virtual auto copy_acceleration_structure(

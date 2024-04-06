@@ -47,10 +47,24 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         float strength = 0.5f;
     };
 
+    struct ReflectionSettings final {
+        enum class Mode : uint8_t {
+            none,
+            screen_space,
+            raytraced,
+        };
+        Mode mode = Mode::none;
+        float range = 16.0f;
+        float strength = 1.0f;
+        float max_roughness = 0.3f;
+        float fade_roughness = 0.1f;
+    };
+
     struct Settings final {
         PipelineMode pipeline_mode = PipelineMode::deferred;
         ShadowSettings shadow;
         AmbientOcclusionSettings ambient_occlusion;
+        ReflectionSettings reflection;
     };
 
     BasicRenderer();
@@ -79,10 +93,19 @@ BI_SREFL(
     field(strength, RangeF{0.0f, 1.0f}),
 )
 BI_SREFL(
+    type(BasicRenderer::ReflectionSettings),
+    field(mode),
+    field(range, RangeF{}),
+    field(strength, RangeF{0.0f, 1.0f}),
+    field(max_roughness, RangeF{0.0f, 1.0f}),
+    field(fade_roughness, RangeF{0.0f, 1.0f}),
+)
+BI_SREFL(
     type(BasicRenderer::Settings),
     field(pipeline_mode),
     field(shadow),
     field(ambient_occlusion),
+    field(reflection),
 )
 
 struct BasicRendererOverrideVolume final {

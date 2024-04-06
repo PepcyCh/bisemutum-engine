@@ -174,6 +174,13 @@ struct RenderGraph::Impl final {
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
         auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
     };
+    struct RaytracingPassNode final : Node {
+        RaytracingPassBuilder builder;
+        std::any pass_data;
+
+        auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
+    };
     struct BlitPassNode final : Node {
         TextureHandle src;
         uint32_t src_mip_level;
@@ -321,6 +328,21 @@ struct RenderGraph::Impl final {
         RenderGraph* rg, std::string_view name, std::any&& pass_data
     ) -> std::pair<ComputePassBuilder&, std::any*> {
         auto node = Box<ComputePassNode>::make();
+        node->index = graph_nodes_.size();
+        node->name = name;
+        node->pass_data = std::move(pass_data);
+        node->builder.rg_ = rg;
+        node->builder.pass_index_ = graph_nodes_.size();
+        auto builder = &node->builder;
+        auto p_pass_data = &node->pass_data;
+        graph_nodes_.push_back(std::move(node));
+        return {*builder, p_pass_data};
+    }
+
+    auto add_raytracing_pass(
+        RenderGraph* rg, std::string_view name, std::any&& pass_data
+    ) -> std::pair<RaytracingPassBuilder&, std::any*> {
+        auto node = Box<RaytracingPassNode>::make();
         node->index = graph_nodes_.size();
         node->name = name;
         node->pass_data = std::move(pass_data);
@@ -1031,6 +1053,44 @@ auto RenderGraph::Impl::ComputePassNode::execute(
     // TODO - generate mipmaps for outputs
 }
 
+auto RenderGraph::Impl::RaytracingPassNode::set_barriers(
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl &rg
+) -> void {
+    std::vector<rhi::BufferBarrier> buffer_barriers{};
+    std::vector<rhi::TextureBarrier> texture_barriers{};
+
+    get_shader_barriers(
+        rg,
+        builder.read_buffers_,
+        builder.write_buffers_,
+        builder.read_textures_,
+        builder.write_textures_,
+        buffer_barriers,
+        texture_barriers
+    );
+
+    cmd_encoder->resource_barriers(buffer_barriers, texture_barriers);
+}
+auto RenderGraph::Impl::RaytracingPassNode::execute(
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
+) const -> void {
+    rhi::CommandLabel label{
+        .label = name,
+        .color = {1.0f, 0.0f, 0.5f},
+    };
+
+    auto raytracing_encoder = cmd_encoder->begin_raytracing_pass(label);
+    RaytracingPassContext context{
+        make_cref(rg),
+        raytracing_encoder.ref(),
+        g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>().value()
+    };
+    builder.execution_func_(&pass_data, context);
+    raytracing_encoder.reset();
+
+    // TODO - generate mipmaps for outputs
+}
+
 auto RenderGraph::Impl::BlitPassNode::set_barriers(
     Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl &rg
 ) -> void {
@@ -1164,6 +1224,11 @@ auto RenderGraph::add_compute_pass_impl(
     std::string_view name, std::any&& pass_data
 ) -> std::pair<ComputePassBuilder&, std::any*> {
     return impl()->add_compute_pass(this, name, std::move(pass_data));
+}
+auto RenderGraph::add_raytracing_pass_impl(
+    std::string_view name, std::any&& pass_data
+) -> std::pair<RaytracingPassBuilder&, std::any*> {
+    return impl()->add_raytracing_pass(this, name, std::move(pass_data));
 }
 auto RenderGraph::add_blit_pass(
     std::string_view name,

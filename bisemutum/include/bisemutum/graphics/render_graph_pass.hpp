@@ -164,4 +164,41 @@ private:
     std::function<auto(std::any const*, ComputePassContext const&) -> void> execution_func_;
 };
 
+struct RaytracingPassBuilder final {
+    auto read(BufferHandle handle) -> BufferHandle;
+    auto read(TextureHandle handle) -> TextureHandle;
+    auto read(AccelerationStructureHandle handle) -> AccelerationStructureHandle;
+
+    auto write(BufferHandle handle) -> BufferHandle;
+    auto write(TextureHandle handle) -> TextureHandle;
+
+    template <typename PassData>
+    auto set_execution_function(
+        std::function<auto(CRef<PassData>, RaytracingPassContext const&) -> void> func
+    ) -> void {
+        set_execution_function_impl(
+            [func = std::move(func)](std::any const* pass_data, RaytracingPassContext const& ctx) {
+                func(unsafe_make_cref(std::any_cast<PassData>(pass_data)), ctx);
+            }
+        );
+    }
+
+private:
+    auto set_execution_function_impl(
+        std::function<auto(std::any const*, RaytracingPassContext const&) -> void> func
+    ) -> void;
+
+    friend RenderGraph;
+
+    RenderGraph* rg_;
+    size_t pass_index_;
+
+    std::vector<BufferHandle> read_buffers_;
+    std::vector<BufferHandle> write_buffers_;
+    std::vector<TextureHandle> read_textures_;
+    std::vector<TextureHandle> write_textures_;
+
+    std::function<auto(std::any const*, RaytracingPassContext const&) -> void> execution_func_;
+};
+
 }

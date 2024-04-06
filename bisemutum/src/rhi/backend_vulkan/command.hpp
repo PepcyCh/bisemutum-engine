@@ -76,7 +76,7 @@ struct CommandEncoderVulkan final : CommandEncoder {
     ) -> void override;
 
     auto build_top_level_acceleration_structure(
-        CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+        AccelerationStructureInstanceBuildDesc const& build_info
     ) -> void override;
 
     auto copy_acceleration_structure(

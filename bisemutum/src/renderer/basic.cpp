@@ -14,6 +14,7 @@
 #include "pass/gbuffer.hpp"
 #include "pass/deferred_lighting.hpp"
 #include "pass/ambient_occlusion.hpp"
+#include "pass/reflection.hpp"
 #include "pass/post_process.hpp"
 
 namespace bi {
@@ -32,6 +33,13 @@ struct BasicRenderer::Impl final {
         forward_pass.update_params(lights_ctx, skybox_ctx);
         deferred_lighting_pass.update_params(lights_ctx, skybox_ctx);
         skybox_pass.update_params(skybox_ctx);
+
+        if (
+            settings.reflection.mode != ReflectionSettings::Mode::none
+            && settings.pipeline_mode == PipelineMode::deferred
+        ) {
+            reflection_pass.update_params(lights_ctx, skybox_ctx);
+        }
     }
 
     auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {
@@ -104,6 +112,21 @@ struct BasicRenderer::Impl final {
             }, settings.ambient_occlusion);
         }
 
+        if (
+            settings.reflection.mode != ReflectionSettings::Mode::none
+            && settings.pipeline_mode == PipelineMode::deferred
+        ) {
+            color = reflection_pass.render(camera, rg, {
+                .color = color,
+                .velocity = velocity,
+                .depth = depth,
+                .gbuffer = gbuffer,
+                .shadow_maps = shadow_maps,
+                .skybox = skybox,
+                .scene_accel = scene_accel,
+            }, settings.reflection);
+        }
+
         post_process_pass.render(camera, rg, {
             .color = color,
             .depth = depth,
@@ -140,6 +163,7 @@ struct BasicRenderer::Impl final {
     SkyboxPass skybox_pass;
 
     AmbientOcclusionPass ambient_occlusion_pass;
+    ReflectionPass reflection_pass;
     PostProcessPass post_process_pass;
 };
 

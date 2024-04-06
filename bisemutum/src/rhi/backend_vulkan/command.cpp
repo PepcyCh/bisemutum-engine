@@ -1,5 +1,7 @@
 #include "command.hpp"
 
+#include <bisemutum/prelude/math.hpp>
+
 #include "volk.h"
 #include "utils.hpp"
 #include "device.hpp"
@@ -385,6 +387,8 @@ auto CommandEncoderVulkan::copy_texture_to_buffer(
 auto CommandEncoderVulkan::build_bottom_level_acceleration_structure(
     CSpan<AccelerationStructureGeometryBuildDesc> build_infos
 ) -> void {
+    if (build_infos.empty()) { return; }
+
     std::vector<VkAccelerationStructureBuildGeometryInfoKHR> vk_build_infos(build_infos.size());
     std::vector<std::vector<VkAccelerationStructureGeometryKHR>> vk_geometries(build_infos.size());
     std::vector<std::vector<VkAccelerationStructureBuildRangeInfoKHR>> vk_range_infos(build_infos.size());
@@ -412,6 +416,11 @@ auto CommandEncoderVulkan::build_bottom_level_acceleration_structure(
                     break;
             }
         }
+    }
+    auto scratch_buffer_diff = aligned_size<VkDeviceSize>(vk_build_infos.front().scratchData.deviceAddress, 256)
+        - vk_build_infos.front().scratchData.deviceAddress;
+    for (auto& build_info : vk_build_infos) {
+        build_info.scratchData.deviceAddress += scratch_buffer_diff;
     }
     vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, vk_build_infos.size(), vk_build_infos.data(), p_range_infos.data());
 
@@ -442,37 +451,36 @@ auto CommandEncoderVulkan::build_bottom_level_acceleration_structure(
 }
 
 auto CommandEncoderVulkan::build_top_level_acceleration_structure(
-    CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+    AccelerationStructureInstanceBuildDesc const& build_info
 ) -> void {
-    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> vk_build_infos(build_infos.size());
-    std::vector<VkAccelerationStructureGeometryKHR> vk_geometries(build_infos.size());
-    std::vector<VkAccelerationStructureBuildRangeInfoKHR> vk_range_infos(build_infos.size());
-    std::vector<VkAccelerationStructureBuildRangeInfoKHR const*> p_range_infos(build_infos.size());
+    VkAccelerationStructureBuildGeometryInfoKHR vk_build_info{};
+    VkAccelerationStructureGeometryKHR vk_geometry{};
+    VkAccelerationStructureBuildRangeInfoKHR vk_range_info{};
+    VkAccelerationStructureBuildRangeInfoKHR const* p_range_info{};
 
     AccelerationStructureQueryPoolSizes query_pool_sizes{};
     std::vector<VkAccelerationStructureKHR> query_accels_compactes_size;
 
-    for (size_t i = 0; i < build_infos.size(); i++) {
-        to_vk_accel_build_info(build_infos[i].build_input, vk_build_infos[i], vk_geometries[i], vk_range_infos[i]);
-        vk_build_infos[i].srcAccelerationStructure = build_infos[i].src_acceleration_structure.has_value()
-            ? build_infos[i].src_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw()
-            : VK_NULL_HANDLE;
-        vk_build_infos[i].dstAccelerationStructure =
-            build_infos[i].dst_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw();
-        vk_build_infos[i].scratchData.deviceAddress =
-            build_infos[i].scratch_buffer.cast_to<const BufferVulkan>()->address() + build_infos[i].scratch_buffer_offset;
-        p_range_infos[i] = &vk_range_infos[i];
+    to_vk_accel_build_info(build_info.build_input, vk_build_info, vk_geometry, vk_range_info);
+    vk_build_info.srcAccelerationStructure = build_info.src_acceleration_structure.has_value()
+        ? build_info.src_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw()
+        : VK_NULL_HANDLE;
+    vk_build_info.dstAccelerationStructure =
+        build_info.dst_acceleration_structure.cast_to<const AccelerationStructureVulkan>()->raw();
+    vk_build_info.scratchData.deviceAddress =
+        build_info.scratch_buffer.cast_to<const BufferVulkan>()->address() + build_info.scratch_buffer_offset;
+    p_range_info = &vk_range_info;
 
-        for (auto& emit_data : build_infos[i].emit_data) {
-            switch (emit_data.type) {
-                case AccelerationStructureBuildEmitDataType::compacted_size:
-                    ++query_pool_sizes.num_compacted_size;
-                    query_accels_compactes_size.push_back(vk_build_infos[i].dstAccelerationStructure);
-                    break;
-            }
+    for (auto& emit_data : build_info.emit_data) {
+        switch (emit_data.type) {
+            case AccelerationStructureBuildEmitDataType::compacted_size:
+                ++query_pool_sizes.num_compacted_size;
+                query_accels_compactes_size.push_back(vk_build_info.dstAccelerationStructure);
+                break;
         }
     }
-    vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, vk_build_infos.size(), vk_build_infos.data(), p_range_infos.data());
+    vk_build_info.scratchData.deviceAddress = aligned_size<VkDeviceSize>(vk_build_info.scratchData.deviceAddress, 256);
+    vkCmdBuildAccelerationStructuresKHR(cmd_buffer_, 1, &vk_build_info, &p_range_info);
 
     auto query_pools = device_->require_acceleration_structure_query_pools(cmd_buffer_, query_pool_sizes);
     if (!query_accels_compactes_size.empty()) {
@@ -483,19 +491,17 @@ auto CommandEncoderVulkan::build_top_level_acceleration_structure(
     }
 
     query_pool_sizes.num_compacted_size = 0;
-    for (size_t i = 0; i < build_infos.size(); i++) {
-        for (auto& emit_data : build_infos[i].emit_data) {
-            switch (emit_data.type) {
-                case AccelerationStructureBuildEmitDataType::compacted_size:
-                    vkCmdCopyQueryPoolResults(
-                        cmd_buffer_, query_pools.compacted_size,
-                        query_pool_sizes.num_compacted_size, 1,
-                        emit_data.dst_buffer.cast_to<BufferVulkan>()->raw(), emit_data.dst_buffer_offset,
-                        sizeof(VkDeviceSize), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
-                    );
-                    ++query_pool_sizes.num_compacted_size;
-                    break;
-            }
+    for (auto& emit_data : build_info.emit_data) {
+        switch (emit_data.type) {
+            case AccelerationStructureBuildEmitDataType::compacted_size:
+                vkCmdCopyQueryPoolResults(
+                    cmd_buffer_, query_pools.compacted_size,
+                    query_pool_sizes.num_compacted_size, 1,
+                    emit_data.dst_buffer.cast_to<BufferVulkan>()->raw(), emit_data.dst_buffer_offset,
+                    sizeof(VkDeviceSize), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
+                );
+                ++query_pool_sizes.num_compacted_size;
+                break;
         }
     }
 }

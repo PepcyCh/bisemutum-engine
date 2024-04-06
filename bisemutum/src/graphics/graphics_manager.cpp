@@ -1049,6 +1049,10 @@ struct GraphicsManager::Impl final {
                 "CAMERA_SHADER_PARAMS",
                 camera->shader_params_metadata().generated_shader_definition(raytracing_set_camera, raytracing_set_samplers)
             );
+            shader_env.set_replace_arg(
+                "RAYTRACING_SCENE_SHADER_PARAMS",
+                gpu_scene->shader_params_metadata().generated_shader_definition(raytracing_set_scene, raytracing_set_samplers)
+            );
             auto raygen_it = cached_shaders.find(raygen_id);
             if (raygen_it == cached_shaders.end()) {
                 auto shader = shader_compiler.compile_shader(
@@ -1116,7 +1120,7 @@ struct GraphicsManager::Impl final {
                                 shaders->closest_hit_source.path,
                                 shaders->closest_hit_source.entry,
                                 rhi::ShaderStage::ray_closest_hit,
-                                shader_env
+                                hit_shader_env
                             );
                             BI_ASSERT_MSG(shader.has_value(), shader.error());
                             chit_it = cached_shaders.insert({std::move(chit_id), shader.value()}).first;
@@ -1133,7 +1137,7 @@ struct GraphicsManager::Impl final {
                                 shaders->any_hit_source.path,
                                 shaders->any_hit_source.entry,
                                 rhi::ShaderStage::ray_any_hit,
-                                shader_env
+                                hit_shader_env
                             );
                             BI_ASSERT_MSG(shader.has_value(), shader.error());
                             ahit_it = cached_shaders.insert({std::move(ahit_id), shader.value()}).first;
@@ -1153,7 +1157,7 @@ struct GraphicsManager::Impl final {
                                 rint_shader.path,
                                 rint_shader.entry,
                                 rhi::ShaderStage::ray_intersection,
-                                shader_env
+                                hit_shader_env
                             );
                             BI_ASSERT_MSG(shader.has_value(), shader.error());
                             rint_it = cached_shaders.insert({std::move(rint_id), shader.value()}).first;
@@ -1234,18 +1238,18 @@ struct GraphicsManager::Impl final {
                 gpu_scene->for_each_drawable([&](Drawable const& drawable) {
                     auto drawable_index = static_cast<uint32_t>(drawable.handle());
                     auto p_drawable_sbt_data = p_sbt_data + drawable_index * sbt_sizes.hit_group_stride;
-                    std::copy_n(sbt_hit_handles.data() + drawable_index * sbt_req.handle_size, sbt_req.handle_size, p_sbt_data);
-                    auto sbt_data = new (p_sbt_data + sbt_req.handle_size) DrawableSbtData{};
+                    std::copy_n(sbt_hit_handles.data() + drawable_index * sbt_req.handle_size, sbt_req.handle_size, p_drawable_sbt_data);
+                    auto sbt_data = new (p_drawable_sbt_data + sbt_req.handle_size) DrawableSbtData{};
                     sbt_data->drawable_index = drawable_index;
                     const auto submesh_base_vertex = drawable.submesh_desc().base_vertex;
                     auto& mesh_buffers = meshes_buffers.at(drawable.mesh->get_mesh_data().id_);
-                    sbt_data->position_offset = mesh_buffers.positions_buffer.offset() + submesh_base_vertex;
-                    sbt_data->normal_offset = mesh_buffers.normals_buffer.offset() + submesh_base_vertex;
-                    sbt_data->tangent_offset = mesh_buffers.tangents_buffer.offset() + submesh_base_vertex;
-                    sbt_data->color_offset = mesh_buffers.colors_buffer.offset() + submesh_base_vertex;
-                    sbt_data->texcoord_offset = mesh_buffers.texcoords_buffer.offset() + submesh_base_vertex;
-                    sbt_data->texcoord2_offset = mesh_buffers.texcoords2_buffer.offset() + submesh_base_vertex;
-                    sbt_data->index_offset = mesh_buffers.indices_buffer.offset() + drawable.submesh_desc().index_offset;
+                    sbt_data->position_offset = (mesh_buffers.positions_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->normal_offset = (mesh_buffers.normals_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->tangent_offset = (mesh_buffers.tangents_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->color_offset = (mesh_buffers.colors_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->texcoord_offset = (mesh_buffers.texcoords_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->texcoord2_offset = (mesh_buffers.texcoords2_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->index_offset = (mesh_buffers.indices_buffer.offset()) / sizeof(uint32_t) + drawable.submesh_desc().index_offset;
                     sbt_data->material_offset = drawable.material ? drawable.material->gpu_scene_struct_buffer_.offset() : 0;
                 });
             }

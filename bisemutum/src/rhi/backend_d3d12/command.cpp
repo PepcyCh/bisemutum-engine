@@ -363,34 +363,32 @@ auto CommandEncoderD3D12::build_bottom_level_acceleration_structure(
 }
 
 auto CommandEncoderD3D12::build_top_level_acceleration_structure(
-    CSpan<AccelerationStructureInstanceBuildDesc> build_infos
+    AccelerationStructureInstanceBuildDesc const& build_info
 ) -> void {
-    for (size_t i = 0; i < build_infos.size(); i++) {
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc;
-        to_dx_accel_build_input(build_infos[i].build_input, build_desc.Inputs);
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc;
+    to_dx_accel_build_input(build_info.build_input, build_desc.Inputs);
 
-        build_desc.SourceAccelerationStructureData = build_infos[i].src_acceleration_structure.has_value()
-            ? build_infos[i].src_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference()
-            : 0;
-        build_desc.DestAccelerationStructureData =
-            build_infos[i].dst_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference();
-        build_desc.ScratchAccelerationStructureData =
-            build_infos[i].scratch_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
-                + build_infos[i].scratch_buffer_offset;
+    build_desc.SourceAccelerationStructureData = build_info.src_acceleration_structure.has_value()
+        ? build_info.src_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference()
+        : 0;
+    build_desc.DestAccelerationStructureData =
+        build_info.dst_acceleration_structure.cast_to<const AccelerationStructureD3D12>()->gpu_reference();
+    build_desc.ScratchAccelerationStructureData =
+        build_info.scratch_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
+            + build_info.scratch_buffer_offset;
 
-        std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC> postbuild_infos(
-            build_infos[i].emit_data.size()
-        );
-        for (size_t j = 0; j < build_infos[i].emit_data.size(); j++) {
-            auto& emit_data = build_infos[i].emit_data[j];
-            postbuild_infos[j].InfoType = to_dx_postbuild_info_type(emit_data.type);
-            postbuild_infos[j].DestBuffer =
-                emit_data.dst_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
-                    + emit_data.dst_buffer_offset;
-        }
-
-        cmd_list_->BuildRaytracingAccelerationStructure(&build_desc, postbuild_infos.size(), postbuild_infos.data());
+    std::vector<D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC> postbuild_infos(
+        build_info.emit_data.size()
+    );
+    for (size_t j = 0; j < build_info.emit_data.size(); j++) {
+        auto& emit_data = build_info.emit_data[j];
+        postbuild_infos[j].InfoType = to_dx_postbuild_info_type(emit_data.type);
+        postbuild_infos[j].DestBuffer =
+            emit_data.dst_buffer.cast_to<const BufferD3D12>()->raw()->GetGPUVirtualAddress()
+                + emit_data.dst_buffer_offset;
     }
+
+    cmd_list_->BuildRaytracingAccelerationStructure(&build_desc, postbuild_infos.size(), postbuild_infos.data());
 }
 
 auto CommandEncoderD3D12::copy_acceleration_structure(

@@ -41,7 +41,7 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
     }
     if (!blas_to_be_built.empty()) {
         Buffer scratch_buffer(rhi::BufferDesc{
-            .size = blas_scratch_buffer_size,
+            .size = blas_scratch_buffer_size + 256,
             .usages = rhi::BufferUsage::storage_read_write,
         }, false);
         Buffer emit_buffer(rhi::BufferDesc{
@@ -141,7 +141,7 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
     };
     auto tlas_size_info = g_engine->graphics_manager()->device()->get_acceleration_structure_memory_size(tlas_build_input);
     Buffer tlas_scratch_buffer(rhi::BufferDesc{
-        .size = tlas_size_info.build_scratch_size,
+        .size = tlas_size_info.build_scratch_size + 256,
         .usages = rhi::BufferUsage::storage_read_write,
     }, false);
     create_buffer(tlas_size_info.acceleration_structure_size);
@@ -151,7 +151,7 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
         .dst_acceleration_structure = tlas_.ref(),
     };
     g_engine->graphics_manager()->execute_immediately([&](Ref<rhi::CommandEncoder> cmd) {
-        cmd->build_top_level_acceleration_structure({tlas_build_desc});
+        cmd->build_top_level_acceleration_structure(tlas_build_desc);
     });
 }
 

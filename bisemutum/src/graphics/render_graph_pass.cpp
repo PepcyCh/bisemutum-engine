@@ -144,4 +144,34 @@ auto ComputePassBuilder::set_execution_function_impl(
     execution_func_ = std::move(func);
 }
 
+auto RaytracingPassBuilder::read(BufferHandle handle) -> BufferHandle {
+    read_buffers_.push_back(handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
+    return handle;
+}
+auto RaytracingPassBuilder::read(TextureHandle handle) -> TextureHandle {
+    read_textures_.push_back(handle);
+    handle = rg_->add_read_edge(pass_index_, handle);
+    return handle;
+}
+auto RaytracingPassBuilder::read(AccelerationStructureHandle handle) -> AccelerationStructureHandle {
+    handle = rg_->add_read_edge(pass_index_, handle);
+    return handle;
+}
+auto RaytracingPassBuilder::write(BufferHandle handle) -> BufferHandle {
+    write_buffers_.push_back(handle);
+    handle = rg_->add_write_edge(pass_index_, handle);
+    return handle;
+}
+auto RaytracingPassBuilder::write(TextureHandle handle) -> TextureHandle {
+    write_textures_.push_back(handle);
+    handle = rg_->add_write_edge(pass_index_, handle);
+    return handle;
+}
+auto RaytracingPassBuilder::set_execution_function_impl(
+    std::function<auto(std::any const*, RaytracingPassContext const&) -> void> func
+) -> void {
+    execution_func_ = std::move(func);
+}
+
 }

@@ -171,6 +171,7 @@ struct ShaderCompiler::Impl final {
 
         if (device->get_backend() != rhi::Backend::d3d12) {
             args.push_back(L"-spirv");
+            args.push_back(L"-fspv-target-env=vulkan1.3");
         }
 
         CComPtr<IDxcResult> result;

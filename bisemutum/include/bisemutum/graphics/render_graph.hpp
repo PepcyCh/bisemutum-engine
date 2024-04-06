@@ -51,6 +51,14 @@ struct RenderGraph final : PImpl<RenderGraph> {
         return {builder, unsafe_make_ref(pass_data)};
     }
 
+    template <typename PassData>
+    auto add_raytracing_pass(std::string_view name) -> std::pair<RaytracingPassBuilder&, Ref<PassData>> {
+        std::any pass_data_any = PassData{};
+        auto const& [builder, p_pass_data_any] = add_raytracing_pass_impl(name, std::move(pass_data_any));
+        auto* pass_data = std::any_cast<PassData>(p_pass_data_any);
+        return {builder, unsafe_make_ref(pass_data)};
+    }
+
     enum class BlitPassMode : uint8_t {
         normal,
         equitangular_to_cubemap,
@@ -90,6 +98,10 @@ private:
         std::string_view name, std::any&& pass_data
     ) -> std::pair<ComputePassBuilder&, std::any*>;
 
+    auto add_raytracing_pass_impl(
+        std::string_view name, std::any&& pass_data
+    ) -> std::pair<RaytracingPassBuilder&, std::any*>;
+
     friend GraphicsManager;
     auto set_graphics_device(Ref<rhi::Device> device, uint32_t num_frames) -> void;
     auto set_back_buffer(Ref<Texture> texture, BitFlags<rhi::ResourceAccessType> access) -> void;
@@ -97,6 +109,7 @@ private:
 
     friend GraphicsPassBuilder;
     friend ComputePassBuilder;
+    friend RaytracingPassBuilder;
     auto add_read_edge(size_t pass_index, BufferHandle handle) -> BufferHandle;
     auto add_read_edge(size_t pass_index, TextureHandle handle) -> TextureHandle;
     auto add_read_edge(size_t pass_index, AccelerationStructureHandle handle) -> AccelerationStructureHandle;

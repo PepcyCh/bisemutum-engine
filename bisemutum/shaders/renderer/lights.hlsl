@@ -55,8 +55,8 @@ float test_shadow_pcf9(
     float shadow_factor = 0.0;
     [unroll]
     for (int i = 0; i < 9; i++) {
-        float sm_depth = shadow_map.Sample(
-            shadow_map_sampler, float3(sm_uv + uv_offset[i], shadow_map_index)
+        float sm_depth = shadow_map.SampleLevel(
+            shadow_map_sampler, float3(sm_uv + uv_offset[i], shadow_map_index), 0
         ).x;
         shadow_factor += (light_pos.z - shadow_depth_bias) < sm_depth ? 1.0 : (1.0 - shadow_strength);
     }
@@ -174,9 +174,9 @@ void get_ltc_tex3d_coord(float4 u, out float3 u1, out float3 u2, out float w) {
     u2 = float3(x, y, z2);
 }
 float3x3 fetch_fetch_ltc_matrix(LtcLuts ltc_luts, float3 u) {
-    float3 m0 = ltc_luts.matrix_lut0.Sample(ltc_luts.sampler, u).xyz;
-    float3 m1 = ltc_luts.matrix_lut1.Sample(ltc_luts.sampler, u).xyz;
-    float3 m2 = ltc_luts.matrix_lut2.Sample(ltc_luts.sampler, u).xyz;
+    float3 m0 = ltc_luts.matrix_lut0.SampleLevel(ltc_luts.sampler, u, 0).xyz;
+    float3 m1 = ltc_luts.matrix_lut1.SampleLevel(ltc_luts.sampler, u, 0).xyz;
+    float3 m2 = ltc_luts.matrix_lut2.SampleLevel(ltc_luts.sampler, u, 0).xyz;
     return float3x3(m0, m1, m2);
 }
 float3x3 fetch_ltc_matrix(LtcLuts ltc_luts, float4 u) {
@@ -193,8 +193,8 @@ float2 fetch_ltc_brdf(LtcLuts ltc_luts, float4 u) {
     float w;
     get_ltc_tex3d_coord(u, u1, u2, w);
 
-    float2 n1 = ltc_luts.norm_lut.Sample(ltc_luts.sampler, u1).xy;
-    float2 n2 = ltc_luts.norm_lut.Sample(ltc_luts.sampler, u2).xy;
+    float2 n1 = ltc_luts.norm_lut.SampleLevel(ltc_luts.sampler, u1, 0).xy;
+    float2 n2 = ltc_luts.norm_lut.SampleLevel(ltc_luts.sampler, u2, 0).xy;
     return lerp(n1, n2, w);
 }
 

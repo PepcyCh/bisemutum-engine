@@ -80,7 +80,6 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     float3 ibl_specular = skybox_specular_filtered.SampleLevel(
         skybox_sampler, skybox_R, surface.roughness * (ibl_specular_num_levels - 1)
     ).xyz * skybox_specular_color;
-    color += skybox_diffuse_irradiance.Sample(skybox_sampler, N) * skybox_diffuse_color * ibl_diffuse;
     float2 ibl_brdf = skybox_brdf_lut.Sample(skybox_sampler, float2(dot(N, V), surface.roughness)).xy;
     float3 ibl = surface_eval_lut(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
     color += ibl;
