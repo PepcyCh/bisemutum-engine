@@ -820,6 +820,7 @@ auto RaytracingCommandEncoderD3D12::pop_label() -> void {
 auto RaytracingCommandEncoderD3D12::set_pipeline(CRef<RaytracingPipeline> pipeline) -> void {
     curr_pipeline_ = pipeline.cast_to<const RaytracingPipelineD3D12>().get();
     cmd_list_->SetPipelineState1(curr_pipeline_->raw());
+    cmd_list_->SetComputeRootSignature(curr_pipeline_->raw_root_signature());
 }
 
 auto RaytracingCommandEncoderD3D12::set_descriptors(

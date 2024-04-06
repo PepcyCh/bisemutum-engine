@@ -58,6 +58,7 @@ struct RtGBufferPassData final {
 
 BI_SHADER_PARAMETERS_BEGIN(DeferredLightingSecondaryPassParams)
     BI_SHADER_PARAMETER(float, lighting_strength)
+    BI_SHADER_PARAMETER(float, _pad)
     BI_SHADER_PARAMETER(uint2, tex_size)
 
     BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, gbuffer_textures, [GBufferTextures::count])

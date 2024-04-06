@@ -253,6 +253,7 @@ auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, Des
         specified_size *= buffer_desc.structure_stride;
     }
     auto available_size = std::min<uint32_t>(buffer_dx->size() - buffer_desc.offset, specified_size);
+    auto is_raw = buffer_desc.structure_stride == 0;
     switch (buffer_desc.type) {
         case DescriptorType::uniform_buffer: {
             D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc{
@@ -264,14 +265,14 @@ auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, Des
         }
         case DescriptorType::read_only_storage_buffer: {
             D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{
-                .Format = DXGI_FORMAT_UNKNOWN,
+                .Format = is_raw ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN,
                 .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
                 .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
                 .Buffer = D3D12_BUFFER_SRV{
                     .FirstElement = buffer_desc.offset,
-                    .NumElements = available_size / std::max(1u, buffer_desc.structure_stride),
-                    .StructureByteStride = std::max(1u, buffer_desc.structure_stride),
-                    .Flags = buffer_desc.structure_stride == 0 ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
+                    .NumElements = available_size / (is_raw ? 4u : buffer_desc.structure_stride),
+                    .StructureByteStride = buffer_desc.structure_stride,
+                    .Flags = is_raw ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE,
                 },
             };
             device_->CreateShaderResourceView(buffer_dx->raw(), &srv_desc, {handle.cpu});
@@ -279,14 +280,14 @@ auto DeviceD3D12::create_descriptor(BufferDescriptorDesc const& buffer_desc, Des
         }
         case DescriptorType::read_write_storage_buffer: {
             D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc{
-                .Format = DXGI_FORMAT_UNKNOWN,
+                .Format = is_raw ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN,
                 .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
                 .Buffer = D3D12_BUFFER_UAV{
                     .FirstElement = buffer_desc.offset,
-                    .NumElements = available_size / std::max(1u, buffer_desc.structure_stride),
-                    .StructureByteStride = std::max(1u, buffer_desc.structure_stride),
+                    .NumElements = available_size / (is_raw ? 4u : buffer_desc.structure_stride),
+                    .StructureByteStride = buffer_desc.structure_stride,
                     .CounterOffsetInBytes = 0,
-                    .Flags = buffer_desc.structure_stride == 0 ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE,
+                    .Flags = is_raw ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE,
                 },
             };
             device_->CreateUnorderedAccessView(buffer_dx->raw(), nullptr, &uav_desc, {handle.cpu});

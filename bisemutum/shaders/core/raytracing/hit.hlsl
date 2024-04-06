@@ -16,7 +16,7 @@ struct DrawableSbtData {
     uint material_offset;
 };
 [[vk::shader_record_ext]]
-ConstantBuffer<DrawableSbtData> drawable_sbt_record : register(SBT_RECORD_REGISTER_RAYGEN, SBT_RECORD_SPACE);
+ConstantBuffer<DrawableSbtData> drawable_sbt_record : register(SBT_RECORD_REGISTER_HIT, SBT_RECORD_SPACE);
 
 struct MaterialParams {
 $RAYTRACING_MATERIAL_STRUCT

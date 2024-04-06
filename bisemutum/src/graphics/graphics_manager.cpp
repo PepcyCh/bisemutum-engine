@@ -1509,6 +1509,7 @@ auto GraphicsManager::remove_material_texture(size_t index) -> void {
     impl()->material_resources.textures.remove(index);
 }
 auto GraphicsManager::add_material_sampler(Ref<Sampler> sampler) -> size_t {
+    // TODO - merge the same sampler
     return impl()->material_resources.samplers.insert(sampler);
 }
 auto GraphicsManager::remove_material_sampler(size_t index) -> void {

@@ -22,13 +22,15 @@ struct GpuSceneSystem::Impl final {
             linear_history_transforms[static_cast<size_t>(handle)] = transform;
         }
         auto history_transforms_buffer_size = linear_history_transforms.size() * sizeof(float4x4);
-        if (!history_transforms_buffer.has_value() || history_transforms_buffer.desc().size < history_transforms_buffer_size) {
-            history_transforms_buffer = Buffer{rhi::BufferDesc{
-                .size = history_transforms_buffer_size,
-                .usages = {rhi::BufferUsage::storage_read},
-            }};
+        if (history_transforms_buffer_size > 0) {
+            if (!history_transforms_buffer.has_value() || history_transforms_buffer.desc().size < history_transforms_buffer_size) {
+                history_transforms_buffer = Buffer{rhi::BufferDesc{
+                    .size = history_transforms_buffer_size,
+                    .usages = {rhi::BufferUsage::storage_read},
+                }};
+            }
+            history_transforms_buffer.set_data_immediately(linear_history_transforms.data(), linear_history_transforms.size());
         }
-        history_transforms_buffer.set_data_immediately(linear_history_transforms.data(), linear_history_transforms.size());
     }
 
     auto post_update() -> void {

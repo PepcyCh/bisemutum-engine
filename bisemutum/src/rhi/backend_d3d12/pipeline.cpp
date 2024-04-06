@@ -440,12 +440,6 @@ RaytracingPipelineD3D12::RaytracingPipelineD3D12(Ref<DeviceD3D12> device, Raytra
     root_constant_index_ = desc_.bind_groups_layout.size();
 
     std::vector<D3D12_STATE_SUBOBJECT> subobjects;
-    // auto estimated_max_num_subobjects = 2 // raygen (1 shader + 1 LRS)
-    //     + desc_.shaders.miss.size() * 2 // miss (1 shader + 1 LRS)
-    //     + desc_.shaders.hit_group.size() * 5 // hit groups (3 shaders + 1 hit group + 1 LRS)
-    //     + desc_.shaders.callable.size() * 2 // callable (1 shader + 1 LRS)
-    //     + 3; // GRS + shader config + pipeline config
-    // subobjects.reserve(estimated_max_num_subobjects);
 
     std::list<D3D12_DXIL_LIBRARY_DESC> shaders;
     std::list<D3D12_EXPORT_DESC> shader_exports;
@@ -467,13 +461,18 @@ RaytracingPipelineD3D12::RaytracingPipelineD3D12(Ref<DeviceD3D12> device, Raytra
         shader.NumExports = 1;
         shader.pExports = &export_desc;
 
+        static size_t num_shader = 0;
+
+        auto& original_name = owned_strings.emplace_back();
+        original_name = chars_to_wstring(pipeline_shader.entry);
         if (!p_wstr) {
             p_wstr = &owned_strings.emplace_back();
         }
-        *p_wstr = chars_to_wstring(pipeline_shader.entry);
+        *p_wstr = L"dxil_shader_" + std::to_wstring(num_shader++);;
+
         export_desc.Name = p_wstr->c_str();
         export_desc.Flags = D3D12_EXPORT_FLAG_NONE;
-        export_desc.ExportToRename = nullptr;
+        export_desc.ExportToRename = original_name.c_str();
 
         add_subobject(D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &shader);
     };
@@ -595,7 +594,6 @@ RaytracingPipelineD3D12::RaytracingPipelineD3D12(Ref<DeviceD3D12> device, Raytra
         add_subobject(D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION, &association);
     }
 
-    // BI_ASSERT(subobjects.size() <= estimated_max_num_subobjects);
     D3D12_STATE_OBJECT_DESC pipeline_state{
         .Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
         .NumSubobjects = static_cast<uint32_t>(subobjects.size()),

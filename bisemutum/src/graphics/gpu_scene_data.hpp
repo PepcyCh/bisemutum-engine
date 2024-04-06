@@ -4,7 +4,8 @@
 
 namespace bi::gfx {
 
-inline constexpr size_t max_num_material_textures = 1024;
+inline constexpr size_t max_num_material_textures = 256;
+inline constexpr size_t max_num_material_samplers = 32;
 
 BI_SHADER_PARAMETERS_BEGIN(GpuSceneData)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float>, positions_buffer)
@@ -19,7 +20,7 @@ BI_SHADER_PARAMETERS_BEGIN(GpuSceneData)
     BI_SHADER_PARAMETER_SRV_BUFFER(ByteAddressBuffer, material_params)
 
     BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, material_textures, [max_num_material_textures])
-    BI_SHADER_PARAMETER_SAMPLER_ARRAY(SamplerState, material_samplers, [max_num_material_textures])
+    BI_SHADER_PARAMETER_SAMPLER_ARRAY(SamplerState, material_samplers, [max_num_material_samplers])
 BI_SHADER_PARAMETERS_END()
 
 }
