@@ -1,11 +1,12 @@
-#include "../../core/material.hlsl"
-#include "../../core/utils/projection.hlsl"
-#include "../lights.hlsl"
-#include "../skybox_common.hlsl"
-#include "../gbuffer.hlsl"
+#include <bisemutum/shaders/core/material.hlsl>
+#include <bisemutum/shaders/core/utils/projection.hlsl>
 
-#include "../../core/shader_params/camera.hlsl"
-#include "../../core/shader_params/compute.hlsl"
+#include "../lights.hlsl"
+#include "../gbuffer.hlsl"
+#include "../skybox/skybox_common.hlsl"
+
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 [numthreads(16, 16, 1)]
 void deferred_lighting_secondary_cs(uint3 global_thread_id : SV_DispatchThreadID) {

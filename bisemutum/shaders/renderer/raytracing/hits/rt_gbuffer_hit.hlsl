@@ -1,6 +1,7 @@
+#include <bisemutum/shaders/core/raytracing/hit.hlsl>
+#include <bisemutum/shaders/core/raytracing/attributes.hlsl>
+
 #include "rt_gbuffer.hlsl"
-#include "../../../core/raytracing/hit.hlsl"
-#include "../../../core/raytracing/attributes.hlsl"
 
 [shader("closesthit")]
 void rt_gbuffer_rchit(inout GBufferPayload payload, HitAttributes attribs) {

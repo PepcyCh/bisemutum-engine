@@ -1,10 +1,10 @@
-#include "../core/vertex_attributes.hlsl"
-
-#include "../core/shader_params/camera.hlsl"
-#include "../core/shader_params/material.hlsl"
-#include "../core/shader_params/fragment.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
 
 #include "gbuffer.hlsl"
+
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/material.hlsl>
+#include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 struct GBufferOutput {
     float4 base_color : SV_Target0;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../core/material/utils.hlsl"
-#include "../core/utils/pack.hlsl"
+#include <bisemutum/shaders/core/material/utils.hlsl>
+#include <bisemutum/shaders/core/utils/pack.hlsl>
 
 struct GBuffer {
     float4 base_color;

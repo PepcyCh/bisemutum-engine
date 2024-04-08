@@ -1,11 +1,11 @@
-#include "../core/vertex_attributes.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
 
 #include "lights.hlsl"
 #include "skybox_common.hlsl"
 
-#include "../core/shader_params/camera.hlsl"
-#include "../core/shader_params/material.hlsl"
-#include "../core/shader_params/fragment.hlsl"
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/material.hlsl>
+#include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 struct Output {
     float4 color : SV_Target0;

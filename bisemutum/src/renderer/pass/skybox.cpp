@@ -25,7 +25,7 @@ struct PassData final {
 SkyboxPass::SkyboxPass() {
     fragment_shader_params_.initialize<SkyboxPassParams>();
 
-    fragment_shader_.source.path = "/bisemutum/shaders/renderer/skybox_pass.hlsl";
+    fragment_shader_.source.path = "/bisemutum/shaders/renderer/skybox/skybox_pass.hlsl";
     fragment_shader_.source.entry = "skybox_pass_fs";
     fragment_shader_.set_shader_params_struct<SkyboxPassParams>();
     fragment_shader_.depth_write = false;

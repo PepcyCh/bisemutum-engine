@@ -1,6 +1,6 @@
-#include "../core/vertex_attributes.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
 
-#include "../core/shader_params/fragment.hlsl"
+#include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 float4 bloom_combine_fs(VertexAttributesOutput fin) : SV_Target {
     float3 color1 = input_color1.SampleLevel(sampler_input, fin.texcoord, 0).xyz;

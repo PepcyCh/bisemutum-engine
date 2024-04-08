@@ -50,16 +50,16 @@ struct SkyboxPrecomputeSpecularPassData final {
 
 SkyboxPrecomputePass::SkyboxPrecomputePass() {
     precompute_brdf_lut_params_.initialize<SkyboxPrecomputeBrdfParams>();
-    precompute_brdf_lut_.source.path = "/bisemutum/shaders/renderer/ibl_brdf_lut.hlsl";
+    precompute_brdf_lut_.source.path = "/bisemutum/shaders/renderer/skybox/ibl_brdf_lut.hlsl";
     precompute_brdf_lut_.source.entry = "ibl_brdf_lut_cs";
     precompute_brdf_lut_.set_shader_params_struct<SkyboxPrecomputeBrdfParams>();
 
     precompute_diffuse_params_.initialize<SkyboxPrecomputeDiffuseParams>();
-    precompute_diffuse_.source.path = "/bisemutum/shaders/renderer/skybox_precompute_diffuse.hlsl";
+    precompute_diffuse_.source.path = "/bisemutum/shaders/renderer/skybox/skybox_precompute_diffuse.hlsl";
     precompute_diffuse_.source.entry = "skybox_precompute_diffuse_cs";
     precompute_diffuse_.set_shader_params_struct<SkyboxPrecomputeDiffuseParams>();
 
-    precompute_specular_.source.path = "/bisemutum/shaders/renderer/skybox_precompute_specular.hlsl";
+    precompute_specular_.source.path = "/bisemutum/shaders/renderer/skybox/skybox_precompute_specular.hlsl";
     precompute_specular_.source.entry = "skybox_precompute_specular_cs";
     precompute_specular_.set_shader_params_struct<SkyboxPrecomputeSpecularParams>();
 }

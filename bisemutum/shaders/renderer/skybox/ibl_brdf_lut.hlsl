@@ -1,7 +1,7 @@
-#include "../core/utils/low_discrepancy.hlsl"
-#include "../core/material/utils.hlsl"
+#include "../../core/utils/low_discrepancy.hlsl"
+#include "../../core/material/utils.hlsl"
 
-#include "../core/shader_params/compute.hlsl"
+#include "../../core/shader_params/compute.hlsl"
 
 static const uint num_samples = 1024;
 

@@ -1,10 +1,10 @@
-#include "../core/math.hlsl"
-#include "../core/utils/frame.hlsl"
-#include "../core/utils/low_discrepancy.hlsl"
-#include "../core/material/utils.hlsl"
-#include "../core/utils/cubemap.hlsl"
+#include "../../core/math.hlsl"
+#include "../../core/utils/frame.hlsl"
+#include "../../core/utils/low_discrepancy.hlsl"
+#include "../../core/material/utils.hlsl"
+#include "../../core/utils/cubemap.hlsl"
 
-#include "../core/shader_params/compute.hlsl"
+#include "../../core/shader_params/compute.hlsl"
 
 static const uint num_samples = 1024;
 static const float clamp_lum = 12.0;

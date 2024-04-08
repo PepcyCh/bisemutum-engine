@@ -1,7 +1,7 @@
-#include "../core/vertex_attributes.hlsl"
-#include "../core/math.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
+#include <bisemutum/shaders/core/math.hlsl>
 
-#include "../core/shader_params/fragment.hlsl"
+#include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 static const float offsets[] = {
     -3.23076923, -1.38461538, 0.0, 1.38461538, 3.23076923,

@@ -1,7 +1,7 @@
-#include "../../core/math.hlsl"
-#include "../../core/utils/pack.hlsl"
+#include <bisemutum/shaders/core/math.hlsl>
+#include <bisemutum/shaders/core/utils/pack.hlsl>
 
-#include "../../core/shader_params/compute.hlsl"
+#include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 #define NUM_GROUP_THREADS 16
 #define SHARED_DATA_WIDTH (NUM_GROUP_THREADS + 2)

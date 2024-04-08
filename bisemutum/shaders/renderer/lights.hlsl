@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../core/math.hlsl"
+#include <bisemutum/shaders/core/math.hlsl>
+
 #include "lights_struct.hlsl"
 
 // ---- Dir Light & Point (Spot) Light ----
@@ -441,7 +442,7 @@ float3 rect_light_sample_texture(
     float v = saturate(dot(rect_pos, light.position1 - light.position2) * light.inv_height_sqr);
     float num_texels = t * roughness * light.inv_texel_size;
     float level = log2(max(1.0, num_texels));
-    return tex.SampleLevel(tex_sampler, float2(u, v), level);
+    return tex.SampleLevel(tex_sampler, float2(u, v), level).xyz;
 }
 
 void rect_light_eval_ltc(

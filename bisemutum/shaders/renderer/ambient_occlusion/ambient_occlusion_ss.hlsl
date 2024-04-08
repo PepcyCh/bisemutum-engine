@@ -1,12 +1,12 @@
-#include "../../core/vertex_attributes.hlsl"
-#include "../../core/utils/random.hlsl"
-#include "../../core/utils/sampling.hlsl"
-#include "../../core/utils/projection.hlsl"
-#include "../../core/utils/pack.hlsl"
-#include "../../core/utils/frame.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
+#include <bisemutum/shaders/core/utils/random.hlsl>
+#include <bisemutum/shaders/core/utils/sampling.hlsl>
+#include <bisemutum/shaders/core/utils/projection.hlsl>
+#include <bisemutum/shaders/core/utils/pack.hlsl>
+#include <bisemutum/shaders/core/utils/frame.hlsl>
 
-#include "../../core/shader_params/camera.hlsl"
-#include "../../core/shader_params/fragment.hlsl"
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
     float depth = depth_tex.Sample(input_sampler, fin.texcoord).x;

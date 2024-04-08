@@ -1,13 +1,14 @@
-#include "../../../core/utils/random.hlsl"
-#include "../../../core/utils/sampling.hlsl"
-#include "../../../core/utils/projection.hlsl"
-#include "../../../core/utils/pack.hlsl"
-#include "../../../core/utils/frame.hlsl"
-#include "../../../core/material.hlsl"
+#include <bisemutum/shaders/core/utils/random.hlsl>
+#include <bisemutum/shaders/core/utils/sampling.hlsl>
+#include <bisemutum/shaders/core/utils/projection.hlsl>
+#include <bisemutum/shaders/core/utils/pack.hlsl>
+#include <bisemutum/shaders/core/utils/frame.hlsl>
+#include <bisemutum/shaders/core/material.hlsl>
+
 #include "../../gbuffer.hlsl"
 
-#include "../../../core/shader_params/camera.hlsl"
-#include "../../../core/shader_params/compute.hlsl"
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 [numthreads(16, 16, 1)]
 void specular_sample_cs(uint3 global_thread_id : SV_DispatchThreadID) {
@@ -57,11 +58,17 @@ void specular_sample_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     float pdf = pdf_wh / (4.0 * abs(dot(half_dir, V_local)));
 
     out_dir = frame_to_world(frame, out_dir);
-    float3 bsdf = surface_eval(N, T, B, V, out_dir, surface, surface_model);
-    // TODO - split specular bsdf
+    float3 bsdf_diffuse;
+    float3 bsdf_specular;
+    surface_eval(N, T, B, V, out_dir, surface, surface_model, bsdf_diffuse, bsdf_specular);
     float fade = 1.0 - max(surface.roughness - fade_roughness, 0.0) / max(max_roughness - fade_roughness, 0.0001);
+
+    float3 weight = bsdf_specular * fade / pdf;
+    if (any(isnan(weight)) || any(isinf(weight))) {
+        weight = 0.0;
+    }
 
     ray_origins[pixel_coord] = float4(position_world, 1.0);
     ray_directions[pixel_coord] = float4(out_dir, 1.0);
-    ray_weights[pixel_coord]  = float4(bsdf * fade / pdf, 1.0);
+    ray_weights[pixel_coord]  = float4(weight, 1.0);
 }

@@ -1,14 +1,13 @@
-#include "../core/vertex_attributes.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
+#include <bisemutum/shaders/core/material.hlsl>
+#include <bisemutum/shaders/core/utils/projection.hlsl>
 
-#include "lights.hlsl"
-#include "skybox_common.hlsl"
-
-#include "../core/shader_params/camera.hlsl"
-#include "../core/shader_params/fragment.hlsl"
-
-#include "../core/material.hlsl"
-#include "../core/utils/projection.hlsl"
 #include "gbuffer.hlsl"
+#include "lights.hlsl"
+#include "skybox/skybox_common.hlsl"
+
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     GBuffer gbuffer;

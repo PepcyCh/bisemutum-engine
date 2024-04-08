@@ -2,24 +2,30 @@
 
 #include "utils.hlsl"
 
-float3 surface_eval_unlit(
+void surface_eval_unlit(
     float3 N,
     float3 T,
     float3 B,
     float3 V,
     float3 L,
-    SurfaceData surface
+    SurfaceData surface,
+    out float3 diffuse_result,
+    out float3 specular_result
 ) {
-    return surface.base_color;
+    diffuse_result = surface.base_color;
+    specular_result = 0.0;
 }
 
-float3 surface_eval_lut_unlit(
+void surface_eval_lut_unlit(
     float3 N,
     float3 V,
     SurfaceData surface,
     float3 integrated_diffuse,
     float3 integrated_specular,
-    float2 integrated_brdf
+    float2 integrated_brdf,
+    out float3 diffuse_result,
+    out float3 specular_result
 ) {
-    return float3(0.0, 0.0, 0.0);
+    diffuse_result = 0.0;
+    specular_result = 0.0;
 }

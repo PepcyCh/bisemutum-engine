@@ -1,7 +1,7 @@
-#include "../core/vertex_attributes.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
 
-#include "../core/shader_params/camera.hlsl"
-#include "../core/shader_params/mesh.hlsl"
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/mesh.hlsl>
 
 VertexAttributesOutput static_mesh_vs(VertexAttributes vin) {
     VertexAttributesOutput vout;

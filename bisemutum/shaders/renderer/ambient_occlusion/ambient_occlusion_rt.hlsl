@@ -1,12 +1,12 @@
-#include "../../core/vertex_attributes.hlsl"
-#include "../../core/utils/random.hlsl"
-#include "../../core/utils/sampling.hlsl"
-#include "../../core/utils/projection.hlsl"
-#include "../../core/utils/pack.hlsl"
-#include "../../core/utils/frame.hlsl"
+#include <bisemutum/shaders/core/vertex_attributes.hlsl>
+#include <bisemutum/shaders/core/utils/random.hlsl>
+#include <bisemutum/shaders/core/utils/sampling.hlsl>
+#include <bisemutum/shaders/core/utils/projection.hlsl>
+#include <bisemutum/shaders/core/utils/pack.hlsl>
+#include <bisemutum/shaders/core/utils/frame.hlsl>
 
-#include "../../core/shader_params/camera.hlsl"
-#include "../../core/shader_params/compute.hlsl"
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
+#include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 #define NUM_GROUP_THREADS 16
 

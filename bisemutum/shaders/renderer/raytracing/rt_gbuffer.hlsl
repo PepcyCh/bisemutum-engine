@@ -1,6 +1,6 @@
 #include "hits/rt_gbuffer.hlsl"
 
-#include "../../core/shader_params/raytracing.hlsl"
+#include <bisemutum/shaders/core/shader_params/raytracing.hlsl>
 
 [shader("raygeneration")]
 void rt_gbuffer_rgen() {
