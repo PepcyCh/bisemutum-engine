@@ -75,7 +75,7 @@ struct GraphicsPassDepthStencilTargetBuilder final {
 
     auto array_layer(uint32_t base_layer, uint32_t num_layers = 1) -> GraphicsPassDepthStencilTargetBuilder&;
     auto mip_level(uint32_t level) -> GraphicsPassDepthStencilTargetBuilder&;
-    auto clear_depth_stencil(float depth = 1.0f, uint8_t stencil = 0) -> GraphicsPassDepthStencilTargetBuilder&;
+    auto clear_depth_stencil(float depth = 0.0f, uint8_t stencil = 0) -> GraphicsPassDepthStencilTargetBuilder&;
     auto dont_store() -> GraphicsPassDepthStencilTargetBuilder&;
     auto generate_mipmaps() -> GraphicsPassDepthStencilTargetBuilder&;
     auto read_only() -> GraphicsPassDepthStencilTargetBuilder&;

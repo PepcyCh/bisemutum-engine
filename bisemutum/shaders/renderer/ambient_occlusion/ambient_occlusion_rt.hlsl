@@ -4,6 +4,7 @@
 #include <bisemutum/shaders/core/utils/projection.hlsl>
 #include <bisemutum/shaders/core/utils/pack.hlsl>
 #include <bisemutum/shaders/core/utils/frame.hlsl>
+#include <bisemutum/shaders/core/utils/depth.hlsl>
 
 #include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>
@@ -17,7 +18,7 @@ void ambient_occlusion_rt_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     float2 texcoord = (pixel_coord + 0.5) / tex_size;
 
     float depth = depth_tex.SampleLevel(input_sampler, texcoord, 0).x;
-    if (depth == 1.0) {
+    if (is_depth_background(depth)) {
         ao_tex[pixel_coord] = float2(1.0, 0.0);
         return;
     }

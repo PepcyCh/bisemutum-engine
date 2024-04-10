@@ -50,7 +50,7 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
     pass_data->depth = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(
-                rhi::ResourceFormat::d24_unorm_s8_uint,
+                rhi::ResourceFormat::d32_sfloat_s8_uint,
                 camera_target.desc().extent.width, camera_target.desc().extent.height
             )
             .usage({rhi::TextureUsage::depth_stencil_attachment, rhi::TextureUsage::sampled});

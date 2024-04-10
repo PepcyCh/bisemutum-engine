@@ -53,7 +53,7 @@ void deferred_lighting_secondary_cs(uint3 global_thread_id : SV_DispatchThreadID
         float3 le = dir_light_eval(light, position_world, light_dir);
         float shadow_factor = dir_light_shadow_factor(
             light, position_world, N,
-            view_position,
+            camera_position_world(),
             dir_lights_shadow_transform, dir_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);
@@ -63,7 +63,7 @@ void deferred_lighting_secondary_cs(uint3 global_thread_id : SV_DispatchThreadID
         float3 le = point_light_eval(light, position_world, light_dir);
         float shadow_factor = point_light_shadow_factor(
             light, position_world, N,
-            view_position,
+            camera_position_world(),
             point_lights_shadow_transform, point_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);

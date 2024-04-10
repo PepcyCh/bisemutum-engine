@@ -1,7 +1,7 @@
 #include <bisemutum/shaders/core/vertex_attributes.hlsl>
 
 #include "lights.hlsl"
-#include "skybox_common.hlsl"
+#include "skybox/skybox_common.hlsl"
 
 #include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/material.hlsl>

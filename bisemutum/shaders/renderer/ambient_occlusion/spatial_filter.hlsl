@@ -42,7 +42,7 @@ void ao_spatial_filter_cs(
     if (any(global_thread_id.xy >= tex_size)) { return; }
 
     uint center_shared_data_index = shared_data_index_of((int2) local_thread_id.xy);
-    float2 center_ao_value = s_depth[center_shared_data_index];
+    float2 center_ao_value = s_ao_value[center_shared_data_index];
     float center_depth = s_depth[center_shared_data_index];
     float3 center_normal = s_normal[center_shared_data_index];
 
@@ -63,7 +63,7 @@ void ao_spatial_filter_cs(
             if (ao_value.y == 0.0) { continue; }
             float depth = s_depth[shared_data_index];
             float3 normal = s_normal[shared_data_index];
-            float weight = max(dot(center_normal, normal), 0.0) * exp(-abs(depth - center_depth) / center_depth);
+            float weight = max(dot(center_normal, normal), 0.0) * exp(-abs(depth - center_depth) / (1.0 - center_depth));
             result += s_ao_value[shared_data_index] * weight;
             weight_sum += weight;
         }

@@ -9,31 +9,34 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 * Graphics
   * RHI on Vulkan and D3D12
   * ImGui integration on RHI
-  * Render graph
+  * Render graph on RHI
   * SRP-like custom renderer
   * Generate shader resources definition and pipeline layout from C++ structs
 * Rendering (the builtin renderer)
   * Basic PBR
   * Forward and deferred rendering
   * CPU frustum culling
-  * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights
+  * Cascaded shadow mapping for directional lights; Shadow mapping for point and spot lights (both with PCF)
   * Rect light via LTC (anisotropic GGX)
   * Skybox & IBL
   * Basic SSAO & RTAO
   * Bloom
+  * Reverse-Z
 * Core
   * Custom static reflection
-    * Reflection on `enum` is based on Magic Enum
-  * Polymorphism using AnyAny
+    * Reflection on `enum` is based on [magic enum](https://github.com/Neargye/magic_enum)
+  * Polymorphism using [AnyAny](https://github.com/kelbon/AnyAny)
 * Runtime
-  * ECS using EnTT & Scene hierarchy & Prefab
+  * Scene hierarchy
+  * Prefab
+  * ECS using [EnTT](https://github.com/skypjack/entt)
   * Basic asset manager
   * Basic virtual file system
   * Saving & Loading
 * Editor
   * Component editor based on reflection
-  * Scene objects
-  * Import model via Assimp
+  * Add or remove scene objects
+  * Import textures, models ...
 
 ### Features to be Developed Next
 
@@ -71,6 +74,7 @@ Graphics
 * [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT)
 * [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) (MIT)
 * [pep-cprep](https://github.com/PepcyCh/pep-cprep) (MIT) (in source)
+  * This is a macro and include preprocesser for C-like language, and is also written by myself.
 * [DirectXShaderCompiler](https://github.com/microsoft/DirectXShaderCompiler) ([LICENSE](https://github.com/microsoft/DirectXShaderCompiler/blob/main/LICENSE.TXT))
 
 Window

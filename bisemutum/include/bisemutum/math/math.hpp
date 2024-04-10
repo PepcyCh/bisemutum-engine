@@ -76,6 +76,9 @@ constexpr auto select(bool cond, T const& t, T const& f) {
     return cond ? t : f;
 }
 
+auto perspective_reverse_z(float fovy, float aspect, float near, float far) -> float4x4;
+auto ortho_reverse_z(float left, float right, float bottom, float top, float near, float far) -> float4x4;
+
 } // namespace math
 
 namespace serde {

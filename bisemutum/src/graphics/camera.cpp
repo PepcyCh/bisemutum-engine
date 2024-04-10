@@ -30,6 +30,8 @@ BI_SHADER_PARAMETERS_BEGIN(CameraData)
     BI_SHADER_PARAMETER(float4x4, matrix_proj_view)
     BI_SHADER_PARAMETER(float4x4, matrix_prev_proj_view)
     BI_SHADER_PARAMETER(float4x4, history_matrix_proj_view)
+    BI_SHADER_PARAMETER(float4x4, history_matrix_inv_proj)
+    BI_SHADER_PARAMETER(float4x4, history_matrix_inv_view)
 BI_SHADER_PARAMETERS_END()
 
 BI_SHADER_PARAMETERS_BEGIN(GraphicsInput)
@@ -93,11 +95,11 @@ auto Camera::update_shader_params() -> void {
 
     uniform_data->camera.matrix_view = math::lookAt(position, position + front_dir, up_dir);
     if (projection_type == ProjectionType::perspective) {
-        uniform_data->camera.matrix_proj = math::perspective(math::radians(yfov), aspect, 0.001f, 1e5f);
+        uniform_data->camera.matrix_proj = math::perspective_reverse_z(math::radians(yfov), aspect, near_z, far_z);
     } else {
         auto ortho_height = std::tan(math::radians(yfov * 0.5f));
         auto ortho_width = ortho_height * aspect;
-        uniform_data->camera.matrix_proj = math::ortho(
+        uniform_data->camera.matrix_proj = math::ortho_reverse_z(
             -ortho_width, ortho_width, -ortho_height, ortho_height, near_z, far_z
         );
     }
@@ -110,6 +112,8 @@ auto Camera::update_shader_params() -> void {
     shader_parameter_.update_uniform_buffer();
 
     uniform_data->camera.history_matrix_proj_view = uniform_data->camera.matrix_proj_view;
+    uniform_data->camera.history_matrix_inv_proj = uniform_data->camera.matrix_inv_proj;
+    uniform_data->camera.history_matrix_inv_view = uniform_data->camera.matrix_inv_view;
 }
 
 auto Camera::get_frustum_planes() const -> std::array<float4, 6> {

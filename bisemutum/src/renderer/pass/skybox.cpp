@@ -29,7 +29,7 @@ SkyboxPass::SkyboxPass() {
     fragment_shader_.source.entry = "skybox_pass_fs";
     fragment_shader_.set_shader_params_struct<SkyboxPassParams>();
     fragment_shader_.depth_write = false;
-    fragment_shader_.depth_compare_op = rhi::CompareOp::less_equal;
+    fragment_shader_.depth_compare_op = rhi::CompareOp::greater_equal;
 }
 
 auto SkyboxPass::update_params(SkyboxContext& skybox_ctx) -> void {

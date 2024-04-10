@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bisemutum/shaders/core/math.hlsl>
+#include <bisemutum/shaders/core/utils/depth.hlsl>
 
 #include "lights_struct.hlsl"
 
@@ -59,7 +60,7 @@ float test_shadow_pcf9(
         float sm_depth = shadow_map.SampleLevel(
             shadow_map_sampler, float3(sm_uv + uv_offset[i], shadow_map_index), 0
         ).x;
-        shadow_factor += (light_pos.z - shadow_depth_bias) < sm_depth ? 1.0 : (1.0 - shadow_strength);
+        shadow_factor += is_depth_nearer(depth_pull(light_pos.z, shadow_depth_bias), sm_depth) ? 1.0 : (1.0 - shadow_strength);
     }
     shadow_factor /= 9.0;
     return shadow_factor;

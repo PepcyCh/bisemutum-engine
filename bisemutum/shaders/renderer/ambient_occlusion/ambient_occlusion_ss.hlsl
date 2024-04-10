@@ -4,13 +4,14 @@
 #include <bisemutum/shaders/core/utils/projection.hlsl>
 #include <bisemutum/shaders/core/utils/pack.hlsl>
 #include <bisemutum/shaders/core/utils/frame.hlsl>
+#include <bisemutum/shaders/core/utils/depth.hlsl>
 
 #include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
     float depth = depth_tex.Sample(input_sampler, fin.texcoord).x;
-    if (depth == 1.0) {
+    if (is_depth_background(depth)) {
         return float4(1.0, 0.0, 0.0, 0.0);
     }
 
@@ -37,7 +38,7 @@ float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
         float2 uv = float2(pos_clip.x * 0.5 + 0.5, 0.5 - pos_clip.y * 0.5);
         float tap_depth = depth_tex.Sample(input_sampler, uv).x;
 
-        ao_value += pos_clip.z < tap_depth ? 0.0 : 1.0;
+        ao_value += is_depth_nearer(pos_clip.z, tap_depth) ? 0.0 : 1.0;
     }
     ao_value = 1.0 - ao_value * ao_strength / 4;
 

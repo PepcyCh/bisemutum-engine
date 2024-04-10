@@ -48,8 +48,8 @@ struct Camera final {
     float3 front_dir = float3{0.0f, 0.0f, 1.0f};
     float3 up_dir = float3{0.0f, 1.0f, 0.0f};
     float yfov = 30.0f;
-    float near_z = 0.001f;
-    float far_z = 100000.0f;
+    float near_z = 0.01f;
+    float far_z = 10000.0f;
     ProjectionType projection_type = ProjectionType::perspective;
 
     bool enabled = true;

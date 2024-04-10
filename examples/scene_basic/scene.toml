@@ -13,8 +13,8 @@ name = 'Camera'
     type = 'CameraComponent'
 
         [objects.components.value]
-        far_z = 100000.0
-        near_z = 0.0010000000474974513
+        far_z = 10000.0
+        near_z = 0.010000000474974513
         projection_type = 'perspective'
         render_target_format = 'rgba16_sfloat'
         render_target_size = [ 1273, 633 ]

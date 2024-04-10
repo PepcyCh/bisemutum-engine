@@ -604,9 +604,10 @@ struct GraphicsManager::Impl final {
             if (index >= max_num_material_textures) { break; }
             gpu_scene_data->material_textures[index] = {tex};
         }
-        for (auto [index, samp] : material_resources.samplers.pairs()) {
-            if (index >= max_num_material_textures) { break; }
+        for (size_t index = 0; auto samp : material_resources.samplers) {
+            if (index >= max_num_material_samplers) { break; }
             gpu_scene_data->material_samplers[index] = {samp};
+            ++index;
         }
     }
 
@@ -1376,7 +1377,9 @@ struct GraphicsManager::Impl final {
     struct MaterialResources final {
         BufferSuballocator params_buffers;
         SlotMap<Ref<Texture>> textures;
-        SlotMap<Ref<Sampler>> samplers;
+        // SlotMap<Ref<Sampler>> samplers;
+        std::unordered_map<Ref<Sampler>, size_t> samplers_map;
+        std::vector<Ref<Sampler>> samplers;
     } material_resources;
 
     struct MeshBlas final {
@@ -1509,12 +1512,14 @@ auto GraphicsManager::remove_material_texture(size_t index) -> void {
     impl()->material_resources.textures.remove(index);
 }
 auto GraphicsManager::add_material_sampler(Ref<Sampler> sampler) -> size_t {
-    // TODO - merge the same sampler
-    return impl()->material_resources.samplers.insert(sampler);
+    auto [it, is_new] = impl()->material_resources.samplers_map.try_emplace(sampler);
+    if (is_new) {
+        it->second = impl()->material_resources.samplers.size();
+        impl()->material_resources.samplers.push_back(sampler);
+    }
+    return it->second;
 }
-auto GraphicsManager::remove_material_sampler(size_t index) -> void {
-    impl()->material_resources.samplers.remove(index);
-}
+auto GraphicsManager::remove_material_sampler(size_t index) -> void {}
 
 auto GraphicsManager::update_mesh_buffers(CRef<MeshData> mesh) -> void {
     impl()->update_mesh_buffers(mesh);

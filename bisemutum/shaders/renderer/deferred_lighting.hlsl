@@ -1,5 +1,6 @@
 #include <bisemutum/shaders/core/vertex_attributes.hlsl>
 #include <bisemutum/shaders/core/material.hlsl>
+#include <bisemutum/shaders/core/utils/depth.hlsl>
 #include <bisemutum/shaders/core/utils/projection.hlsl>
 
 #include "gbuffer.hlsl"
@@ -16,7 +17,7 @@ float4 deferred_lighting_pass_fs(VertexAttributesOutput fin) : SV_Target {
     gbuffer.fresnel = gbuffer_textures[GBUFFER_FRESNEL].Sample(gbuffer_sampler, fin.texcoord);
     gbuffer.material_0 = gbuffer_textures[GBUFFER_MATERIAL_0].Sample(gbuffer_sampler, fin.texcoord);
     float depth = depth_texture.Sample(gbuffer_sampler, fin.texcoord).x;
-    if (depth == 1.0) {
+    if (is_depth_background(depth)) {
         return float4(0.0, 0.0, 0.0, 1.0);
     }
 

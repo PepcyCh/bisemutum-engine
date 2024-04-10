@@ -28,7 +28,7 @@ struct FragmentShader final {
 
     bool depth_write = true;
     bool depth_test = true;
-    rhi::CompareOp depth_compare_op = rhi::CompareOp::less;
+    rhi::CompareOp depth_compare_op = rhi::CompareOp::greater;
 
     bool stencil_test = false;
     rhi::StencilFaceState stencil_front_face;
