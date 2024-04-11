@@ -1076,7 +1076,7 @@ auto RenderGraph::Impl::RaytracingPassNode::execute(
 ) const -> void {
     rhi::CommandLabel label{
         .label = name,
-        .color = {1.0f, 0.0f, 0.5f},
+        .color = {0.0f, 1.0f, 1.0f},
     };
 
     auto raytracing_encoder = cmd_encoder->begin_raytracing_pass(label);

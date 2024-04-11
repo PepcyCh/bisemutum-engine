@@ -16,6 +16,7 @@ struct ReflectionPass final {
         gfx::TextureHandle velocity;
         gfx::TextureHandle depth;
         GBufferTextures gbuffer;
+        gfx::TextureHandle history_validation;
 
         ShadowMapTextures shadow_maps;
         PrecomputedSkybox skybox;

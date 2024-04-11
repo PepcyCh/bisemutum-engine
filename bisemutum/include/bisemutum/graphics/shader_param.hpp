@@ -84,6 +84,14 @@ struct RWStructuredBuffer final {};
 struct ByteAddressBuffer final {};
 struct RWByteAddressBuffer final {};
 
+template <typename T>
+concept TextureElement = traits::OneOf<
+    T,
+    float, float2, float3, float4,
+    int, int2, int3, int4,
+    uint, uint2, uint3, uint4
+>;
+
 struct Texture1D final {};
 struct Texture2D final {};
 struct Texture3D final {};
@@ -92,22 +100,15 @@ struct Texture1DArray final {};
 struct Texture2DArray final {};
 struct TextureCubeArray final {};
 
-template <typename T>
-concept RWTextureElement = traits::OneOf<
-    T,
-    float, float2, float3, float4,
-    int, int2, int3, int4,
-    uint, uint2, uint3, uint4
->;
-template <RWTextureElement T>
+template <TextureElement T>
 struct RWTexture1D final {};
-template <RWTextureElement T>
+template <TextureElement T>
 struct RWTexture2D final {};
-template <RWTextureElement T>
+template <TextureElement T>
 struct RWTexture3D final {};
-template <RWTextureElement T>
+template <TextureElement T>
 struct RWTexture1DArray final {};
-template <RWTextureElement T>
+template <TextureElement T>
 struct RWTexture2DArray final {};
 
 struct RaytracingAccelerationStructure final {
@@ -238,7 +239,7 @@ TEXTURE_SHADER_PARAM_METADATA(TextureCubeArray, cube_array)
 #undef TEXTURE_SHADER_PARAM_METADATA
 
 #define RWTEXTURE_SHADER_PARAM_METADATA(tex_ty, view_ty) \
-    template <shader::RWTextureElement T, ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT, rhi::ResourceFormat format> \
+    template <shader::TextureElement T, ConstexprStringLit TypeName, ConstexprStringLit Name, typename ArraySizeT, rhi::ResourceFormat format> \
     struct TShaderParameterMetadata<shader::tex_ty<T>, TypeName, Name, ArraySizeT, false, format> final { \
         static constexpr ConstexprStringLit type_name{TypeName.value}; \
         static constexpr size_t size = sizeof(TUavTexture<shader::tex_ty<T>>); \

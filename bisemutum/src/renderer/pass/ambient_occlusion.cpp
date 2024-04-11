@@ -52,6 +52,7 @@ BI_SHADER_PARAMETERS_BEGIN(TemporalAccumulatePassParams)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, ao_tex, ao_tex_format)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, history_ao_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, velocity_tex)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<uint>, history_validation_tex, rhi::ResourceFormat::r8_uint)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
 BI_SHADER_PARAMETERS_END()
 
@@ -59,6 +60,7 @@ struct TemporalAccumulatePassData final {
     gfx::TextureHandle ao_value;
     gfx::TextureHandle history_ao_value;
     gfx::TextureHandle velocity;
+    gfx::TextureHandle history_validation_tex;
 };
 
 BI_SHADER_PARAMETERS_BEGIN(SpatialFilterPassParams)
@@ -265,6 +267,7 @@ auto AmbientOcclusionPass::render_denoise(
         pass_data->history_ao_value = builder.read(history_ao_tex);
         ao_tex = pass_data->ao_value;
         pass_data->velocity = builder.read(input.velocity);
+        pass_data->history_validation_tex = builder.read(input.history_validation);
 
         builder.set_execution_function<TemporalAccumulatePassData>(
             [this, width, height](CRef<TemporalAccumulatePassData> pass_data, gfx::ComputePassContext const& ctx) {
@@ -273,6 +276,7 @@ auto AmbientOcclusionPass::render_denoise(
                 params->ao_tex = {ctx.rg->texture(pass_data->ao_value)};
                 params->history_ao_tex = {ctx.rg->texture(pass_data->history_ao_value)};
                 params->velocity_tex = {ctx.rg->texture(pass_data->velocity)};
+                params->history_validation_tex = {ctx.rg->texture(pass_data->history_validation_tex)};
                 params->input_sampler = {sampler_};
                 temporal_accumulate_shader_params_.update_uniform_buffer();
                 ctx.dispatch(
@@ -310,7 +314,7 @@ auto AmbientOcclusionPass::render_denoise(
                 params->output_ao_tex = {ctx.rg->texture(pass_data->output)};
                 spatial_filter_shader_params_.update_uniform_buffer();
                 ctx.dispatch(
-                    spatial_filter_shader_, spatial_filter_shader_params_,
+                    camera, spatial_filter_shader_, spatial_filter_shader_params_,
                     ceil_div(width, 16u), ceil_div(height, 16u)
                 );
                 camera.add_history_texture("ambient_occlusion", pass_data->output);

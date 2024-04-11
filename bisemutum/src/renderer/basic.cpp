@@ -13,6 +13,7 @@
 #include "pass/forward.hpp"
 #include "pass/gbuffer.hpp"
 #include "pass/deferred_lighting.hpp"
+#include "pass/validate_history.hpp"
 #include "pass/ambient_occlusion.hpp"
 #include "pass/reflection.hpp"
 #include "pass/post_process.hpp"
@@ -99,32 +100,36 @@ struct BasicRenderer::Impl final {
         color = skybox_output.color;
         depth = skybox_output.depth;
 
-        if (
-            settings.ambient_occlusion.mode != AmbientOcclusionSettings::Mode::none
-            && settings.pipeline_mode == PipelineMode::deferred
-        ) {
-            color = ambient_occlusion_pass.render(camera, rg, {
-                .color = color,
+        if (settings.pipeline_mode == PipelineMode::deferred) {
+            auto history_validation = validate_history_pass.render(camera, rg, {
+                .velocity = velocity,
                 .depth = depth,
                 .normal_roughness = gbuffer.normal_roughness,
-                .velocity = velocity,
-                .scene_accel = scene_accel,
-            }, settings.ambient_occlusion);
-        }
+            });
 
-        if (
-            settings.reflection.mode != ReflectionSettings::Mode::none
-            && settings.pipeline_mode == PipelineMode::deferred
-        ) {
-            color = reflection_pass.render(camera, rg, {
-                .color = color,
-                .velocity = velocity,
-                .depth = depth,
-                .gbuffer = gbuffer,
-                .shadow_maps = shadow_maps,
-                .skybox = skybox,
-                .scene_accel = scene_accel,
-            }, settings.reflection);
+            if (settings.ambient_occlusion.mode != AmbientOcclusionSettings::Mode::none) {
+                color = ambient_occlusion_pass.render(camera, rg, {
+                    .color = color,
+                    .depth = depth,
+                    .normal_roughness = gbuffer.normal_roughness,
+                    .velocity = velocity,
+                    .history_validation = history_validation,
+                    .scene_accel = scene_accel,
+                }, settings.ambient_occlusion);
+            }
+
+            if (settings.reflection.mode != ReflectionSettings::Mode::none) {
+                color = reflection_pass.render(camera, rg, {
+                    .color = color,
+                    .velocity = velocity,
+                    .depth = depth,
+                    .gbuffer = gbuffer,
+                    .history_validation = history_validation,
+                    .shadow_maps = shadow_maps,
+                    .skybox = skybox,
+                    .scene_accel = scene_accel,
+                }, settings.reflection);
+            }
         }
 
         post_process_pass.render(camera, rg, {
@@ -161,6 +166,8 @@ struct BasicRenderer::Impl final {
     GBufferdPass gbuffer_pass;
     DeferredLightingPass deferred_lighting_pass;
     SkyboxPass skybox_pass;
+
+    ValidateHistoryPass validate_history_pass;
 
     AmbientOcclusionPass ambient_occlusion_pass;
     ReflectionPass reflection_pass;

@@ -11,6 +11,7 @@ struct AmbientOcclusionPass final {
         gfx::TextureHandle depth;
         gfx::TextureHandle normal_roughness;
         gfx::TextureHandle velocity;
+        gfx::TextureHandle history_validation;
 
         gfx::AccelerationStructureHandle scene_accel;
     };
