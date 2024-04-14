@@ -1,4 +1,4 @@
-#include "math.hlsl"
+#include "utils/math.hlsl"
 #include "utils/cubemap.hlsl"
 
 struct EquitangularToCubemapPushConstant {

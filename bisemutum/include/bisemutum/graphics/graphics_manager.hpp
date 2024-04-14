@@ -130,7 +130,10 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     auto render_graph() -> RenderGraph&;
 
     auto default_buffer() -> Ref<Buffer>;
+    // Default textures are some special fallback textures that can be used as a default value for material, skybox...
     auto default_texture(DefaultTexture index) -> Ref<Texture>;
+    // Dummy textures are used for resource binding when a nullptr is passed as shader param.
+    auto dummy_texture(rhi::ResourceFormat format, rhi::TextureViewType type) -> Ref<Texture>;
 
     auto swapchain_format() const -> rhi::ResourceFormat;
     auto num_frames_in_flight() const -> uint32_t;

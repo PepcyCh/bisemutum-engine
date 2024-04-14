@@ -1,8 +1,9 @@
-#include "../../core/math.hlsl"
-#include "../../core/utils/frame.hlsl"
-#include "../../core/utils/cubemap.hlsl"
+#include <bisemutum/shaders/core/utils/math.hlsl>
+#include <bisemutum/shaders/core/utils/color.hlsl>
+#include <bisemutum/shaders/core/utils/frame.hlsl>
+#include <bisemutum/shaders/core/utils/cubemap.hlsl>
 
-#include "../../core/shader_params/compute.hlsl"
+#include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 static const uint num_samples_sqrt = 64;
 static const uint num_samples = num_samples_sqrt * num_samples_sqrt;

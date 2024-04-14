@@ -7,6 +7,8 @@ static const float INV_PI = 1.0 / PI;
 static const float INV_TWO_PI = 1.0 / TWO_PI;
 static const float INV_FOUR_PI = 1.0 / FOUR_PI;
 
+static const float SQRT_2 = 1.41421356237309504880;
+
 float pow2(float x) {
     return x * x;
 }
@@ -78,6 +80,40 @@ float4x4 inverse(float4x4 m) {
     return ret;
 }
 
-float luminance(float3 s) {
-    return s[0] * 0.212671f + s[1] * 0.715160f + s[2] * 0.072169f;
+float3 clip_aabb_3d(const float3 p_inside, const float3 p, const float3 p_min, const float3 p_max) {
+    const float3 dir = p - p_inside;
+    const float3 dir_inv = lerp(1.0 / dir, 1.0 / 65536.0, abs(dir) < 1.0 / 65536.0);
+    const float3 inter_max = (p_max - p_inside) * dir_inv;
+    const float3 inter_min = (p_min - p_inside) * dir_inv;
+    const float3 inter = max(inter_max, inter_min);
+    const float t = saturate(min(inter.x, min(inter.y, inter.z)));
+    return lerp(p_inside, p, t);
+}
+float3 clip_aabb_3d(const float3 p, const float3 p_min, const float3 p_max) {
+    const float3 mid = (p_min + p_max) * 0.5;
+    const float3 diag = (p_max - p_min) * 0.5;
+    const float3 dir = p - mid;
+    const float3 dir_inv = lerp(1.0 / dir, 1.0 / 65536.0, abs(dir) < 1.0 / 65536.0);
+    const float3 inter = abs(diag * dir_inv);
+    const float t = saturate(min(inter.x, min(inter.y, inter.z)));
+    return lerp(mid, p, t);
+}
+
+float4 clip_aabb_4d(const float4 p_inside, const float4 p, const float4 p_min, const float4 p_max) {
+    const float4 dir = p - p_inside;
+    const float4 dir_inv = lerp(1.0 / dir, 1.0 / 65536.0, abs(dir) < 1.0 / 65536.0);
+    const float4 inter_max = (p_max - p_inside) * dir_inv;
+    const float4 inter_min = (p_min - p_inside) * dir_inv;
+    const float4 inter = max(inter_max, inter_min);
+    const float t = saturate(min(inter.x, min(inter.y, inter.z)));
+    return lerp(p_inside, p, t);
+}
+float4 clip_aabb_4d(const float4 p, const float4 p_min, const float4 p_max) {
+    const float4 mid = (p_min + p_max) * 0.5;
+    const float4 diag = (p_max - p_min) * 0.5;
+    const float4 dir = p - mid;
+    const float4 dir_inv = lerp(1.0 / dir, 1.0 / 65536.0, abs(dir) < 1.0 / 65536.0);
+    const float4 inter = abs(diag * dir_inv);
+    const float t = saturate(min(inter.x, min(inter.y, inter.z)));
+    return lerp(mid, p, t);
 }

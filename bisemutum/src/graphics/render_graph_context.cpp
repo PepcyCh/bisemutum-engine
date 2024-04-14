@@ -46,7 +46,6 @@ auto set_shader_params_helper(
     }
 
     auto default_buffer = g_engine->graphics_manager()->default_buffer();
-    auto default_texture = g_engine->graphics_manager()->default_texture(DefaultTexture::black_1x1);
     auto default_sampler = g_engine->graphics_manager()->get_sampler({});
     for (auto& param : metadata_list.params) {
         uint32_t count = 1;
@@ -80,7 +79,11 @@ auto set_shader_params_helper(
                             texture->base_layer, texture->num_layers
                         ));
                     } else {
-                        cpu_descriptors.push_back(default_texture->get_descriptor(param));
+                        auto dummy_texture = g_engine->graphics_manager()->dummy_texture(
+                            // no need to distinguish format for sampled texture
+                            rhi::ResourceFormat::rgba8_unorm, param.texture_view_type
+                        );
+                        cpu_descriptors.push_back(dummy_texture->get_descriptor(param));
                     }
                     cpu_size += param.size;
                 }
@@ -96,7 +99,8 @@ auto set_shader_params_helper(
                             texture->base_layer, texture->num_layers
                         ));
                     } else {
-                        cpu_descriptors.push_back(default_texture->get_descriptor(param));
+                        auto dummy_texture = g_engine->graphics_manager()->dummy_texture(param.format, param.texture_view_type);
+                        cpu_descriptors.push_back(dummy_texture->get_descriptor(param));
                     }
                     cpu_size += param.size;
                 }

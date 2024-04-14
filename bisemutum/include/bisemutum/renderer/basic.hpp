@@ -58,6 +58,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         float strength = 1.0f;
         float max_roughness = 0.3f;
         float fade_roughness = 0.1f;
+        bool denoise = true;
     };
 
     struct Settings final {
@@ -99,6 +100,7 @@ BI_SREFL(
     field(strength, RangeF{0.0f, 1.0f}),
     field(max_roughness, RangeF{0.0f, 1.0f}),
     field(fade_roughness, RangeF{0.0f, 1.0f}),
+    field(denoise),
 )
 BI_SREFL(
     type(BasicRenderer::Settings),

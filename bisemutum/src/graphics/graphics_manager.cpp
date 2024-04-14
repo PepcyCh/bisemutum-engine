@@ -14,6 +14,7 @@
 #include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/containers/slotmap.hpp>
 #include <bisemutum/prelude/math.hpp>
+#include <bisemutum/prelude/misc.hpp>
 #include <fmt/format.h>
 
 #include "descriptor_allocator.hpp"
@@ -292,6 +293,68 @@ struct GraphicsManager::Impl final {
         auto& sampler = samplers.try_emplace(desc).first->second;
         sampler.initialize(desc);
         return sampler;
+    }
+    auto dummy_texture(rhi::ResourceFormat format, rhi::TextureViewType type) -> Ref<Texture> {
+        auto [it, is_new] = dummy_textures.try_emplace(std::make_pair(format, type));
+        if (is_new) {
+            uint32_t num_pixels = 1;
+            rhi::TextureDesc desc{
+                .extent = {1, 1, 1},
+                .levels = 1,
+                .format = format,
+                .usages = BitFlags<rhi::TextureUsage>{
+                    rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write,
+                },
+            };
+            switch (type) {
+                case rhi::TextureViewType::d1:
+                case rhi::TextureViewType::d1_array:
+                    desc.dim = rhi::TextureDimension::d1;
+                    break;
+                case rhi::TextureViewType::d2:
+                case rhi::TextureViewType::d2_array:
+                    desc.dim = rhi::TextureDimension::d2;
+                    break;
+                case rhi::TextureViewType::cube:
+                case rhi::TextureViewType::cube_array:
+                    desc.dim = rhi::TextureDimension::d2;
+                    desc.extent = {1, 1, 6};
+                    num_pixels = 6;
+                    break;
+                case rhi::TextureViewType::d3:
+                    desc.dim = rhi::TextureDimension::d3;
+                    break;
+                default: unreachable();
+            }
+            it->second = Texture{desc};
+            auto temp_buffer_size = num_pixels * rhi::format_texel_size(format);
+            gfx::Buffer temp_buffer{gfx::BufferBuilder().size(temp_buffer_size).mem_upload()};
+            std::vector<uint8_t> data(temp_buffer_size, 0);
+            execute_immediately([it, &temp_buffer, &data](Ref<rhi::CommandEncoder> cmd) {
+                cmd->resource_barriers({}, {
+                    rhi::TextureBarrier{
+                        .texture = it->second.rhi_texture(),
+                        .dst_access_type = rhi::ResourceAccessType::transfer_write,
+                    },
+                });
+                cmd->copy_buffer_to_texture(
+                    temp_buffer.rhi_buffer(),
+                    it->second.rhi_texture(),
+                    rhi::BufferTextureCopyDesc{
+                        .buffer_pixels_per_row = 1,
+                        .buffer_rows_per_texture = 1,
+                    }
+                );
+                cmd->resource_barriers({}, {
+                    rhi::TextureBarrier{
+                        .texture = it->second.rhi_texture(),
+                        .src_access_type = rhi::ResourceAccessType::transfer_write,
+                        .dst_access_type = rhi::ResourceAccessType::sampled_texture_read,
+                    },
+                });
+            });
+        }
+        return it->second;
     }
 
     auto new_frame() -> void {
@@ -1338,6 +1401,7 @@ struct GraphicsManager::Impl final {
 
     Buffer default_buffer;
     std::array<Texture, num_default_textures> default_textures;
+    std::unordered_map<std::pair<rhi::ResourceFormat, rhi::TextureViewType>, Texture> dummy_textures;
 
     StringHashMap<Ref<rhi::ShaderModule>> cached_shaders;
     StringHashMap<Box<rhi::GraphicsPipeline>> graphics_pipelines;
@@ -1377,7 +1441,6 @@ struct GraphicsManager::Impl final {
     struct MaterialResources final {
         BufferSuballocator params_buffers;
         SlotMap<Ref<Texture>> textures;
-        // SlotMap<Ref<Sampler>> samplers;
         std::unordered_map<Ref<Sampler>, size_t> samplers_map;
         std::vector<Ref<Sampler>> samplers;
     } material_resources;
@@ -1479,6 +1542,9 @@ auto GraphicsManager::default_buffer() -> Ref<Buffer> {
 }
 auto GraphicsManager::default_texture(DefaultTexture index) -> Ref<Texture> {
     return impl()->default_textures[static_cast<size_t>(index)];
+}
+auto GraphicsManager::dummy_texture(rhi::ResourceFormat format, rhi::TextureViewType type) -> Ref<Texture> {
+    return impl()->dummy_texture(format, type);
 }
 
 auto GraphicsManager::swapchain_format() const -> rhi::ResourceFormat {

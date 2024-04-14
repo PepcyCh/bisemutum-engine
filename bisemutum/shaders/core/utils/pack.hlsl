@@ -1,7 +1,7 @@
 #pragma once
 
 #include "frame.hlsl"
-#include "../math.hlsl"
+#include "../utils/math.hlsl"
 
 float2 pack_u32_to_unorm16x2(uint x) {
     return float2((x & 0xffffu) / 65536.0, (x >> 16) / 65536.0);
@@ -58,7 +58,7 @@ float4 unpack_color_rg7b6_with_unorm12(uint packed) {
 }
 
 float fp_exp(int e) {
-    return e > 0 ? (1 << e) : (1.0 / (1 << -e));
+    return e > 0 ? (1u << e) : (1.0 / (1u << -e));
 }
 uint pack_color_rgb9e5(float3 color) {
     float max_elem = max(color.x, max(color.y, color.z));

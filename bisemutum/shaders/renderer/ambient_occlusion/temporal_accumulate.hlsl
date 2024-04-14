@@ -1,4 +1,4 @@
-#include <bisemutum/shaders/core/math.hlsl>
+#include <bisemutum/shaders/core/utils/math.hlsl>
 #include <bisemutum/shaders/core/utils/pack.hlsl>
 
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../math.hlsl"
+#include "../utils/math.hlsl"
 
 struct SurfaceData {
     float3 base_color;

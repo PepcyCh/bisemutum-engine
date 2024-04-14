@@ -7,6 +7,7 @@
 #include "../context/lights.hpp"
 #include "../context/skybox.hpp"
 #include "skybox_precompute.hpp"
+#include "reblur.hpp"
 
 namespace bi {
 
@@ -74,8 +75,9 @@ private:
 
     std::unordered_map<gfx::Camera const*, uint64_t> last_frame_counts_;
 
-    GBufferTextures hit_gbuffer_texs_;
     gfx::TextureHandle hit_positions_tex_;
+
+    ReblurPass reblur_pass_;
 };
 
 }

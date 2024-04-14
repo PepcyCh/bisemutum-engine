@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../math.hlsl"
+#include "../utils/math.hlsl"
 
 float3 uniform_hemisphere_sample(float2 rand) {
     float phi = TWO_PI * rand.x;

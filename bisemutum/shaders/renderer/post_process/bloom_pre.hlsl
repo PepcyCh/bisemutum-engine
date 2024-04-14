@@ -1,5 +1,5 @@
 #include <bisemutum/shaders/core/vertex_attributes.hlsl>
-#include <bisemutum/shaders/core/math.hlsl>
+#include <bisemutum/shaders/core/utils/color.hlsl>
 
 #include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <bisemutum/shaders/core/math.hlsl>
+#include <bisemutum/shaders/core/utils/math.hlsl>
 #include <bisemutum/shaders/core/utils/depth.hlsl>
 
 #include "lights_struct.hlsl"

@@ -167,6 +167,8 @@ auto ReflectionPass::render(
         mode = BasicRenderer::ReflectionSettings::Mode::screen_space;
     }
 
+    // TODO - half resolution reflection
+
     switch (settings.mode) {
         case BasicRenderer::ReflectionSettings::Mode::screen_space:
             reflection_tex = render_screen_space(camera, rg, input, settings);
@@ -177,6 +179,8 @@ auto ReflectionPass::render(
         default:
             unreachable();
     }
+
+    reflection_tex = render_denoise(camera, rg, input, settings, reflection_tex);
 
     auto result_tex = render_merge(camera, rg, input.color, reflection_tex);
 
@@ -198,7 +202,9 @@ auto ReflectionPass::render_raytraced(
     auto width = camera.target_texture().desc().extent.width;
     auto height = camera.target_texture().desc().extent.height;
 
-    hit_gbuffer_texs_.add_textures(rg, width, height, {rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+    GBufferTextures hit_gbuffer_texs{};
+    hit_gbuffer_texs.add_textures(rg, width, height, {rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+
     hit_positions_tex_ = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(positions_tex_format, width, height)
@@ -264,7 +270,7 @@ auto ReflectionPass::render_raytraced(
 
         pass_data->scene_accel = builder.read(input.scene_accel);
         pass_data->hit_positions = builder.write(hit_positions_tex_);
-        pass_data->gbuffer = hit_gbuffer_texs_.write(builder);
+        pass_data->gbuffer = hit_gbuffer_texs.write(builder);
         pass_data->ray_origins = builder.read(ray_origins_tex);
         pass_data->ray_directions = builder.read(ray_directions_tex);
 
@@ -296,7 +302,7 @@ auto ReflectionPass::render_raytraced(
         pass_data->view_positions = builder.read(ray_origins_tex);
         pass_data->hit_positions = builder.read(hit_positions_tex_);
         pass_data->weights = builder.read(ray_weights_tex);
-        pass_data->gbuffer = hit_gbuffer_texs_.read(builder);
+        pass_data->gbuffer = hit_gbuffer_texs.read(builder);
 
         builder.set_execution_function<DeferredLightingSecondaryPassData>(
             [this, &camera, &settings, width, height](CRef<DeferredLightingSecondaryPassData> pass_data, gfx::ComputePassContext const& ctx) {
@@ -329,8 +335,18 @@ auto ReflectionPass::render_denoise(
     BasicRenderer::ReflectionSettings const& settings,
     gfx::TextureHandle reflection_tex
 ) -> gfx::TextureHandle {
-    // TODO - denoise reflection
-    return reflection_tex;
+    if (settings.denoise) {
+        return reblur_pass_.render(camera, rg, {
+            .velocity = input.velocity,
+            .depth = input.depth,
+            .gbuffer = input.gbuffer,
+            .history_validation = input.history_validation,
+            .hit_positions_tex = hit_positions_tex_,
+            .noised_tex = reflection_tex,
+        });
+    } else {
+        return reflection_tex;
+    }
 }
 
 auto ReflectionPass::render_merge(

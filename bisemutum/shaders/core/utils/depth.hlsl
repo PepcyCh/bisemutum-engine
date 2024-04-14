@@ -29,13 +29,13 @@ float depth_push(float z, float delta) {
 }
 
 float get_linear_01_depth(float depth, float4x4 inv_proj) {
-    const float a = inv_proj[2].w;
+    const float a = inv_proj[3].z;
     const float b = inv_proj[3].w;
     return (1.0 - depth) * b / (a * depth + b);
 }
 
 float get_linear_depth(float depth, float4x4 inv_proj) {
-    const float a = inv_proj[2].w;
+    const float a = inv_proj[3].z;
     const float b = inv_proj[3].w;
     return 1.0 / (a * depth + b);
 }
