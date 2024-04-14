@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <cassert>
 
 #include "traits.hpp"
 #include "hash.hpp"
@@ -109,9 +110,18 @@ struct Option final {
         return has_value_ ? (rhs.has_value() && value() == rhs.value()) : !rhs.has_value();
     }
 
-    auto value() & -> T& { return *reinterpret_cast<T*>(memory_); }
-    auto value() const& -> T const& { return *reinterpret_cast<T const*>(memory_); }
-    auto value() && -> T&& { return std::move(*reinterpret_cast<T*>(memory_)); }
+    auto value() & -> T& {
+        assert(has_value() && "call 'value()' on empty Option");
+        return *reinterpret_cast<T*>(memory_);
+    }
+    auto value() const& -> T const& {
+        assert(has_value() && "call 'value()' on empty Option");
+        return *reinterpret_cast<T const*>(memory_);
+    }
+    auto value() && -> T&& {
+        assert(has_value() && "call 'value()' on empty Option");
+        return std::move(*reinterpret_cast<T*>(memory_));
+    }
 
     auto value_or(T const& fallback) const -> T const& {
         return has_value_ ? *reinterpret_cast<T const*>(memory_) : fallback;
@@ -353,9 +363,18 @@ struct Option<T> final {
         return has_value() ? (rhs.has_value() && value() == rhs.value()) : !rhs.has_value();
     }
 
-    auto value() & -> T& { return *reinterpret_cast<T*>(memory_); }
-    auto value() const& -> T const& { return *reinterpret_cast<T const*>(memory_); }
-    auto value() && -> T&& { return std::move(*reinterpret_cast<T*>(memory_)); }
+    auto value() & -> T& {
+        assert(has_value() && "call 'value()' on empty Option");
+        return *reinterpret_cast<T*>(memory_);
+    }
+    auto value() const& -> T const& {
+        assert(has_value() && "call 'value()' on empty Option");
+        return *reinterpret_cast<T const*>(memory_);
+    }
+    auto value() && -> T&& {
+        assert(has_value() && "call 'value()' on empty Option");
+        return std::move(*reinterpret_cast<T*>(memory_));
+    }
 
     auto value_or(T const& fallback) const -> T const& {
         return has_value() ? *reinterpret_cast<T const*>(memory_) : fallback;

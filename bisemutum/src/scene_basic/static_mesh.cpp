@@ -20,16 +20,24 @@ auto StaticMesh::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
     }
 
     StaticMesh mesh{};
-    mesh.mesh_.load_from_byte_stream(bs);
+    if (version == 1) {
+        mesh.mesh_.load_from_byte_stream(bs);
+    } else if (version == 2) {
+        ReadByteStream data_bs{};
+        bs.read_compressed_part(data_bs);
+        mesh.mesh_.load_from_byte_stream(data_bs);
+    }
 
     return mesh;
 }
 
 auto StaticMesh::save(Dyn<rt::IFile>::Ref file) const -> void {
     WriteByteStream bs{};
-    bs.write(rt::asset_magic_number).write(StaticMesh::asset_type_name).write(1u);
+    bs.write(rt::asset_magic_number).write(StaticMesh::asset_type_name).write(2u);
 
+    auto data_from = bs.curr_offset();
     mesh_.save_to_byte_stream(bs);
+    bs.compress_data(data_from);
 
     file.write_binary_data(bs.data());
 }

@@ -102,27 +102,33 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
         .sampler = g_engine->graphics_manager()->get_sampler(sampler_desc),
     };
 
-    uint32_t storage_type = 0;
-    bs.read(storage_type);
-    if (storage_type == 0) {
-        bs.read(texture.texture_data);
-    } else if (storage_type == 1) {
-        auto bytes_per_layer =
-            texture_desc.extent.width * texture_desc.extent.height * rhi::format_texel_size(texture_desc.format);
-        texture.texture_data.resize(bytes_per_layer * texture_desc.extent.depth_or_layers);
-        for (uint32_t layer = 0; layer < texture_desc.extent.depth_or_layers; layer++) {
-            std::vector<std::byte> png_data;
-            bs.read(png_data);
-            int temp_width, temp_height, temp_comp;
-            auto image_data = stbi_load_from_memory(
-                reinterpret_cast<stbi_uc*>(png_data.data()), png_data.size(),
-                &temp_width, &temp_height, &temp_comp, 0
-            );
-            std::copy_n(
-                reinterpret_cast<std::byte const*>(image_data), bytes_per_layer,
-                texture.texture_data.data() + layer * bytes_per_layer
-            );
+    if (version == 1) {
+        uint32_t storage_type = 0;
+        bs.read(storage_type);
+        if (storage_type == 0) {
+            bs.read(texture.texture_data);
+        } else if (storage_type == 1) {
+            auto bytes_per_layer =
+                texture_desc.extent.width * texture_desc.extent.height * rhi::format_texel_size(texture_desc.format);
+            texture.texture_data.resize(bytes_per_layer * texture_desc.extent.depth_or_layers);
+            for (uint32_t layer = 0; layer < texture_desc.extent.depth_or_layers; layer++) {
+                std::vector<std::byte> png_data;
+                bs.read(png_data);
+                int temp_width, temp_height, temp_comp;
+                auto image_data = stbi_load_from_memory(
+                    reinterpret_cast<stbi_uc*>(png_data.data()), png_data.size(),
+                    &temp_width, &temp_height, &temp_comp, 0
+                );
+                std::copy_n(
+                    reinterpret_cast<std::byte const*>(image_data), bytes_per_layer,
+                    texture.texture_data.data() + layer * bytes_per_layer
+                );
+            }
         }
+    } else {
+        ReadByteStream data_bs{};
+        bs.read_compressed_part(data_bs);
+        data_bs.read(texture.texture_data);
     }
 
     texture.update_gpu_data();
@@ -132,65 +138,16 @@ auto TextureAsset::load(Dyn<rt::IFile>::Ref file) -> rt::AssetAny {
 
 auto TextureAsset::save(Dyn<rt::IFile>::Ref file) const -> void {
     WriteByteStream bs{};
-    bs.write(rt::asset_magic_number).write(TextureAsset::asset_type_name).write(1u);
+    bs.write(rt::asset_magic_number).write(TextureAsset::asset_type_name).write(2u);
 
     auto& sampler_desc = sampler->rhi_sampler()->desc();
     bs.write(sampler_desc);
     auto& texture_desc = texture.desc();
     bs.write(texture_desc);
 
-    struct StbiContext final {
-        WriteByteStream& bs;
-    };
-    auto stored = false;
-    if (texture_desc.dim == rhi::TextureDimension::d2 && texture_desc.extent.depth_or_layers == 1) {
-        if (
-            texture_desc.format == rhi::ResourceFormat::r8_unorm
-            || texture_desc.format == rhi::ResourceFormat::r8_srgb
-            || texture_desc.format == rhi::ResourceFormat::rg8_unorm
-            || texture_desc.format == rhi::ResourceFormat::rg8_srgb
-            || texture_desc.format == rhi::ResourceFormat::rgba8_unorm
-            || texture_desc.format == rhi::ResourceFormat::rgba8_srgb
-            || texture_desc.format == rhi::ResourceFormat::bgra8_unorm
-            || texture_desc.format == rhi::ResourceFormat::bgra8_srgb
-        ) {
-            int num_components;
-            if (
-                texture_desc.format == rhi::ResourceFormat::r8_unorm
-                || texture_desc.format == rhi::ResourceFormat::r8_srgb
-            ) {
-                num_components = 1;
-            } else if (
-                texture_desc.format == rhi::ResourceFormat::rg8_unorm
-                || texture_desc.format == rhi::ResourceFormat::rg8_srgb
-            ) {
-                num_components = 2;
-            } else {
-                num_components = 4;
-            }
-
-            bs.write(1u);
-            auto stbi_write_func = [](void* context, void* data, int size) {
-                auto ctx = reinterpret_cast<StbiContext*>(context);
-                ctx->bs.write(static_cast<uint64_t>(size));
-                ctx->bs.write_raw(reinterpret_cast<std::byte*>(data), size);
-            };
-            StbiContext ctx{bs};
-            auto bytes_per_line = texture_desc.extent.width * num_components;
-            auto bytes_per_layer = texture_desc.extent.height * bytes_per_line;
-            for (uint32_t layer = 0; layer < texture_desc.extent.depth_or_layers; layer++) {
-                stbi_write_png_to_func(
-                    stbi_write_func, &ctx, texture_desc.extent.width, texture_desc.extent.height, num_components,
-                    texture_data.data() + layer * bytes_per_layer, bytes_per_line
-                );
-            }
-            stored = true;
-        }
-    }
-    if (!stored) {
-        bs.write(0u);
-        bs.write(texture_data);
-    }
+    auto data_from = bs.curr_offset();
+    bs.write(texture_data);
+    bs.compress_data(data_from);
 
     file.write_binary_data(bs.data());
 }

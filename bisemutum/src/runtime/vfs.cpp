@@ -246,7 +246,7 @@ struct FileSystem::Impl final {
                 return file;
             }
         }
-        return {};
+        return get_file(path);
     }
 
     auto remove_file(std::string_view path) -> bool {

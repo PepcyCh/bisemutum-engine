@@ -64,6 +64,7 @@ Core
 * [magic enum](https://github.com/Neargye/magic_enum) (MIT)
 * [fmt](https://github.com/fmtlib/fmt) ([LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE))
 * [GLM](https://github.com/g-truc/glm) (MIT)
+* [miniz](https://github.com/richgel999/miniz) (MIT)
 
 Runtime
 

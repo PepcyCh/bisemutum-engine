@@ -12,7 +12,9 @@ template <typename T>
 inline constexpr bool can_be_used_for_byte_stream = std::is_trivially_copyable_v<T> && !std::is_pointer_v<T>;
 
 struct ReadByteStream final {
+    ReadByteStream() = default;
     ReadByteStream(CSpan<std::byte> data) : data_(data) {}
+    ReadByteStream(std::vector<std::byte> data) : owned_data_(std::move(data)), data_(owned_data_) {}
 
     auto size() const -> size_t { return data_.size(); }
 
@@ -41,7 +43,10 @@ struct ReadByteStream final {
         return *this;
     }
 
+    auto read_compressed_part(ReadByteStream& uncompressed_bs) -> ReadByteStream&;
+
 private:
+    std::vector<std::byte> owned_data_;
     CSpan<std::byte> data_;
     size_t curr_offset_ = 0;
 };
@@ -76,6 +81,8 @@ struct WriteByteStream final {
         }
         return *this;
     }
+
+    auto compress_data(size_t from = 0) -> WriteByteStream&;
 
 private:
     std::vector<std::byte> data_;

@@ -136,10 +136,11 @@ struct AssetManager::Impl final {
             asset.dirty = false;
         }
 
-        std::vector<AssetMetadata> metadata(assets.size());
-        for (size_t i = 0; auto& [_, asset] : assets) {
-            metadata[i] = asset.metadata;
-            ++i;
+        std::vector<AssetMetadata> metadata{};
+        metadata.reserve(assets.size());
+        for (auto& [_, asset] : assets) {
+            if (is_asset_id_builtin(asset.metadata.id)) { continue; }
+            metadata.push_back(asset.metadata);
         }
         serde::Value value{};
         serde::to_value(value["assets"], metadata);

@@ -14,10 +14,10 @@ name = 'Camera'
 
         [objects.components.value]
         far_z = 10000.0
-        near_z = 0.010000000474974513
+        near_z = 0.010000000707805157
         projection_type = 'perspective'
         render_target_format = 'rgba16_sfloat'
-        render_target_size = [ 1273, 633 ]
+        render_target_size = [ 1298, 637 ]
         yfov = 30.0
 
 [[objects]]
@@ -168,6 +168,14 @@ name = 'Renderer Override'
                 mode = 'screen_space'
                 range = 0.5
                 strength = 0.5
+
+                [objects.components.value.settings.reflection]
+                denoise = true
+                fade_roughness = 0.10000000149011612
+                max_roughness = 0.30000001192092896
+                mode = 'none'
+                range = 16.0
+                strength = 1.0
 
                 [objects.components.value.settings.shadow]
                 dir_light_resolution = '_4096'
