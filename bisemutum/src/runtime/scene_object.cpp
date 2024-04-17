@@ -7,13 +7,16 @@
 
 namespace bi::rt {
 
-SceneObject::SceneObject(Ref<Scene> scene, bool with_transform)
-    : scene_(scene), ecs_registry_(scene->ecs_registry())
-{
+SceneObject::SceneObject(Ref<Scene> scene, bool with_transform) : scene_(scene), ecs_registry_(scene->ecs_registry()) {
     ecs_entity_ = ecs_registry_->create();
     if (with_transform) {
         attach_component(Transform{});
     }
+    name_ = fmt::format("scene_object_{}", static_cast<uint32_t>(ecs_entity_));
+}
+SceneObject::SceneObject(Ref<Scene> scene, Transform transform) : scene_(scene), ecs_registry_(scene->ecs_registry()) {
+    ecs_entity_ = ecs_registry_->create();
+    attach_component(std::move(transform));
     name_ = fmt::format("scene_object_{}", static_cast<uint32_t>(ecs_entity_));
 }
 

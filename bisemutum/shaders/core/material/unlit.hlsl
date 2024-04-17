@@ -12,7 +12,7 @@ void surface_eval_unlit(
     out float3 diffuse_result,
     out float3 specular_result
 ) {
-    diffuse_result = surface.base_color;
+    diffuse_result = 0.0;
     specular_result = 0.0;
 }
 

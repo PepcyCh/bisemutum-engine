@@ -7,6 +7,15 @@
 
 namespace bi {
 
+auto Transform::set_rotation_with_quaternion(float4 quat) -> void {
+    auto q_mul = math::outerProduct(quat, quat) * 2.0f;
+    rotation = float3x3{
+        1.0f - (q_mul[1][1] + q_mul[2][2]), q_mul[0][1] + q_mul[3][2], q_mul[0][2] - q_mul[3][1],
+        q_mul[0][1] - q_mul[3][2], 1.0f - (q_mul[0][0] + q_mul[2][2]), q_mul[1][2] + q_mul[3][0],
+        q_mul[0][2] + q_mul[3][1], q_mul[1][2] - q_mul[3][0], 1.0f - (q_mul[0][0] + q_mul[1][1]),
+    };
+}
+
 auto Transform::matrix() const -> float4x4 {
     return float4x4(
         float4(rotation[0] * scaling.x, 0.0f),

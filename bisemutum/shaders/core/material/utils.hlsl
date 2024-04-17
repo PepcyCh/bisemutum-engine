@@ -3,6 +3,7 @@
 #include "../utils/math.hlsl"
 
 struct SurfaceData {
+    float3 emission;
     float3 base_color;
     float3 f0_color;
     float3 f90_color;

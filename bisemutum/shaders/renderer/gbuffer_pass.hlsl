@@ -36,5 +36,6 @@ GBufferOutput gbuffer_pass_fs(VertexAttributesOutput fin) {
     float2 history_uv = float2(history_pos_clip.x * 0.5 + 0.5, 0.5 - history_pos_clip.y * 0.5);
     fout.velocity = float4(fin.sv_position.xy / viewport_size - history_uv, 0.0, 1.0);
 
+    // TODO - emission
     return fout;
 }

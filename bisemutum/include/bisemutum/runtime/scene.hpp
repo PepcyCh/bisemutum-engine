@@ -8,6 +8,7 @@
 
 #include "../prelude/ref.hpp"
 #include "../utils/serde.hpp"
+#include "../math/transform.hpp"
 
 namespace bi::rt {
 
@@ -29,7 +30,7 @@ struct Scene final {
     auto attach_as_child_object(Ref<SceneObject> object, Ref<SceneObject> parent) -> void;
     auto remove_root_object(Ref<SceneObject> object) -> void;
 
-    auto create_scene_object(Ptr<SceneObject> parent = nullptr) -> Ref<SceneObject>;
+    auto create_scene_object(Ptr<SceneObject> parent = nullptr, Transform transform = {}) -> Ref<SceneObject>;
     auto destroy_scene_object(Ref<SceneObject> object) -> void;
     auto destroy_scene_object_and_its_children(Ref<SceneObject> object) -> void;
     auto do_destroy_scene_objects() -> void;

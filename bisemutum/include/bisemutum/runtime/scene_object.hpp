@@ -16,6 +16,7 @@ struct TransformSystem;
 
 struct SceneObject final {
     SceneObject(Ref<Scene> scene, bool with_transform = true);
+    SceneObject(Ref<Scene> scene, Transform transform);
     ~SceneObject();
 
     auto get_name() const -> std::string_view { return name_; }

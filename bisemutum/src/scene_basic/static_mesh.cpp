@@ -89,6 +89,7 @@ auto StaticMesh::set_indices_raw(uint32_t const* data) -> void {
 }
 
 auto StaticMesh::calculate_tspace() -> void {
+    mesh_.mutable_tangents().resize(mesh_.positions().size());
     SMikkTSpaceInterface mikktspace_interface{
         .m_getNumFaces = [](SMikkTSpaceContext const* ctx) {
             auto mesh = static_cast<StaticMesh const*>(ctx->m_pUserData);

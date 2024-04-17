@@ -93,6 +93,7 @@ Asset
 
 * [stb](https://github.com/nothings/stb) (MIT)
 * [tinyexr](https://github.com/syoyo/tinyexr) (BSD-3)
+* [tinygltf](https://github.com/syoyo/tinygltf) (MIT)
 * [assimp](https://github.com/assimp/assimp) ([LICENSE](https://github.com/assimp/assimp/blob/master/LICENSE))
 
 Misc

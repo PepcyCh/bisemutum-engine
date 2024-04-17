@@ -19,6 +19,8 @@ struct Transform final {
     float3x3 rotation = float3x3{1.0f};
     float3 scaling = float3{1.0f};
 
+    auto set_rotation_with_quaternion(float4 quat) -> void;
+
     auto matrix() const -> float4x4;
     auto matrix_transposed_inverse() const -> float4x4;
     static auto from_matrix(float4x4 const& matrix) -> Transform;

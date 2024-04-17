@@ -23,7 +23,7 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     N = normalize(normal_tspace.x * T + normal_tspace.y * B + normal_tspace.z * N);
     B = cross(N, T);
 
-    float3 color = 0.0;
+    float3 color = surface.emission;
     float3 light_dir;
 
     int i;
