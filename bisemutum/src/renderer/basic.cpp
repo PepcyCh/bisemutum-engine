@@ -50,7 +50,7 @@ struct BasicRenderer::Impl final {
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto& settings = rt::find_volume_component_for(camera.position, default_settings).settings;
 
-        auto drawables = frustum_culling(camera);
+        auto drawables = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>()->get_all_drawables();
 
         if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
             gfx::AccelerationStructureDesc accel_desc{drawables};
@@ -136,21 +136,6 @@ struct BasicRenderer::Impl final {
             .color = color,
             .depth = depth,
         });
-    }
-
-    auto frustum_culling(gfx::Camera const& camera) -> std::vector<Ref<gfx::Drawable>> {
-        std::vector<Ref<gfx::Drawable>> drawables;
-        auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
-
-        auto frustum_planes = camera.get_frustum_planes();
-        gpu_scene->for_each_drawable(
-            [&drawables, &frustum_planes](gfx::Drawable& drawable) {
-                auto bbox = drawable.bounding_box();
-                if (!bbox.test_with_planes(frustum_planes)) { return; }
-                drawables.push_back(drawable);
-            }
-        );
-        return drawables;
     }
 
     inline static BasicRendererOverrideVolume default_settings;

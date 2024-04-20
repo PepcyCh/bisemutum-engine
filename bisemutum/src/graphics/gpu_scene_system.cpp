@@ -198,6 +198,14 @@ auto GpuSceneSystem::drawables_hash() -> size_t {
 auto GpuSceneSystem::num_drawables() const -> size_t {
     return impl()->drawables.size();
 }
+auto GpuSceneSystem::get_all_drawables() -> std::vector<Ref<Drawable>> {
+    std::vector<Ref<Drawable>> drawables{};
+    drawables.reserve(num_drawables());
+    for_each_drawable([&drawables](Drawable& drawable) {
+        drawables.push_back(drawable);
+    });
+    return drawables;
+}
 auto GpuSceneSystem::for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void {
     impl()->for_each_drawable(std::move(func));
 }

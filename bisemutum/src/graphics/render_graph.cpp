@@ -388,8 +388,12 @@ struct RenderGraph::Impl final {
     auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {
         std::vector<Ref<Drawable>> drawables;
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
+        auto camera_frustum_planes = desc.camera->get_frustum_planes();
         for (auto drawable : desc.candidate_drawables) {
             if (drawable->submesh_desc().num_indices == 0) { continue; }
+
+            auto bbox = drawable->bounding_box();
+            if (desc.do_frustum_culling && !bbox.test_with_planes(camera_frustum_planes)) { continue; }
 
             auto mat_is_opaque = drawable->material->blend_mode == BlendMode::opaque
                 || drawable->material->blend_mode == BlendMode::alpha_test;

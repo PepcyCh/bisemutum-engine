@@ -18,6 +18,7 @@ struct RenderedObjectListDesc final {
     BitFlags<RenderedObjectType> type = {RenderedObjectType::all};
     // Result will be a subset of `candidate_drawables`
     Span<Ref<Drawable>> candidate_drawables;
+    bool do_frustum_culling = true;
 };
 
 // Drawables those can use the same pipline state and vertex buffer.

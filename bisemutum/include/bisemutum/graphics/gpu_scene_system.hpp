@@ -41,6 +41,8 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     auto drawables_hash() -> size_t;
 
     auto num_drawables() const -> size_t;
+    auto get_all_drawables() -> std::vector<Ref<Drawable>>;
+
     auto for_each_drawable(std::function<auto(Drawable&) -> void> func) -> void;
     auto for_each_drawable(std::function<auto(Drawable const&) -> void> func) const -> void;
 
