@@ -39,6 +39,7 @@ auto ShadowMappingPass::render(
             .fragment_shader = fragment_shader_,
             .type = gfx::RenderedObjectType::opaque,
             .candidate_drawables = input.drawables,
+            .do_frustum_culling = false,
         });
         builder.set_execution_function<PassData>(
             [this](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
@@ -64,6 +65,7 @@ auto ShadowMappingPass::render(
             .fragment_shader = fragment_shader_,
             .type = gfx::RenderedObjectType::opaque,
             .candidate_drawables = input.drawables,
+            .do_frustum_culling = false,
         });
         builder.set_execution_function<PassData>(
             [this](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {

@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include "material.hpp"
 #include "shader_source.hpp"
 #include "vertex_attributes_type.hpp"
 #include "shader_param.hpp"
@@ -25,6 +26,8 @@ struct FragmentShader final {
     rhi::CullMode cull_mode = rhi::CullMode::none;
     rhi::PolygonMode polygon_mode = rhi::PolygonMode::fill;
     bool conservative_rasterization = false;
+
+    Option<BlendMode> override_blend_mode{};
 
     bool depth_write = true;
     bool depth_test = true;

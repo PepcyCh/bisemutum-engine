@@ -25,7 +25,6 @@ ForwardPass::ForwardPass() {
     fragment_shader_.source.path = "/bisemutum/shaders/renderer/forward_pass.hlsl";
     fragment_shader_.source.entry = "forward_pass_fs";
     fragment_shader_.set_shader_params_struct<ForwardPassParams>();
-    fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }
 
 auto ForwardPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {

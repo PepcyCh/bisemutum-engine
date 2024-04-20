@@ -29,6 +29,7 @@ DeferredLightingPass::DeferredLightingPass() {
     fragment_shader_.set_shader_params_struct<DeferredLightingPassParams>();
     fragment_shader_.depth_test = false;
     fragment_shader_.needed_vertex_attributes = gfx::VertexAttributesType::position_texcoord;
+    fragment_shader_.override_blend_mode = gfx::BlendMode::additive;
 }
 
 auto DeferredLightingPass::update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void {
@@ -45,19 +46,8 @@ auto DeferredLightingPass::render(gfx::Camera const& camera, gfx::RenderGraph& r
 
     pass_data->depth = builder.read(input.depth);
     pass_data->gbuffer = input.gbuffer.read(builder);
-    pass_data->output = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
-        builder
-            .dim_2d(
-                rhi::ResourceFormat::rgba16_sfloat,
-                camera_target.desc().extent.width, camera_target.desc().extent.height
-            )
-            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
-    });
 
-    builder.use_color(
-        0,
-        gfx::GraphicsPassColorTargetBuilder{pass_data->output}.clear_color()
-    );
+    pass_data->output = builder.use_color(0, input.color);
 
     builder.read(input.shadow_maps.dir_lights_shadow_map);
     builder.read(input.shadow_maps.point_lights_shadow_map);

@@ -108,9 +108,11 @@ auto MeshData::set_geometry_dirty() -> void {
     bbox_.reset();
 }
 auto MeshData::set_submesh_dirty(uint32_t index) -> void {
+    if (index < submesh_versions_.size()) {
+        ++submesh_versions_[index];
+    }
     if (index < submesh_bboxes_.size()) {
         submesh_bboxes_[index].reset();
-        ++submesh_versions_[index];
     }
 }
 

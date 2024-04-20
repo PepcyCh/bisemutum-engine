@@ -83,6 +83,7 @@ struct BasicRenderer::Impl final {
             auto gbuffer_output = gbuffer_pass.render(camera, rg, drawables);
             gbuffer = gbuffer_output.gbuffer;
             auto lighting_output = deferred_lighting_pass.render(camera, rg, {
+                .color = gbuffer_output.color,
                 .depth = gbuffer_output.depth,
                 .gbuffer = gbuffer_output.gbuffer,
                 .shadow_maps = shadow_maps,

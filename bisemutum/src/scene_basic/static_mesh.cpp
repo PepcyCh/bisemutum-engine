@@ -89,50 +89,66 @@ auto StaticMesh::set_indices_raw(uint32_t const* data) -> void {
 }
 
 auto StaticMesh::calculate_tspace() -> void {
+    struct MikkTSpaceUserData final {
+        StaticMesh* mesh;
+        gfx::SubmeshDesc const* submesh;
+    };
+
     mesh_.mutable_tangents().resize(mesh_.positions().size());
-    SMikkTSpaceInterface mikktspace_interface{
-        .m_getNumFaces = [](SMikkTSpaceContext const* ctx) {
-            auto mesh = static_cast<StaticMesh const*>(ctx->m_pUserData);
-            return static_cast<int>(mesh->indices().size() / 3);
-        },
-        .m_getNumVerticesOfFace = [](SMikkTSpaceContext const*, const int) { return 3; },
-        .m_getPosition = [](SMikkTSpaceContext const* ctx, float* pos_out, const int face, const int vert) {
-            auto mesh = static_cast<StaticMesh const*>(ctx->m_pUserData);
-            auto index = mesh->index_at(face * 3 + vert);
-            auto& pos = mesh->position_at(index);
-            pos_out[0] = pos.x;
-            pos_out[1] = pos.y;
-            pos_out[2] = pos.z;
-        },
-        .m_getNormal = [](SMikkTSpaceContext const* ctx, float* norm_out, const int face, const int vert) {
-            auto mesh = static_cast<StaticMesh const*>(ctx->m_pUserData);
-            auto index = mesh->index_at(face * 3 + vert);
-            auto& norm = mesh->normal_at(index);
-            norm_out[0] = norm.x;
-            norm_out[1] = norm.y;
-            norm_out[2] = norm.z;
-        },
-        .m_getTexCoord = [](SMikkTSpaceContext const* ctx, float* uv_out, const int face, const int vert) {
-            auto mesh = static_cast<StaticMesh const*>(ctx->m_pUserData);
-            auto index = mesh->index_at(face * 3 + vert);
-            auto& uv = mesh->texcoord_at(index);
-            uv_out[0] = uv.x;
-            uv_out[1] = uv.y;
-        },
-        .m_setTSpaceBasic = [](
-            SMikkTSpaceContext const* ctx, float const* tan_in, const float sign, const int face, const int vert
-        ) {
-            auto mesh = static_cast<StaticMesh*>(ctx->m_pUserData);
-            auto index = mesh->index_at(face * 3 + vert);
-            mesh->set_tangent_at(index, float4{tan_in[0], tan_in[1], tan_in[2], sign});
-        },
-        .m_setTSpace = nullptr
-    };
-    SMikkTSpaceContext mikktspace_ctx{
-        .m_pInterface = &mikktspace_interface,
-        .m_pUserData = this,
-    };
-    genTangSpaceDefault(&mikktspace_ctx);
+    for (uint32_t i = 0; i < mesh_.num_submehes(); i++) {
+        auto& submesh = mesh_.get_submesh(i);
+        MikkTSpaceUserData user_data{
+            .mesh = this,
+            .submesh = &submesh,
+        };
+        SMikkTSpaceInterface mikktspace_interface{
+            .m_getNumFaces = [](SMikkTSpaceContext const* ctx) {
+                auto data = static_cast<MikkTSpaceUserData const*>(ctx->m_pUserData);
+                auto num_indices = data->submesh->num_indices;
+                if (data->submesh->num_indices == ~0u) {
+                    num_indices = data->mesh->indices().size() - data->submesh->index_offset;
+                }
+                return static_cast<int>(num_indices / 3);
+            },
+            .m_getNumVerticesOfFace = [](SMikkTSpaceContext const*, const int) { return 3; },
+            .m_getPosition = [](SMikkTSpaceContext const* ctx, float* pos_out, const int face, const int vert) {
+                auto data = static_cast<MikkTSpaceUserData const*>(ctx->m_pUserData);
+                auto index = data->submesh->base_vertex + data->mesh->index_at(data->submesh->index_offset + face * 3 + vert);
+                auto& pos = data->mesh->position_at(index);
+                pos_out[0] = pos.x;
+                pos_out[1] = pos.y;
+                pos_out[2] = pos.z;
+            },
+            .m_getNormal = [](SMikkTSpaceContext const* ctx, float* norm_out, const int face, const int vert) {
+                auto data = static_cast<MikkTSpaceUserData const*>(ctx->m_pUserData);
+                auto index = data->submesh->base_vertex + data->mesh->index_at(data->submesh->index_offset + face * 3 + vert);
+                auto& norm = data->mesh->normal_at(index);
+                norm_out[0] = norm.x;
+                norm_out[1] = norm.y;
+                norm_out[2] = norm.z;
+            },
+            .m_getTexCoord = [](SMikkTSpaceContext const* ctx, float* uv_out, const int face, const int vert) {
+                auto data = static_cast<MikkTSpaceUserData const*>(ctx->m_pUserData);
+                auto index = data->submesh->base_vertex + data->mesh->index_at(data->submesh->index_offset + face * 3 + vert);
+                auto& uv = data->mesh->texcoord_at(index);
+                uv_out[0] = uv.x;
+                uv_out[1] = uv.y;
+            },
+            .m_setTSpaceBasic = [](
+                SMikkTSpaceContext const* ctx, float const* tan_in, const float sign, const int face, const int vert
+            ) {
+                auto data = static_cast<MikkTSpaceUserData const*>(ctx->m_pUserData);
+                auto index = data->submesh->base_vertex + data->mesh->index_at(data->submesh->index_offset + face * 3 + vert);
+                data->mesh->set_tangent_at(index, float4{tan_in[0], tan_in[1], tan_in[2], sign});
+            },
+            .m_setTSpace = nullptr
+        };
+        SMikkTSpaceContext mikktspace_ctx{
+            .m_pInterface = &mikktspace_interface,
+            .m_pUserData = &user_data,
+        };
+        genTangSpaceDefault(&mikktspace_ctx);
+    }
 }
 
 }

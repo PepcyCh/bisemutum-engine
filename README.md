@@ -43,7 +43,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 * Half resolution RTR
 * Stochastic screen space reflection
-* Better model import
+* Basic material editor
 * Basic resource browser
 
 ## Gallary

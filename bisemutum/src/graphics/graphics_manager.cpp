@@ -621,8 +621,9 @@ struct GraphicsManager::Impl final {
         update_mesh_geometry_buffers(mesh_data);
 
         auto& mesh_blas = meshes_blas.try_emplace(std::make_pair(mesh_data.id_, drawable->submesh_index)).first->second;
-        if (mesh_blas.submesh_version < mesh_data.get_submesh_version(drawable->submesh_index)) {
-            mesh_blas.submesh_version = mesh_data.get_submesh_version(drawable->submesh_index);
+        auto submesh_version = mesh_data.get_submesh_version(drawable->submesh_index);
+        if (mesh_blas.submesh_version < submesh_version) {
+            mesh_blas.submesh_version = submesh_version;
             auto& mesh_buffers = meshes_buffers.at(mesh_data.id_);
 
             auto& submesh_desc = drawable->submesh_desc();
@@ -950,8 +951,9 @@ struct GraphicsManager::Impl final {
         for (size_t index = 0; auto& color_format : graphics_context->color_targets_format) {
             auto& color_attachment = pipeline_desc.color_target_state.attachments[index];
             color_attachment.format = color_format;
-            if (drawable->material) {
-                switch (drawable->material->blend_mode) {
+            if (drawable->material || fs->override_blend_mode) {
+                auto blend_mode = drawable->material ? drawable->material->blend_mode : fs->override_blend_mode.value();
+                switch (blend_mode) {
                     case BlendMode::opaque:
                         break;
                     case BlendMode::alpha_test:

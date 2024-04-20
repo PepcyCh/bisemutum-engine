@@ -8,8 +8,9 @@ BI_SHADER_PARAMETERS_BEGIN(GBufferPassParams)
 BI_SHADER_PARAMETERS_END()
 
 struct PassData final {
-    gfx::TextureHandle velocity;
+    gfx::TextureHandle color;
     gfx::TextureHandle depth;
+    gfx::TextureHandle velocity;
     GBufferTextures gbuffer;
 
     gfx::RenderedObjectListHandle list;
@@ -23,7 +24,6 @@ GBufferdPass::GBufferdPass() {
     fragment_shader_.source.path = "/bisemutum/shaders/renderer/gbuffer_pass.hlsl";
     fragment_shader_.source.entry = "gbuffer_pass_fs";
     fragment_shader_.set_shader_params_struct<GBufferPassParams>();
-    fragment_shader_.cull_mode = rhi::CullMode::back_face;
 }
 
 auto GBufferdPass::render(
@@ -34,8 +34,17 @@ auto GBufferdPass::render(
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("GBuffer Pass");
 
     pass_data->gbuffer.add_textures(rg, camera_target.desc().extent.width, camera_target.desc().extent.height);
-    pass_data->gbuffer.use_color(builder);
+    pass_data->gbuffer.use_color(builder, 1);
 
+    auto color = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(
+                rhi::ResourceFormat::rgba16_sfloat,
+                camera_target.desc().extent.width, camera_target.desc().extent.height
+            )
+            .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
+    });
+    pass_data->color = builder.use_color(0, gfx::GraphicsPassColorTargetBuilder{color}.clear_color());
     auto depth = rg.add_texture([&camera_target](gfx::TextureBuilder& builder) {
         builder
             .dim_2d(
@@ -57,7 +66,7 @@ auto GBufferdPass::render(
             .usage({rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled});
     });
     pass_data->velocity = builder.use_color(
-        GBufferTextures::count,
+        GBufferTextures::count + 1,
         gfx::GraphicsPassColorTargetBuilder{velocity}.clear_color()
     );
 
@@ -77,8 +86,9 @@ auto GBufferdPass::render(
     );
 
     return OutputData{
-        .velocity = pass_data->velocity,
+        .color = pass_data->color,
         .depth = pass_data->depth,
+        .velocity = pass_data->velocity,
         .gbuffer = pass_data->gbuffer,
     };
 }

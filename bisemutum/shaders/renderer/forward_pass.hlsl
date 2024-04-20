@@ -23,7 +23,12 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     N = normalize(normal_tspace.x * T + normal_tspace.y * B + normal_tspace.z * N);
     B = cross(N, T);
 
-    float3 color = surface.emission;
+    if (surface.two_sided && dot(V, N) < 0.0) {
+        N = -N;
+        B = -B;
+    }
+
+    float3 color = dot(V, N) < 0.0 ? 0.0 : surface.emission;
     float3 light_dir;
 
     int i;

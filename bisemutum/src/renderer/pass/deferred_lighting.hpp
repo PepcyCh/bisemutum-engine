@@ -11,6 +11,7 @@ namespace bi {
 
 struct DeferredLightingPass final {
     struct InputData final {
+        gfx::TextureHandle color;
         gfx::TextureHandle depth;
         GBufferTextures gbuffer;
 

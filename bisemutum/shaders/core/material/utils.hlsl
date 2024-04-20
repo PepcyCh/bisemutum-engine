@@ -12,10 +12,12 @@ struct SurfaceData {
     float anisotropy;
     float ior;
     float opacity;
+    bool two_sided;
 };
 
 SurfaceData surface_data_default() {
     SurfaceData surface;
+    surface.emission = 0.0;
     surface.base_color = 0.5;
     surface.f0_color = 0.04;
     surface.f90_color = 1.0;
@@ -24,6 +26,7 @@ SurfaceData surface_data_default() {
     surface.anisotropy = 0.0;
     surface.ior = 1.5;
     surface.opacity = 1.0;
+    surface.two_sided = false;
     return surface;
 }
 

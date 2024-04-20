@@ -26,7 +26,7 @@ namespace bi::editor {
 
 auto menu_action_import_model_gltf(MenuActionContext const& ctx) -> void {
     ctx.file_dialog->choose_file(
-        "Import Model (glTF)", "Choose File", ".gltf",
+        "Import Model (glTF)", "Choose File", ".gltf,.glb",
         [](std::string choosed_path) {
             std::filesystem::path path{choosed_path};
             if (!std::filesystem::exists(path)) { return; }
@@ -35,9 +35,16 @@ auto menu_action_import_model_gltf(MenuActionContext const& ctx) -> void {
             std::string load_err;
             std::string load_warn;
             tinygltf::Model gltf_model;
-            if (!loader.LoadASCIIFromFile(&gltf_model, &load_err, &load_warn, path.string())) {
-                log::critical("general", "Failed to load mesh file '{}': {}", path.filename().string(), load_err);
-                return;
+            if (path.extension() == ".gltf") {
+                if (!loader.LoadASCIIFromFile(&gltf_model, &load_err, &load_warn, path.string())) {
+                    log::critical("general", "Failed to load mesh file '{}': {}", path.filename().string(), load_err);
+                    return;
+                }
+            } else {
+                if (!loader.LoadBinaryFromFile(&gltf_model, &load_err, &load_warn, path.string())) {
+                    log::critical("general", "Failed to load mesh file '{}': {}", path.filename().string(), load_err);
+                    return;
+                }
             }
             if (!load_warn.empty()) {
                 log::warn("general", "When loading mesh file '{}': {}", path.filename().string(), load_warn);
@@ -195,6 +202,8 @@ auto menu_action_import_model_gltf(MenuActionContext const& ctx) -> void {
                 mat->material.value_params.emplace_back("occlusion_strength", static_cast<float>(gltf_mat.occlusionTexture.strength));
                 add_texture(gltf_mat.occlusionTexture.index, "occlusion_tex", "white1x1");
 
+                mat->material.value_params.emplace_back("two_sided", gltf_mat.doubleSided ? 1 : 0);
+
                 // TODO - alpha mode
                 mat->material.material_function = R"(
 float4 base_color = PARAM_base_color_tex.Sample(PARAM_base_color_tex_sampler, vertex.texcoord) * PARAM_base_color;
@@ -216,6 +225,8 @@ surface.f90_color *= occlusion;
 
 float3 emission = PARAM_emission_tex.Sample(PARAM_emission_tex_sampler, vertex.texcoord).xyz * PARAM_emission;
 surface.emission = emission;
+
+surface.two_sided = PARAM_two_sided != 0;
 )";
 
                 mat->material.update_shader_parameter();
@@ -247,7 +258,6 @@ surface.emission = emission;
                 auto [mesh_asset_id, mesh] = g_engine->asset_manager()->create_asset(mesh_path, StaticMesh{});
                 mesh_ids[i] = mesh_asset_id;
 
-                // mesh->resize(num_vertices, num_indices);
                 std::vector<gfx::SubmeshDesc> submeshes;
                 num_vertices = 0;
                 num_indices = 0;
@@ -344,7 +354,7 @@ surface.emission = emission;
 
                     add_vertex_attribute("TEXCOORD_0", mesh->get_mutable_mesh_data().mutable_texcoords());
                 }
-
+                mesh->get_mutable_mesh_data().set_submehes(std::move(submeshes));
                 mesh->calculate_tspace();
 
                 ++i;

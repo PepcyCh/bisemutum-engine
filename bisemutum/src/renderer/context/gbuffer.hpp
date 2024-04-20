@@ -21,7 +21,7 @@ struct GBufferTextures final {
         BitFlags<rhi::TextureUsage> usages = {rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled}
     ) -> void;
 
-    auto use_color(gfx::GraphicsPassBuilder& builder) -> void;
+    auto use_color(gfx::GraphicsPassBuilder& builder, uint32_t from_index = 0) -> void;
 
     auto write(gfx::ComputePassBuilder& builder) const -> GBufferTextures;
     auto write(gfx::RaytracingPassBuilder& builder) const -> GBufferTextures;

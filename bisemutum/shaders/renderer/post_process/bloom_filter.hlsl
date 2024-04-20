@@ -18,6 +18,7 @@ float4 bloom_horizontal_fs(VertexAttributesOutput fin) : SV_Target {
         float3 color = input_color.SampleLevel(sampler_input, fin.texcoord + float2(offset, 0.0), 0).xyz;
         sum += color * weights[i];
     }
+    if (any(isnan(sum)) || any(isinf(sum))) { sum = 0.0; }
     return float4(sum, 1.0);
 }
 
@@ -28,5 +29,6 @@ float4 bloom_vertical_fs(VertexAttributesOutput fin) : SV_Target {
         float3 color = input_color.SampleLevel(sampler_input, fin.texcoord + float2(0.0, offset), 0).xyz;
         sum += color * weights[i];
     }
+    if (any(isnan(sum)) || any(isinf(sum))) { sum = 0.0; }
     return float4(sum, 1.0);
 }

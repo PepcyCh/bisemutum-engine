@@ -30,11 +30,11 @@ auto GBufferTextures::add_textures(
     });
 }
 
-auto GBufferTextures::use_color(gfx::GraphicsPassBuilder& builder) -> void {
-    base_color = builder.use_color(0, gfx::GraphicsPassColorTargetBuilder{base_color}.clear_color());
-    normal_roughness = builder.use_color(1, gfx::GraphicsPassColorTargetBuilder{normal_roughness}.clear_color());
-    fresnel = builder.use_color(2, gfx::GraphicsPassColorTargetBuilder{fresnel}.clear_color());
-    material_0 = builder.use_color(3, gfx::GraphicsPassColorTargetBuilder{material_0}.clear_color());
+auto GBufferTextures::use_color(gfx::GraphicsPassBuilder& builder, uint32_t from_index) -> void {
+    base_color = builder.use_color(from_index, gfx::GraphicsPassColorTargetBuilder{base_color}.clear_color());
+    normal_roughness = builder.use_color(from_index + 1, gfx::GraphicsPassColorTargetBuilder{normal_roughness}.clear_color());
+    fresnel = builder.use_color(from_index + 2, gfx::GraphicsPassColorTargetBuilder{fresnel}.clear_color());
+    material_0 = builder.use_color(from_index + 3, gfx::GraphicsPassColorTargetBuilder{material_0}.clear_color());
 }
 
 auto GBufferTextures::write(gfx::ComputePassBuilder& builder) const -> GBufferTextures {
