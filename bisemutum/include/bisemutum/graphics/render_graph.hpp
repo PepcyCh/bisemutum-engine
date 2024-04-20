@@ -79,9 +79,15 @@ struct RenderGraph final : PImpl<RenderGraph> {
 
     auto execute() -> void;
 
+    // These 2 functions can only be called inside pass execution function
     auto buffer(BufferHandle handle) const -> Ref<Buffer>;
     auto texture(TextureHandle handle) const -> Ref<Texture>;
 
+    // These 2 functions can be called if only handle is valid
+    auto buffer_desc(BufferHandle handle) const -> CRef<rhi::BufferDesc>;
+    auto texture_desc(TextureHandle handle) const -> CRef<rhi::TextureDesc>;
+
+    // These 2 functions can only be called inside pass execution function
     auto take_buffer(BufferHandle handle) -> Box<Buffer>;
     auto take_texture(TextureHandle handle) -> Box<Texture>;
 

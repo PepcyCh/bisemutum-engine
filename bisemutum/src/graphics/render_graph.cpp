@@ -568,6 +568,12 @@ struct RenderGraph::Impl final {
     auto texture(TextureHandle handle) const -> Ref<Texture> {
         return graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<TextureNode>()->texture.value().texture;
     }
+    auto buffer_desc(BufferHandle handle) const -> CRef<rhi::BufferDesc> {
+        return graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<BufferNode>()->desc;
+    }
+    auto texture_desc(TextureHandle handle) const -> CRef<rhi::TextureDesc> {
+        return graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<TextureNode>()->desc;
+    }
     auto pool_buffer(BufferHandle handle) -> PoolBuffer& {
         return graph_nodes_[static_cast<size_t>(handle)].ref().cast_to<BufferNode>()->buffer.value();
     }
@@ -1203,6 +1209,12 @@ auto RenderGraph::buffer(BufferHandle handle) const -> Ref<Buffer> {
 }
 auto RenderGraph::texture(TextureHandle handle) const -> Ref<Texture> {
     return impl()->texture(handle);
+}
+auto RenderGraph::buffer_desc(BufferHandle handle) const -> CRef<rhi::BufferDesc> {
+    return impl()->buffer_desc(handle);
+}
+auto RenderGraph::texture_desc(TextureHandle handle) const -> CRef<rhi::TextureDesc> {
+    return impl()->texture_desc(handle);
 }
 auto RenderGraph::take_buffer(BufferHandle handle) -> Box<Buffer> {
     return impl()->take_buffer(handle);
