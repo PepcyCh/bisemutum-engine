@@ -165,7 +165,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     if (selected_object_) {
         switch (scene_object_action) {
             case SceneObjectAction::remove:
-                g_engine->world()->current_scene()->destroy_scene_object(selected_object_.value());
+                g_engine->world()->current_scene()->destroy_scene_object_and_its_children(selected_object_.value());
                 selected_object_ = nullptr;
                 break;
             case SceneObjectAction::duplicate:

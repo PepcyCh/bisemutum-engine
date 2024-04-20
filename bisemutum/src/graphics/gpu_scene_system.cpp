@@ -17,7 +17,7 @@ struct GpuSceneSystem::Impl final {
     }
 
     auto update() -> void {
-        std::vector<float4x4> linear_history_transforms(drawables.size(), float4x4{1.0f});
+        std::vector<float4x4> linear_history_transforms(drawables.capacity(), float4x4{1.0f});
         for (auto& [handle, transform] : history_transforms) {
             linear_history_transforms[static_cast<size_t>(handle)] = transform;
         }
@@ -66,6 +66,7 @@ struct GpuSceneSystem::Impl final {
     }
     auto remove_drawable(DrawableHandle handle) -> void {
         drawables.remove(handle);
+        history_transforms.erase(handle);
     }
     auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
         return drawables.get(handle);

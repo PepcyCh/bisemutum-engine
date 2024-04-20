@@ -183,12 +183,11 @@ auto menu_action_import_model_gltf(MenuActionContext const& ctx) -> void {
                     gltf_mat.emissiveFactor[1],
                     gltf_mat.emissiveFactor[2],
                 });
-                add_texture(gltf_mat.emissiveTexture.index, "emission_tex", "black1x1");
+                add_texture(gltf_mat.emissiveTexture.index, "emission_tex", "white1x1");
 
                 mat->material.value_params.emplace_back("roughness", static_cast<float>(gltf_pbr.roughnessFactor));
                 mat->material.value_params.emplace_back("metallic", static_cast<float>(gltf_pbr.metallicFactor));
-                // TODO - default metallic roughness texture
-                add_texture(gltf_pbr.metallicRoughnessTexture.index, "metallic_roughness_tex", "black1x1");
+                add_texture(gltf_pbr.metallicRoughnessTexture.index, "metallic_roughness_tex", "white1x1");
 
                 mat->material.value_params.emplace_back("normal_map_scale", static_cast<float>(gltf_mat.normalTexture.scale));
                 add_texture(gltf_mat.normalTexture.index, "normal_map", "normal1x1");

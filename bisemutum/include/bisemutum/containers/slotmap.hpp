@@ -114,6 +114,8 @@ struct SlotMap final {
     };
 
     auto size() const -> size_t { return data_.size() - freed_indices_.size(); }
+    auto capacity() const -> size_t { return data_.size(); }
+
     auto begin() -> Iterator<false> { return Iterator<false>{*this, first_valid_index()}; }
     auto end() -> Iterator<false> { return Iterator<false>{*this, data_.size()}; }
     auto cbegin() const -> Iterator<true> { return Iterator<true>{*this, first_valid_index()}; }
