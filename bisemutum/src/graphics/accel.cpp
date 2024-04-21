@@ -3,6 +3,7 @@
 #include <bisemutum/prelude/hash.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/rhi/device.hpp>
 
 namespace bi::gfx {
@@ -103,10 +104,11 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
     std::vector<rhi::AccelerationStructureInstanceDesc> tlas_instances;
     for (auto& drawable : desc.drawables) {
         auto& blas = drawables_blas.at(drawable);
+        auto index = desc.gpu_scene->drawable_continuous_index_of(drawable->handle());
         tlas_instances.push_back(rhi::AccelerationStructureInstanceDesc{
-            .instance_id = static_cast<uint32_t>(drawable->handle()),
+            .instance_id = static_cast<uint32_t>(index),
             .mask = 0xff,
-            .sbt_offset = static_cast<uint32_t>(drawable->handle()),
+            .sbt_offset = static_cast<uint32_t>(index),
             .flags = BitFlags{
                 drawable->material->blend_mode == BlendMode::opaque
                     ? rhi::AccelerationStructureInstanceFlag::force_opaque

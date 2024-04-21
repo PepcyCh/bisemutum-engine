@@ -1171,7 +1171,7 @@ struct GraphicsManager::Impl final {
                 pipeline_desc.shaders.hit_group.resize(num_drawables);
                 gpu_scene->for_each_drawable([&](Drawable& drawable) {
                     update_mesh_buffers(drawable.mesh->get_mesh_data());
-                    auto& hit_group = pipeline_desc.shaders.hit_group[static_cast<size_t>(drawable.handle())];
+                    auto& hit_group = pipeline_desc.shaders.hit_group[gpu_scene->drawable_continuous_index_of(drawable)];
                     auto hit_shader_env = shader_env;
                     drawable.mesh->modify_compiler_environment(hit_shader_env);
                     BitFlags<VertexAttributesType> input_vertex_attributes{};
@@ -1313,7 +1313,7 @@ struct GraphicsManager::Impl final {
                 );
                 auto p_sbt_data = sbt_data.data() + pipeline_it->second.sbt.hit_group_offset;
                 gpu_scene->for_each_drawable([&](Drawable const& drawable) {
-                    auto drawable_index = static_cast<uint32_t>(drawable.handle());
+                    auto drawable_index = static_cast<uint32_t>(gpu_scene->drawable_continuous_index_of(drawable));
                     auto p_drawable_sbt_data = p_sbt_data + drawable_index * sbt_sizes.hit_group_stride;
                     std::copy_n(sbt_hit_handles.data() + drawable_index * sbt_req.handle_size, sbt_req.handle_size, p_drawable_sbt_data);
                     auto sbt_data = new (p_drawable_sbt_data + sbt_req.handle_size) DrawableSbtData{};

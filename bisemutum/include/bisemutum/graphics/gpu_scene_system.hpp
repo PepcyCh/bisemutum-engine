@@ -56,6 +56,9 @@ struct GpuSceneSystem final : PImpl<GpuSceneSystem> {
     auto drawable_data_of(DrawableHandle handle) const -> DrawableShaderData;
     auto drawable_data_of(Drawable const& drawable) const -> DrawableShaderData;
 
+    auto drawable_continuous_index_of(DrawableHandle handle) const -> size_t;
+    auto drawable_continuous_index_of(Drawable const& drawable) const -> size_t;
+
 private:
     friend GraphicsManager;
     friend RaytracingPassContext;

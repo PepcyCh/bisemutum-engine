@@ -6,6 +6,7 @@
 namespace bi::gfx {
 
 struct AccelerationStructureDesc final {
+    Ptr<GpuSceneSystem> gpu_scene;
     std::vector<Ref<Drawable>> drawables;
 };
 

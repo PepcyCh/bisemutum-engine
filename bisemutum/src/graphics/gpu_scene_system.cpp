@@ -1,6 +1,7 @@
 #include <bisemutum/graphics/gpu_scene_system.hpp>
 
 #include <bisemutum/containers/slotmap.hpp>
+#include <bisemutum/containers/continuous_set.hpp>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
@@ -61,11 +62,14 @@ struct GpuSceneSystem::Impl final {
 
     auto add_drawable() -> DrawableHandle {
         auto handle = drawables.emplace();
-        drawables.get(handle).handle_ = handle;
+        auto& drawable = drawables.get(handle);
+        drawable.handle_ = handle;
+        drawables_continuous_indices.insert(handle);
         return handle;
     }
     auto remove_drawable(DrawableHandle handle) -> void {
         drawables.remove(handle);
+        drawables_continuous_indices.erase(handle);
         history_transforms.erase(handle);
     }
     auto get_drawable(DrawableHandle handle) -> Ref<Drawable> {
@@ -136,6 +140,7 @@ struct GpuSceneSystem::Impl final {
 
     SlotMap<Camera, CameraHandle> cameras;
     SlotMap<Drawable, DrawableHandle> drawables;
+    ContinuousSet<DrawableHandle> drawables_continuous_indices;
 
     std::unordered_map<DrawableHandle, float4x4> history_transforms;
     Buffer history_transforms_buffer;
@@ -230,6 +235,13 @@ auto GpuSceneSystem::drawable_data_of(Drawable const& drawable) const -> Drawabl
     return impl()->drawable_data_of(drawable);
 }
 
+auto GpuSceneSystem::drawable_continuous_index_of(DrawableHandle handle) const -> size_t {
+    return impl()->drawables_continuous_indices.index_of(handle);
+}
+auto GpuSceneSystem::drawable_continuous_index_of(Drawable const& drawable) const -> size_t {
+    return impl()->drawables_continuous_indices.index_of(drawable.handle());
+}
+
 auto GpuSceneSystem::shader_params() -> ShaderParameter& {
     return impl()->shader_parameter;
 }
@@ -237,7 +249,6 @@ auto GpuSceneSystem::shader_params_metadata() const -> ShaderParameterMetadataLi
     return impl()->shader_parameter.metadata_list();
 }
 auto GpuSceneSystem::update_shader_params() -> void {
-    // TODO - update gpu scene shader params
     impl()->update_shader_params();
 }
 

@@ -57,10 +57,11 @@ struct BasicRenderer::Impl final {
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto& settings = rt::find_volume_component_for(camera.position, default_settings).settings;
 
-        auto drawables = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>()->get_all_drawables();
+        auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
+        auto drawables = gpu_scene->get_all_drawables();
 
         if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
-            gfx::AccelerationStructureDesc accel_desc{drawables};
+            gfx::AccelerationStructureDesc accel_desc{gpu_scene, drawables};
             scene_accel = rg.add_acceleration_structure(accel_desc);
         } else {
             scene_accel = gfx::AccelerationStructureHandle::invalid;
