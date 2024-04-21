@@ -559,7 +559,7 @@ struct GraphicsManager::Impl final {
                 .memory_property = rhi::BufferMemoryProperty::cpu_to_gpu,
             });
             temp_buffer.set_data(container.data(), container.size());
-            execute_in_this_frame(
+            execute_immediately(
                 [&temp_buffer, dst_buffer, access](Ref<rhi::CommandEncoder> cmd) {
                     rhi::BufferBarrier before_barrier{
                         .buffer = dst_buffer.allocator()->base_buffer().rhi_buffer(),
@@ -1317,7 +1317,7 @@ struct GraphicsManager::Impl final {
                     auto p_drawable_sbt_data = p_sbt_data + drawable_index * sbt_sizes.hit_group_stride;
                     std::copy_n(sbt_hit_handles.data() + drawable_index * sbt_req.handle_size, sbt_req.handle_size, p_drawable_sbt_data);
                     auto sbt_data = new (p_drawable_sbt_data + sbt_req.handle_size) DrawableSbtData{};
-                    sbt_data->drawable_index = drawable_index;
+                    sbt_data->drawable_index = static_cast<uint32_t>(drawable.handle());
                     const auto submesh_base_vertex = drawable.submesh_desc().base_vertex;
                     auto& mesh_buffers = meshes_buffers.at(drawable.mesh->get_mesh_data().id_);
                     sbt_data->position_offset = (mesh_buffers.positions_buffer.offset()) / sizeof(float) + submesh_base_vertex * 3;

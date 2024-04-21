@@ -130,6 +130,7 @@ AccelerationStructure::AccelerationStructure(AccelerationStructureDesc const& de
         tlas_instances.back().transform[2][2] = transform[2][2];
         tlas_instances.back().transform[2][3] = transform[3][2];
     }
+    // TODO - dummy instance when tlas is empty
     Buffer tlas_instance_buffer(rhi::BufferDesc{
         .size = tlas_instances.size() * sizeof(rhi::AccelerationStructureInstanceDesc),
         .usages = rhi::BufferUsage::acceleration_structure_build,
