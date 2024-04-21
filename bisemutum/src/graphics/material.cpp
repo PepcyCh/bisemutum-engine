@@ -186,7 +186,7 @@ auto Material::update_shader_struct() -> void {
     };
     auto add_padding = [&](size_t size, size_t alignment) {
         auto new_size = aligned_size(size, alignment);
-        for (size_t i = size; i < new_size; i++) {
+        for (size_t i = size; i < new_size; i += 4) {
             add_field("float", fmt::format("_padding_{}", num_padding++));
         }
         return new_size;

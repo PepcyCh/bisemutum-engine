@@ -2,8 +2,10 @@
 
 #include <bisemutum/runtime/component_utils.hpp>
 #include <bisemutum/runtime/system_manager.hpp>
+#include <bisemutum/runtime/logger.hpp>
 #include <bisemutum/graphics/gpu_scene_system.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/prelude/misc.hpp>
 
 #include "context/lights.hpp"
 #include "context/skybox.hpp"
@@ -16,6 +18,7 @@
 #include "pass/validate_history.hpp"
 #include "pass/ambient_occlusion.hpp"
 #include "pass/reflection.hpp"
+#include "pass/path_tracing.hpp"
 #include "pass/post_process.hpp"
 
 namespace bi {
@@ -34,6 +37,10 @@ struct BasicRenderer::Impl final {
         forward_pass.update_params(lights_ctx, skybox_ctx);
         deferred_lighting_pass.update_params(lights_ctx, skybox_ctx);
         skybox_pass.update_params(skybox_ctx);
+
+        if (settings.pipeline_mode == PipelineMode::path_tracing) {
+            path_tracing_pass.update_params(lights_ctx, skybox_ctx, settings.path_tracing);
+        }
 
         if (
             settings.reflection.mode != ReflectionSettings::Mode::none
@@ -55,6 +62,8 @@ struct BasicRenderer::Impl final {
         if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
             gfx::AccelerationStructureDesc accel_desc{drawables};
             scene_accel = rg.add_acceleration_structure(accel_desc);
+        } else {
+            scene_accel = gfx::AccelerationStructureHandle::invalid;
         }
 
         auto skybox = skybox_precompute_pass.render(rg, {
@@ -70,66 +79,94 @@ struct BasicRenderer::Impl final {
         gfx::TextureHandle depth;
         gfx::TextureHandle velocity;
         GBufferTextures gbuffer;
-        if (settings.pipeline_mode == PipelineMode::forward) {
-            auto forward_output_data = forward_pass.render(camera, rg, {
-                .drawables = drawables,
-                .shadow_maps = shadow_maps,
-                .skybox = skybox,
-            });
-            color = forward_output_data.output;
-            depth = forward_output_data.depth;
-            velocity = forward_output_data.velocity;
-        } else {
-            auto gbuffer_output = gbuffer_pass.render(camera, rg, drawables);
-            gbuffer = gbuffer_output.gbuffer;
-            auto lighting_output = deferred_lighting_pass.render(camera, rg, {
-                .color = gbuffer_output.color,
-                .depth = gbuffer_output.depth,
-                .gbuffer = gbuffer_output.gbuffer,
-                .shadow_maps = shadow_maps,
-                .skybox = skybox,
-            });
-            color = lighting_output.output;
-            depth = gbuffer_output.depth;
-            velocity = gbuffer_output.velocity;
+
+        auto pipeline_mode = settings.pipeline_mode;
+        if (pipeline_mode == PipelineMode::path_tracing && scene_accel == gfx::AccelerationStructureHandle::invalid) {
+            log::warn("general", "Hardware raytracing is not supported but is used.");
+            pipeline_mode = PipelineMode::deferred;
         }
-        auto skybox_output = skybox_pass.render(camera, rg, {
-            .color = color,
-            .depth = depth,
-            .skybox = skybox,
-        });
-        color = skybox_output.color;
-        depth = skybox_output.depth;
 
-        if (settings.pipeline_mode == PipelineMode::deferred) {
-            auto history_validation = validate_history_pass.render(camera, rg, {
-                .velocity = velocity,
-                .depth = depth,
-                .normal_roughness = gbuffer.normal_roughness,
-            });
-
-            if (settings.ambient_occlusion.mode != AmbientOcclusionSettings::Mode::none) {
-                color = ambient_occlusion_pass.render(camera, rg, {
-                    .color = color,
-                    .depth = depth,
-                    .normal_roughness = gbuffer.normal_roughness,
-                    .velocity = velocity,
-                    .history_validation = history_validation,
-                    .scene_accel = scene_accel,
-                }, settings.ambient_occlusion);
+        switch (pipeline_mode) {
+            case PipelineMode::forward: {
+                auto forward_output_data = forward_pass.render(camera, rg, {
+                    .drawables = drawables,
+                    .shadow_maps = shadow_maps,
+                    .skybox = skybox,
+                });
+                color = forward_output_data.output;
+                depth = forward_output_data.depth;
+                velocity = forward_output_data.velocity;
+                break;
             }
-
-            if (settings.reflection.mode != ReflectionSettings::Mode::none) {
-                color = reflection_pass.render(camera, rg, {
-                    .color = color,
-                    .velocity = velocity,
-                    .depth = depth,
-                    .gbuffer = gbuffer,
-                    .history_validation = history_validation,
+            case PipelineMode::deferred: {
+                auto gbuffer_output = gbuffer_pass.render(camera, rg, drawables);
+                gbuffer = gbuffer_output.gbuffer;
+                auto lighting_output = deferred_lighting_pass.render(camera, rg, {
+                    .color = gbuffer_output.color,
+                    .depth = gbuffer_output.depth,
+                    .gbuffer = gbuffer_output.gbuffer,
+                    .shadow_maps = shadow_maps,
+                    .skybox = skybox,
+                });
+                color = lighting_output.output;
+                depth = gbuffer_output.depth;
+                velocity = gbuffer_output.velocity;
+                break;
+            }
+            case PipelineMode::path_tracing: {
+                auto pt_output = path_tracing_pass.render(camera, rg, {
                     .shadow_maps = shadow_maps,
                     .skybox = skybox,
                     .scene_accel = scene_accel,
-                }, settings.reflection);
+                }, settings.path_tracing);
+                color = pt_output.color;
+                depth = pt_output.depth;
+                gbuffer = pt_output.gbuffer;
+                velocity = pt_output.velocity;
+                break;
+            }
+            default: unreachable();
+        }
+
+        if (pipeline_mode != PipelineMode::path_tracing) {
+            auto skybox_output = skybox_pass.render(camera, rg, {
+                .color = color,
+                .depth = depth,
+                .skybox = skybox,
+            });
+            color = skybox_output.color;
+            depth = skybox_output.depth;
+
+            if (settings.pipeline_mode == PipelineMode::deferred) {
+                auto history_validation = validate_history_pass.render(camera, rg, {
+                    .velocity = velocity,
+                    .depth = depth,
+                    .normal_roughness = gbuffer.normal_roughness,
+                });
+
+                if (settings.ambient_occlusion.mode != AmbientOcclusionSettings::Mode::none) {
+                    color = ambient_occlusion_pass.render(camera, rg, {
+                        .color = color,
+                        .depth = depth,
+                        .normal_roughness = gbuffer.normal_roughness,
+                        .velocity = velocity,
+                        .history_validation = history_validation,
+                        .scene_accel = scene_accel,
+                    }, settings.ambient_occlusion);
+                }
+
+                if (settings.reflection.mode != ReflectionSettings::Mode::none) {
+                    color = reflection_pass.render(camera, rg, {
+                        .color = color,
+                        .velocity = velocity,
+                        .depth = depth,
+                        .gbuffer = gbuffer,
+                        .history_validation = history_validation,
+                        .shadow_maps = shadow_maps,
+                        .skybox = skybox,
+                        .scene_accel = scene_accel,
+                    }, settings.reflection);
+                }
             }
         }
 
@@ -152,6 +189,8 @@ struct BasicRenderer::Impl final {
     GBufferdPass gbuffer_pass;
     DeferredLightingPass deferred_lighting_pass;
     SkyboxPass skybox_pass;
+
+    PathTracingPass path_tracing_pass;
 
     ValidateHistoryPass validate_history_pass;
 

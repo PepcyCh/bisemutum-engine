@@ -819,7 +819,18 @@ struct GraphicsManager::Impl final {
         if (auto format = graphics_context->depth_stencil_format; format != rhi::ResourceFormat::undefined) {
             format_id = fmt::format("{}={:x}", format_id, static_cast<uint32_t>(format));
         }
-        auto pipeline_id = fmt::format("{} {} {}", mesh_shaders_id, fs_id, format_id);
+        auto fs_pipeline_id = fmt::format(
+            "BLEND {} DEPTH {} {} {} STENCIL {} {} {} {}",
+            fs->override_blend_mode ? magic_enum::enum_name(fs->override_blend_mode.value()) : "X",
+            fs->depth_write ? "1" : "0",
+            fs->depth_test ? "1" : "0",
+            magic_enum::enum_name(fs->depth_compare_op),
+            fs->stencil_test ? "1" : "0",
+            std::to_string(fs->stencil_compare_mask),
+            std::to_string(fs->stencil_write_mask),
+            std::to_string(fs->stencil_reference)
+        );
+        auto pipeline_id = fmt::format("{} {} {} {}", mesh_shaders_id, fs_id, format_id, fs_pipeline_id);
         auto pipeline_it = graphics_pipelines.find(pipeline_id);
         if (pipeline_it != graphics_pipelines.end()) {
             return pipeline_it->second.ref();

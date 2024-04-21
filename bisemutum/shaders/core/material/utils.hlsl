@@ -30,6 +30,8 @@ SurfaceData surface_data_default() {
     return surface;
 }
 
+#define ALPHA_TEST_OPACITY_THRESHOLD 0.01
+
 float3 schlick_mix(float3 f0, float3 f90, float cos_theta) {
     return lerp(f0, f90, pow5(1.0 - cos_theta));
 }

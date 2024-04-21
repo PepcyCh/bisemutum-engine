@@ -4,6 +4,7 @@
 
 struct GBufferPayload {
     GBuffer gbuffer;
-    float hit_t;
     float3 history_position;
+    float hit_t;
+    float opacity_random;
 };

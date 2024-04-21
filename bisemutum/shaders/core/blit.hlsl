@@ -17,8 +17,10 @@ Vertex2Fragment blit_vs(uint vertex_id : SV_VertexID) {
 
 #ifndef BLIT_DEPTH
 float4 blit_fs(Vertex2Fragment fin) : SV_Target {
-#else
-float blit_fs(Vertex2Fragment fin) : SV_Depth {
-#endif
     return src_texture.SampleLevel(sampler_src_texture, fin.uv, 0);
 }
+#else
+float blit_fs(Vertex2Fragment fin) : SV_Depth {
+    return src_texture.SampleLevel(sampler_src_texture, fin.uv, 0).x;
+}
+#endif

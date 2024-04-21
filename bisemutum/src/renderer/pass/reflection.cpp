@@ -15,6 +15,7 @@ namespace {
 
 constexpr rhi::ResourceFormat reflection_tex_format = rhi::ResourceFormat::rgba16_sfloat;
 constexpr rhi::ResourceFormat positions_tex_format = rhi::ResourceFormat::rgba32_sfloat;
+constexpr rhi::ResourceFormat directions_tex_format = rhi::ResourceFormat::rgba16_sfloat;
 
 BI_SHADER_PARAMETERS_BEGIN(DirectionSamplePassParams)
     BI_SHADER_PARAMETER(float, fade_roughness)
@@ -24,7 +25,7 @@ BI_SHADER_PARAMETERS_BEGIN(DirectionSamplePassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
     BI_SHADER_PARAMETER_SAMPLER(SamplerState, gbuffer_sampler)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, ray_weights, reflection_tex_format)
-    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, ray_directions, positions_tex_format)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, ray_directions, directions_tex_format)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, ray_origins, positions_tex_format)
 BI_SHADER_PARAMETERS_END()
 
@@ -113,6 +114,8 @@ ReflectionPass::ReflectionPass() {
         rt_gbuffer_shader_.raygen_source.entry = "rt_gbuffer_rgen";
         rt_gbuffer_shader_.closest_hit_source.path = "/bisemutum/shaders/renderer/raytracing/hits/rt_gbuffer_hit.hlsl";
         rt_gbuffer_shader_.closest_hit_source.entry = "rt_gbuffer_rchit";
+        rt_gbuffer_shader_.any_hit_source.path = "/bisemutum/shaders/renderer/raytracing/hits/rt_gbuffer_hit.hlsl";
+        rt_gbuffer_shader_.any_hit_source.entry = "rt_gbuffer_rahit";
         rt_gbuffer_shader_.miss_source.path = "/bisemutum/shaders/renderer/raytracing/hits/rt_gbuffer_miss.hlsl";
         rt_gbuffer_shader_.miss_source.entry = "rt_gbuffer_rmiss";
         rt_gbuffer_shader_.set_shader_params_struct<RtGBufferPassParams>();
@@ -223,7 +226,7 @@ auto ReflectionPass::render_raytraced(
     });
     auto ray_directions_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(positions_tex_format, width, height)
+            .dim_2d(directions_tex_format, width, height)
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
     auto ray_weights_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
@@ -303,6 +306,12 @@ auto ReflectionPass::render_raytraced(
         pass_data->hit_positions = builder.read(hit_positions_tex_);
         pass_data->weights = builder.read(ray_weights_tex);
         pass_data->gbuffer = hit_gbuffer_texs.read(builder);
+        builder.read(input.shadow_maps.dir_lights_shadow_map);
+        builder.read(input.shadow_maps.point_lights_shadow_map);
+        builder.read(input.skybox.skybox);
+        builder.read(input.skybox.diffuse_irradiance);
+        builder.read(input.skybox.specular_filtered);
+        builder.read(input.skybox.brdf_lut);
 
         builder.set_execution_function<DeferredLightingSecondaryPassData>(
             [this, &camera, &settings, width, height](CRef<DeferredLightingSecondaryPassData> pass_data, gfx::ComputePassContext const& ctx) {

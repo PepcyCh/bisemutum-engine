@@ -31,8 +31,9 @@ auto Scene::for_each_root_object(std::function<auto(CRef<SceneObject>) -> void> 
 
 auto Scene::detach_as_root_object(Ref<SceneObject> object) -> void {
     if (auto it = root_objects_it_map_.find(object.get()); it == root_objects_it_map_.end()) {
-        root_objects_.push_front(object);
-        root_objects_it_map_.insert({object.get(), root_objects_.begin()});
+        root_objects_.push_back(object);
+        auto root_it = root_objects_.end();
+        root_objects_it_map_.insert({object.get(), --root_it});
     }
 }
 auto Scene::attach_as_child_object(Ref<SceneObject> object, Ref<SceneObject> parent) -> void {
@@ -45,8 +46,9 @@ auto Scene::remove_root_object(Ref<SceneObject> object) -> void {
 }
 
 auto Scene::create_scene_object(Ptr<SceneObject> parent, Transform transform) -> Ref<SceneObject> {
-    auto& object = objects_.emplace_front(unsafe_make_ref(this), transform);
-    objects_it_map_.insert({&object, objects_.begin()});
+    auto& object = objects_.emplace_back(unsafe_make_ref(this), transform);
+    auto it = objects_.end();
+    objects_it_map_.insert({&object, --it});
     entity_map_.insert({object.ecs_entity(), object});
     if (parent.has_value()) {
         attach_as_child_object(object, parent.value());
@@ -56,8 +58,9 @@ auto Scene::create_scene_object(Ptr<SceneObject> parent, Transform transform) ->
     return object;
 }
 auto Scene::create_scene_object(Ptr<SceneObject> parent, bool with_transform) -> Ref<SceneObject> {
-    auto& object = objects_.emplace_front(unsafe_make_ref(this), with_transform);
-    objects_it_map_.insert({&object, objects_.begin()});
+    auto& object = objects_.emplace_back(unsafe_make_ref(this), with_transform);
+    auto it = objects_.end();
+    objects_it_map_.insert({&object, --it});
     entity_map_.insert({object.ecs_entity(), object});
     if (parent.has_value()) {
         attach_as_child_object(object, parent.value());

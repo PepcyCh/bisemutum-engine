@@ -12,6 +12,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
     enum class PipelineMode : uint8_t {
         forward,
         deferred,
+        path_tracing,
     };
 
     enum class ShadowMapResolution : uint8_t {
@@ -61,11 +62,19 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         bool denoise = true;
     };
 
+    struct PathTracingSettings final {
+        float ray_length = 100.0f;
+        uint32_t max_bounces = 3;
+        bool denoise = true;
+        bool accumulate = true;
+    };
+
     struct Settings final {
         PipelineMode pipeline_mode = PipelineMode::deferred;
         ShadowSettings shadow;
         AmbientOcclusionSettings ambient_occlusion;
         ReflectionSettings reflection;
+        PathTracingSettings path_tracing;
     };
 
     BasicRenderer();
@@ -103,11 +112,19 @@ BI_SREFL(
     field(denoise),
 )
 BI_SREFL(
+    type(BasicRenderer::PathTracingSettings),
+    field(ray_length, RangeF{}),
+    field(max_bounces, RangeI{2, 16}),
+    field(denoise),
+    field(accumulate),
+)
+BI_SREFL(
     type(BasicRenderer::Settings),
     field(pipeline_mode),
     field(shadow),
     field(ambient_occlusion),
     field(reflection),
+    field(path_tracing),
 )
 
 struct BasicRendererOverrideVolume final {

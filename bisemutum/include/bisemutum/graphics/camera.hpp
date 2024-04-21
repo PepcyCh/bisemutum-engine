@@ -15,7 +15,7 @@ enum class ProjectionType : uint8_t {
 struct GraphicsManager;
 struct RenderGraph;
 
-// TODO - split camera data and camera used for rendering
+// TODO - split camera data and camera used for rendering ?
 struct Camera final {
     auto recreate_target_texture(
         uint32_t width, uint32_t height, rhi::ResourceFormat format, bool mipmap = true
@@ -29,8 +29,9 @@ struct Camera final {
     auto shader_params_metadata() const -> ShaderParameterMetadataList const&;
     auto update_shader_params() -> void;
 
-    // The value is updated after `update_shader_params()`.
+    // The values are updated after `update_shader_params()`.
     auto matrix_proj_view() const -> float4x4 const& { return matrix_proj_view_; }
+    auto history_matrix_proj_view() const -> float4x4 const& { return history_matrix_proj_view_; }
 
     // Plane is represented in the form of 'dot(p, n) + d = 0'.
     // Normal 'n' is xyz and distance 'd' is w.
@@ -61,6 +62,7 @@ private:
 
     ShaderParameter shader_parameter_;
     float4x4 matrix_proj_view_ = float4x4(1.0f);
+    float4x4 history_matrix_proj_view_ = float4x4(1.0f);
 
     mutable StringHashMap<Box<Buffer>> history_buffers_[2];
     mutable StringHashMap<Box<Texture>> history_textures_[2];

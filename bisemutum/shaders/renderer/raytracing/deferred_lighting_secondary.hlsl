@@ -95,6 +95,7 @@ void deferred_lighting_secondary_cs(uint3 global_thread_id : SV_DispatchThreadID
         color += lighting;
     }
 
+#ifndef DEFERRED_LIGHTING_NO_IBL
     float3 skybox_N = mul((float3x3) skybox_transform, N);
     float3 ibl_diffuse = skybox_diffuse_irradiance.SampleLevel(skybox_sampler, skybox_N, 0).xyz * skybox_diffuse_color;
     float3 skybox_R = mul((float3x3) skybox_transform, reflect(-V, N));
@@ -104,6 +105,7 @@ void deferred_lighting_secondary_cs(uint3 global_thread_id : SV_DispatchThreadID
     float2 ibl_brdf = skybox_brdf_lut.SampleLevel(skybox_sampler, float2(dot(N, V), surface.roughness), 0).xy;
     float3 ibl = surface_eval_lut(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf, surface_model);
     color += ibl;
+#endif
 
     color_tex[pixel_coord] = float4(color * color_weight, 1.0);
 }

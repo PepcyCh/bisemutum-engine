@@ -182,7 +182,9 @@ auto AccelerationStructure::reset() -> void {
                 tlas_buffer = std::move(tlas_buffer_),
                 cpu_descriptor = cpu_descriptor_
             ]() {
-                g_engine->graphics_manager()->free_cpu_resource_descriptor(cpu_descriptor);
+                if (cpu_descriptor.cpu != 0) {
+                    g_engine->graphics_manager()->free_cpu_resource_descriptor(cpu_descriptor);
+                }
             }
         );
     }
