@@ -1320,12 +1320,12 @@ struct GraphicsManager::Impl final {
                     sbt_data->drawable_index = drawable_index;
                     const auto submesh_base_vertex = drawable.submesh_desc().base_vertex;
                     auto& mesh_buffers = meshes_buffers.at(drawable.mesh->get_mesh_data().id_);
-                    sbt_data->position_offset = (mesh_buffers.positions_buffer.offset()) / sizeof(float) + submesh_base_vertex;
-                    sbt_data->normal_offset = (mesh_buffers.normals_buffer.offset()) / sizeof(float) + submesh_base_vertex;
-                    sbt_data->tangent_offset = (mesh_buffers.tangents_buffer.offset()) / sizeof(float) + submesh_base_vertex;
-                    sbt_data->color_offset = (mesh_buffers.colors_buffer.offset()) / sizeof(float) + submesh_base_vertex;
-                    sbt_data->texcoord_offset = (mesh_buffers.texcoords_buffer.offset()) / sizeof(float) + submesh_base_vertex;
-                    sbt_data->texcoord2_offset = (mesh_buffers.texcoords2_buffer.offset()) / sizeof(float) + submesh_base_vertex;
+                    sbt_data->position_offset = (mesh_buffers.positions_buffer.offset()) / sizeof(float) + submesh_base_vertex * 3;
+                    sbt_data->normal_offset = (mesh_buffers.normals_buffer.offset()) / sizeof(float) + submesh_base_vertex * 3;
+                    sbt_data->tangent_offset = (mesh_buffers.tangents_buffer.offset()) / sizeof(float) + submesh_base_vertex * 4;
+                    sbt_data->color_offset = (mesh_buffers.colors_buffer.offset()) / sizeof(float) + submesh_base_vertex * 3;
+                    sbt_data->texcoord_offset = (mesh_buffers.texcoords_buffer.offset()) / sizeof(float) + submesh_base_vertex * 2;
+                    sbt_data->texcoord2_offset = (mesh_buffers.texcoords2_buffer.offset()) / sizeof(float) + submesh_base_vertex * 2;
                     sbt_data->index_offset = (mesh_buffers.indices_buffer.offset()) / sizeof(uint32_t) + drawable.submesh_desc().index_offset;
                     sbt_data->material_offset = drawable.material ? drawable.material->gpu_scene_struct_buffer_.offset() : 0;
                 });

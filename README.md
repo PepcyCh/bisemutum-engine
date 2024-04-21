@@ -42,14 +42,20 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Half resolution RTR
+* Half resolution RTR & RTAO
 * Stochastic screen space reflection
 * Basic material editor
 * Basic resource browser
 
 ## Gallary
 
-![](./images/show1.png)
+Path traced Sponza
+
+![](./images/gallary-pt.png)
+
+Raytraced reflection
+
+![](./images/gallary-rtr.png)
 
 ## Build
 

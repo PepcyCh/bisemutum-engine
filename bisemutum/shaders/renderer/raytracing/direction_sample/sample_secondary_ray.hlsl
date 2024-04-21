@@ -56,11 +56,9 @@ void sample_secondary_ray_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     float pdf = pdf_wh / (4.0 * abs(dot(half_dir, V_local)));
 
     out_dir = frame_to_world(frame, out_dir);
-    float3 bsdf_diffuse;
-    float3 bsdf_specular;
-    surface_eval(N, T, B, V, out_dir, surface, surface_model, bsdf_diffuse, bsdf_specular);
+    float3 bsdf = surface_eval(N, T, B, V, out_dir, surface, surface_model);
 
-    float3 weight = bsdf_specular / pdf;
+    float3 weight = bsdf / pdf;
     if (any(isnan(weight)) || any(isinf(weight))) {
         weight = 0.0;
     }
