@@ -224,6 +224,7 @@ struct RenderGraph::Impl final {
             .access = rhi::ResourceAccessType::none,
         };
         node->buffer.value().p_access = &node->buffer.value().access;
+        node->desc = buffer->desc();
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
 
@@ -256,6 +257,7 @@ struct RenderGraph::Impl final {
             .access = access,
         };
         node->texture.value().p_access = &node->texture.value().access;
+        node->desc = texture->desc();
         node->imported = true;
         graph_nodes_.push_back(std::move(node));
 

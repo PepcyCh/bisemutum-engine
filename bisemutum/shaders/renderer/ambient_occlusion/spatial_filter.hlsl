@@ -22,10 +22,10 @@ void fetch_shared_data(uint index, int2 group_start) {
         (int) (index / SHARED_DATA_WIDTH) - 1
     );
 
-    int3 texel_coord = int3(group_start + offset, 0);
-    s_ao_value[index] = input_ao_tex.Load(texel_coord).x;
-    s_depth[index] = get_linear_01_depth(depth_tex.Load(texel_coord).x, matrix_inv_proj);
-    s_normal[index] = oct_decode(normal_roughness_tex.Load(texel_coord).xy);
+    s_ao_value[index] = input_ao_tex.Load(int3(group_start + offset, 0)).x;
+    float2 uv = (group_start + offset + 0.5) / tex_size;
+    s_depth[index] = get_linear_01_depth(depth_tex.SampleLevel(input_sampler, uv, 0).x, matrix_inv_proj);
+    s_normal[index] = oct_decode(normal_roughness_tex.SampleLevel(input_sampler, uv, 0).xy);
 }
 
 [numthreads(NUM_GROUP_THREADS, NUM_GROUP_THREADS, 1)]

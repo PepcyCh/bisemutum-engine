@@ -69,6 +69,7 @@ BI_SHADER_PARAMETERS_BEGIN(SpatialFilterPassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, output_ao_tex, ao_tex_format)
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, input_sampler)
 BI_SHADER_PARAMETERS_END()
 
 struct SpatialFilterPassData final {
@@ -174,13 +175,16 @@ auto AmbientOcclusionPass::render_screen_space(
     auto width = camera.target_texture().desc().extent.width;
     auto height = camera.target_texture().desc().extent.height;
 
+    auto ao_width = settings.half_resolution ? (width + 1) / 2 : width;
+    auto ao_height = settings.half_resolution ? (height + 1) / 2 : height;
+
     auto [builder, pass_data] = rg.add_graphics_pass<SSAOPassData>("SSAO Pass");
 
     pass_data->normal_roughness = builder.read(input.normal_roughness);
     pass_data->depth = builder.read(input.depth);
-    auto ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto ao_tex = rg.add_texture([ao_width, ao_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(ao_tex_format, width, height)
+            .dim_2d(ao_tex_format, ao_width, ao_height)
             .usage({
                 rhi::TextureUsage::color_attachment, rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write
             });
@@ -210,14 +214,17 @@ auto AmbientOcclusionPass::render_raytraced(
     auto width = camera.target_texture().desc().extent.width;
     auto height = camera.target_texture().desc().extent.height;
 
+    auto ao_width = settings.half_resolution ? (width + 1) / 2 : width;
+    auto ao_height = settings.half_resolution ? (height + 1) / 2 : height;
+
     auto [builder, pass_data] = rg.add_compute_pass<RTAOPassData>("RTAO Pass");
 
     pass_data->scene_accel = builder.read(input.scene_accel);
     pass_data->normal_roughness = builder.read(input.normal_roughness);
     pass_data->depth = builder.read(input.depth);
-    auto ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto ao_tex = rg.add_texture([ao_width, ao_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(ao_tex_format, width, height)
+            .dim_2d(ao_tex_format, ao_width, ao_height)
             .usage({
                 rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write
             });
@@ -225,11 +232,11 @@ auto AmbientOcclusionPass::render_raytraced(
     pass_data->output = builder.write(ao_tex);
 
     builder.set_execution_function<RTAOPassData>(
-        [this, &camera, &settings, width, height](CRef<RTAOPassData> pass_data, gfx::ComputePassContext const& ctx) {
+        [this, &camera, &settings, ao_width, ao_height](CRef<RTAOPassData> pass_data, gfx::ComputePassContext const& ctx) {
             auto params = raytracing_shader_params_.mutable_typed_data<RTAOPassParams>();
             params->ao_range = std::max(settings.range, 0.05f);
             params->ao_strength = settings.strength;
-            params->tex_size = {width, height};
+            params->tex_size = {ao_width, ao_height};
             params->scene_accel = {ctx.rg->acceleration_structure(pass_data->scene_accel)};
             params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness)};
             params->depth_tex = {ctx.rg->texture(pass_data->depth)};
@@ -238,7 +245,7 @@ auto AmbientOcclusionPass::render_raytraced(
             raytracing_shader_params_.update_uniform_buffer();
             ctx.dispatch(
                 camera, raytracing_shader_, raytracing_shader_params_,
-                ceil_div(width, 16u), ceil_div(height, 16u)
+                ceil_div(ao_width, 16u), ceil_div(ao_height, 16u)
             );
         }
     );
@@ -254,13 +261,23 @@ auto AmbientOcclusionPass::render_denoise(
     auto width = camera.target_texture().desc().extent.width;
     auto height = camera.target_texture().desc().extent.height;
 
+    auto ao_width = rg.texture_desc(ao_tex)->extent.width;
+    auto ao_height = rg.texture_desc(ao_tex)->extent.height;
+
     auto frame_count = g_engine->window()->frame_count();
     auto [frame_count_it, is_new_camera] = last_frame_counts_.try_emplace(&camera);
     auto has_history = !is_new_camera && frame_count_it->second + 1 == frame_count;
     frame_count_it->second = frame_count;
     auto history_ao_tex = camera.get_history_texture("ambient_occlusion");
 
-    if (has_history && history_ao_tex != gfx::TextureHandle::invalid) {
+    temporal_accumulate_shader_.modify_compiler_environment_func = [&settings](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("AO_HALF_RESOLUTION", settings.half_resolution ? 1 : 0);
+    };
+
+    has_history &= history_ao_tex != gfx::TextureHandle::invalid
+        && rg.texture_desc(history_ao_tex)->extent.width == ao_width
+        && rg.texture_desc(history_ao_tex)->extent.height == ao_height;
+    if (has_history) {
         auto [builder, pass_data] = rg.add_compute_pass<TemporalAccumulatePassData>("AO Temporal Accumulate Pass");
 
         pass_data->ao_value = builder.write(ao_tex);
@@ -270,9 +287,9 @@ auto AmbientOcclusionPass::render_denoise(
         pass_data->history_validation_tex = builder.read(input.history_validation);
 
         builder.set_execution_function<TemporalAccumulatePassData>(
-            [this, width, height](CRef<TemporalAccumulatePassData> pass_data, gfx::ComputePassContext const& ctx) {
+            [this, ao_width, ao_height](CRef<TemporalAccumulatePassData> pass_data, gfx::ComputePassContext const& ctx) {
                 auto params = temporal_accumulate_shader_params_.mutable_typed_data<TemporalAccumulatePassParams>();
-                params->tex_size = {width, height};
+                params->tex_size = {ao_width, ao_height};
                 params->ao_tex = {ctx.rg->texture(pass_data->ao_value)};
                 params->history_ao_tex = {ctx.rg->texture(pass_data->history_ao_value)};
                 params->velocity_tex = {ctx.rg->texture(pass_data->velocity)};
@@ -281,15 +298,15 @@ auto AmbientOcclusionPass::render_denoise(
                 temporal_accumulate_shader_params_.update_uniform_buffer();
                 ctx.dispatch(
                     temporal_accumulate_shader_, temporal_accumulate_shader_params_,
-                    ceil_div(width, 16u), ceil_div(height, 16u)
+                    ceil_div(ao_width, 16u), ceil_div(ao_height, 16u)
                 );
             }
         );
     }
 
-    auto filtered_ao_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto filtered_ao_tex = rg.add_texture([ao_width, ao_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(ao_tex_format, width, height)
+            .dim_2d(ao_tex_format, ao_width, ao_height)
             .usage({rhi::TextureUsage::storage_read_write, rhi::TextureUsage::sampled});
     });
 
@@ -303,19 +320,20 @@ auto AmbientOcclusionPass::render_denoise(
         pass_data->output = builder.write(filtered_ao_tex);
 
         builder.set_execution_function<SpatialFilterPassData>(
-            [this, width, height, &camera](
+            [this, ao_width, ao_height, &camera](
                 CRef<SpatialFilterPassData> pass_data, gfx::ComputePassContext const& ctx
             ) {
                 auto params = spatial_filter_shader_params_.mutable_typed_data<SpatialFilterPassParams>();
-                params->tex_size = {width, height};
+                params->tex_size = {ao_width, ao_height};
                 params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness)};
                 params->depth_tex = {ctx.rg->texture(pass_data->depth)};
                 params->input_ao_tex = {ctx.rg->texture(pass_data->input)};
                 params->output_ao_tex = {ctx.rg->texture(pass_data->output)};
+                params->input_sampler = {sampler_};
                 spatial_filter_shader_params_.update_uniform_buffer();
                 ctx.dispatch(
                     camera, spatial_filter_shader_, spatial_filter_shader_params_,
-                    ceil_div(width, 16u), ceil_div(height, 16u)
+                    ceil_div(ao_width, 16u), ceil_div(ao_height, 16u)
                 );
                 camera.add_history_texture("ambient_occlusion", pass_data->output);
             }

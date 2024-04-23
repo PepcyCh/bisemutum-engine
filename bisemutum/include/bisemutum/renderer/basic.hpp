@@ -46,6 +46,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         Mode mode = Mode::none;
         float range = 0.5f;
         float strength = 0.5f;
+        bool half_resolution = true;
     };
 
     struct ReflectionSettings final {
@@ -101,6 +102,7 @@ BI_SREFL(
     field(mode),
     field(range, RangeF{}),
     field(strength, RangeF{0.0f, 1.0f}),
+    field(half_resolution),
 )
 BI_SREFL(
     type(BasicRenderer::ReflectionSettings),
