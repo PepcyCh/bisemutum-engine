@@ -24,9 +24,9 @@ struct Box final : MoveOnly {
     Box(Box&& rhs) noexcept : ptr_(rhs.ptr_) { rhs.ptr_ = nullptr; }
 
     template <typename T2> requires std::convertible_to<T2*, T*>
-    Box(Box<T2> &&rhs) noexcept : ptr_(rhs.ptr_) { rhs.ptr_ = nullptr; }
+    Box(Box<T2>&& rhs) noexcept : ptr_(rhs.ptr_) { rhs.ptr_ = nullptr; }
 
-    auto operator=(Box &&rhs) noexcept -> Box& {
+    auto operator=(Box&& rhs) noexcept -> Box& {
         if (this != std::addressof(rhs)) {
             reset(rhs.release());
         }
@@ -96,7 +96,7 @@ struct Box<T[]> final : MoveOnly {
     template <typename T2> requires std::convertible_to<T2*, T*>
     Box(Box<T2[]>&& rhs) noexcept : ptr_(rhs.ptr_) { rhs.ptr_ = nullptr; }
 
-    auto operator=(Box &&rhs) noexcept -> Box& {
+    auto operator=(Box&& rhs) noexcept -> Box& {
         if (this != std::addressof(rhs)) {
             reset(rhs.release());
         }

@@ -281,8 +281,8 @@ auto AmbientOcclusionPass::render_denoise(
         auto [builder, pass_data] = rg.add_compute_pass<TemporalAccumulatePassData>("AO Temporal Accumulate Pass");
 
         pass_data->ao_value = builder.write(ao_tex);
-        pass_data->history_ao_value = builder.read(history_ao_tex);
         ao_tex = pass_data->ao_value;
+        pass_data->history_ao_value = builder.read(history_ao_tex);
         pass_data->velocity = builder.read(input.velocity);
         pass_data->history_validation_tex = builder.read(input.history_validation);
 

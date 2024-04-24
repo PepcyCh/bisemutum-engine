@@ -499,7 +499,7 @@ struct RenderGraph::Impl final {
             }
         }
 
-        std::vector<size_t> order_of(graph_nodes_.size(), 0);
+        std::vector<size_t> order_of(graph_nodes_.size(), static_cast<size_t>(-1));
         while (ql < qr) {
             size_t index = queue[ql++];
             order_of[index] = graph_order_.size();
@@ -520,14 +520,19 @@ struct RenderGraph::Impl final {
                 size_t start = graph_nodes_.size();
                 size_t end = 0;
                 for (auto const& v : node->in_nodes) {
-                    start = std::min(start, order_of[v->index]);
-                    end = std::max(end, order_of[v->index]);
+                    auto order = order_of[v->index];
+                    if (order == static_cast<size_t>(-1)) { continue; }
+                    start = std::min(start, order);
+                    end = std::max(end, order);
                 }
                 for (auto const& v : node->out_nodes) {
-                    start = std::min(start, order_of[v->index]);
-                    end = std::max(end, order_of[v->index]);
+                    auto order = order_of[v->index];
+                    if (order == static_cast<size_t>(-1)) { continue; }
+                    start = std::min(start, order);
+                    end = std::max(end, order);
                 }
 
+                if (start > end) { continue; }
                 resources_to_create_[start].push_back(node->index);
                 resources_to_destroy_[end].push_back(node->index);
             }
