@@ -15,7 +15,15 @@
 void ambient_occlusion_rt_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     uint2 pixel_coord = global_thread_id.xy;
     if (any(pixel_coord >= tex_size)) { return; }
+#if !AO_HALF_RESOLUTION
     float2 texcoord = (pixel_coord + 0.5) / tex_size;
+#else
+    float2 sub_pixel = float2(
+        (frame_index & 1) != 0 ? 0.75 : 0.25,
+        (frame_index & 2) != 0 ? 0.75 : 0.25
+    );
+    float2 texcoord = (pixel_coord + sub_pixel) / tex_size;
+#endif
 
     float depth = depth_tex.SampleLevel(input_sampler, texcoord, 0).x;
     if (is_depth_background(depth)) {

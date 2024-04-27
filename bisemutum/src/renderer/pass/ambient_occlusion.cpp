@@ -231,6 +231,10 @@ auto AmbientOcclusionPass::render_raytraced(
     });
     pass_data->output = builder.write(ao_tex);
 
+    raytracing_shader_.modify_compiler_environment_func = [&settings](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("AO_HALF_RESOLUTION", settings.half_resolution ? 1 : 0);
+    };
+
     builder.set_execution_function<RTAOPassData>(
         [this, &camera, &settings, ao_width, ao_height](CRef<RTAOPassData> pass_data, gfx::ComputePassContext const& ctx) {
             auto params = raytracing_shader_params_.mutable_typed_data<RTAOPassParams>();
