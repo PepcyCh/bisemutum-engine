@@ -17,7 +17,7 @@ name = 'Camera'
         near_z = 0.010000000707805157
         projection_type = 'perspective'
         render_target_format = 'rgba16_sfloat'
-        render_target_size = [ 1298, 637 ]
+        render_target_size = [ 1298, 635 ]
         yfov = 30.0
 
 [[objects]]
@@ -97,6 +97,58 @@ name = 'Cube'
             asset_id = 5
 
 [[objects]]
+name = 'Transparent Cube'
+
+    [[objects.components]]
+    type = 'Transform'
+
+        [objects.components.value]
+        rotation = [ 0.0, 30.000001907348633, 0.0 ]
+        scaling = [ 1.0, 1.0, 1.0 ]
+        translation = [ 2.5, 0.0, 2.5 ]
+
+    [[objects.components]]
+    type = 'StaticMeshComponent'
+
+        [objects.components.value.static_mesh]
+        asset_id = 1
+
+    [[objects.components]]
+    type = 'MeshRendererComponent'
+
+        [objects.components.value]
+        submesh_start_index = 0
+
+            [[objects.components.value.materials]]
+            asset_id = 9
+
+[[objects]]
+name = 'Cage Cube'
+
+    [[objects.components]]
+    type = 'Transform'
+
+        [objects.components.value]
+        rotation = [ 0.0, 30.000001907348633, 0.0 ]
+        scaling = [ 1.0, 1.0, 1.0 ]
+        translation = [ 1.0, 2.5, -1.0 ]
+
+    [[objects.components]]
+    type = 'StaticMeshComponent'
+
+        [objects.components.value.static_mesh]
+        asset_id = 1
+
+    [[objects.components]]
+    type = 'MeshRendererComponent'
+
+        [objects.components.value]
+        submesh_start_index = 0
+
+            [[objects.components.value.materials]]
+            asset_id = 11
+
+[[objects]]
 name = 'Plane'
 
     [[objects.components]]
@@ -165,13 +217,21 @@ name = 'Renderer Override'
             pipeline_mode = 'deferred'
 
                 [objects.components.value.settings.ambient_occlusion]
+                half_resolution = true
                 mode = 'screen_space'
                 range = 0.5
                 strength = 0.5
 
+                [objects.components.value.settings.path_tracing]
+                accumulate = true
+                denoise = true
+                max_bounces = 3
+                ray_length = 100.0
+
                 [objects.components.value.settings.reflection]
                 denoise = true
                 fade_roughness = 0.10000000149011612
+                half_resolution = true
                 max_roughness = 0.30000001192092896
                 mode = 'none'
                 range = 16.0

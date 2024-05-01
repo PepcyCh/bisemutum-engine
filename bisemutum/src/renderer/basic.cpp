@@ -37,6 +37,7 @@ struct BasicRenderer::Impl final {
         forward_pass.update_params(lights_ctx, skybox_ctx);
         deferred_lighting_pass.update_params(lights_ctx, skybox_ctx);
         skybox_pass.update_params(skybox_ctx);
+        forward_transparent_pass.update_params(lights_ctx, skybox_ctx);
 
         if (settings.pipeline_mode == PipelineMode::path_tracing) {
             path_tracing_pass.update_params(lights_ctx, skybox_ctx, settings.path_tracing);
@@ -169,6 +170,16 @@ struct BasicRenderer::Impl final {
                     }, settings.reflection);
                 }
             }
+
+            auto transparent_output = forward_transparent_pass.render(camera, rg, {
+                .drawables = drawables,
+                .color = color,
+                .depth = depth,
+                .shadow_maps = shadow_maps,
+                .skybox = skybox,
+            });
+            color = transparent_output.color;
+            depth = transparent_output.depth;
         }
 
         post_process_pass.render(camera, rg, {
@@ -190,6 +201,7 @@ struct BasicRenderer::Impl final {
     GBufferdPass gbuffer_pass;
     DeferredLightingPass deferred_lighting_pass;
     SkyboxPass skybox_pass;
+    ForwardTransparentPass forward_transparent_pass;
 
     PathTracingPass path_tracing_pass;
 

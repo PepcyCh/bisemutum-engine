@@ -1,0 +1,13 @@
+blend_mode = 'translucent'
+material_function = '''surface.base_color = PARAM_base_color;
+surface.opacity = PARAM_opacity;
+'''
+surface_model = 'lit'
+
+[[params]]
+name = 'base_color'
+value = [ 1.0, 0.0, 0.5 ]
+
+[[params]]
+name = 'opacity'
+value = 0.5

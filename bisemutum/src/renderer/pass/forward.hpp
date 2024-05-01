@@ -32,4 +32,29 @@ private:
     gfx::ShaderParameter fragment_shader_params_;
 };
 
+struct ForwardTransparentPass final {
+    struct InputData final {
+        Span<Ref<gfx::Drawable>> drawables;
+        gfx::TextureHandle color;
+        gfx::TextureHandle depth;
+        ShadowMapTextures shadow_maps;
+        PrecomputedSkybox skybox;
+    };
+
+    struct OutputData final {
+        gfx::TextureHandle color;
+        gfx::TextureHandle depth;
+    };
+
+    ForwardTransparentPass();
+
+    auto update_params(LightsContext& lights_ctx, SkyboxContext& skybox_ctx) -> void;
+
+    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData;
+
+private:
+    gfx::FragmentShader fragment_shader_;
+    gfx::ShaderParameter fragment_shader_params_;
+};
+
 }

@@ -42,3 +42,18 @@ type = 'Texture'
 id = 8
 path = '/project/models/cube_prefab.toml'
 type = 'Prefab'
+
+[[assets]]
+id = 9
+path = '/project/materials/transparent.toml'
+type = 'Material'
+
+[[assets]]
+id = 10
+path = '/project/textures/cage.texture.biasset'
+type = 'Texture'
+
+[[assets]]
+id = 11
+path = '/project/materials/cage.toml'
+type = 'Material'

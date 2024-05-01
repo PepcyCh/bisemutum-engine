@@ -9,7 +9,9 @@
 
 struct Output {
     float4 color : SV_Target0;
+#if FORWARD_OUTPUT_VELOCITY
     float4 velocity : SV_Target1;
+#endif
 };
 
 Output forward_pass_fs(VertexAttributesOutput fin) {
@@ -19,6 +21,12 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     float3 V = normalize(camera_position_world() - fin.position_world);
 
     SurfaceData surface = material_function(fin);
+#ifdef MATERIAL_BLEND_MODE_ALPHA_TEST
+    if (surface.opacity < ALPHA_TEST_OPACITY_THRESHOLD) {
+        discard;
+    }
+#endif
+
     float3 normal_tspace = surface.normal_map_value * 2.0 - 1.0;
     N = normalize(normal_tspace.x * T + normal_tspace.y * B + normal_tspace.z * N);
     B = cross(N, T);
@@ -90,12 +98,14 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     color += ibl;
 
     Output result;
-    result.color = float4(color, 1.0);
+    result.color = float4(color, surface.opacity);
 
+#if FORWARD_OUTPUT_VELOCITY
     float4 history_pos_clip = mul(history_matrix_proj_view, float4(fin.history_position_world, 1.0));
     history_pos_clip.xyz /= history_pos_clip.w;
     float2 history_uv = float2(history_pos_clip.x * 0.5 + 0.5, 0.5 - history_pos_clip.y * 0.5);
     result.velocity = float4(fin.sv_position.xy / viewport_size - history_uv, 0.0, 1.0);
+#endif
 
     return result;
 }

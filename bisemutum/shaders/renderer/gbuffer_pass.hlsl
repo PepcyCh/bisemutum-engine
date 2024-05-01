@@ -22,6 +22,12 @@ GBufferOutput gbuffer_pass_fs(VertexAttributesOutput fin) {
     float3 V = normalize(camera_position_world() - fin.position_world);
 
     SurfaceData surface = material_function(fin);
+#ifdef MATERIAL_BLEND_MODE_ALPHA_TEST
+    if (surface.opacity < ALPHA_TEST_OPACITY_THRESHOLD) {
+        discard;
+    }
+#endif
+
     float3 normal_tspace = surface.normal_map_value * 2.0 - 1.0;
     N = normalize(normal_tspace.x * T + normal_tspace.y * B + normal_tspace.z * N);
 

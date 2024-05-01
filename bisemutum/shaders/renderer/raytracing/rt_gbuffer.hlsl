@@ -26,7 +26,7 @@ void rt_gbuffer_rgen() {
 
     GBufferPayload gbuffer;
     gbuffer.opacity_random = rng_next(rng_state);
-    TraceRay(scene_accel, RAY_FLAG_FORCE_OPAQUE, 0xff, 0, 0, 0, ray, gbuffer);
+    TraceRay(scene_accel, RAY_FLAG_NONE, 0xff, 0, 0, 0, ray, gbuffer);
 
     if (gbuffer.hit_t > 0.0) {
         gbuffer_base_color[pixel_coord] = gbuffer.gbuffer.base_color;

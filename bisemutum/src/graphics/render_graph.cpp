@@ -389,6 +389,7 @@ struct RenderGraph::Impl final {
 
     auto add_rendered_object_list(RenderedObjectListDesc const& desc) -> RenderedObjectListHandle {
         std::vector<Ref<Drawable>> drawables;
+        std::unordered_map<Ref<Drawable>, float> drawable_camera_dist;
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<GpuSceneSystem>();
         auto camera_frustum_planes = desc.camera->get_frustum_planes();
         for (auto drawable : desc.candidate_drawables) {
@@ -404,6 +405,7 @@ struct RenderGraph::Impl final {
                 || (desc.type.contains_any(RenderedObjectType::transparent) && !mat_is_opaque)
             ) {
                 drawables.push_back(drawable);
+                drawable_camera_dist.insert({drawable, math::distance(desc.camera->position, drawable->bounding_box().center())});
                 g_engine->graphics_manager()->update_mesh_buffers(drawable->mesh->get_mesh_data());
             }
         };
@@ -414,6 +416,12 @@ struct RenderGraph::Impl final {
                 return a->mesh.raw() < b->mesh.raw();
             }
         });
+
+        if (desc.sorting_mode == RendererObjectSortingMode::from_back_to_front) {
+            std::stable_sort(drawables.begin(), drawables.end(), [&drawable_camera_dist](Ref<Drawable> a, Ref<Drawable> b) {
+                return drawable_camera_dist.at(a) > drawable_camera_dist.at(b);
+            });
+        }
 
         auto& list = rendered_object_lists_.emplace_back(desc.camera, desc.fragment_shader);
         void* curr_mesh;
@@ -437,6 +445,14 @@ struct RenderGraph::Impl final {
                 }
                 list.items.push_back(std::move(item));
                 i = j + 1;
+            }
+        }
+
+        if (desc.sorting_mode == RendererObjectSortingMode::from_front_to_back) {
+            for (auto& items : list.items) {
+                std::sort(items.drawables.begin(), items.drawables.end(), [&drawable_camera_dist](Ref<Drawable> a, Ref<Drawable> b) {
+                    return drawable_camera_dist.at(a) < drawable_camera_dist.at(b);
+                });
             }
         }
 
