@@ -21,7 +21,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Rect light via LTC (anisotropic GGX)
   * Skybox & IBL
   * SSAO & RTAO (can be rendered in full or half resolution)
-  * RTR
+  * RTR (can be rendered in full or half resolution)
   * Bloom
   * Reverse-Z
 * Core
@@ -42,7 +42,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Half resolution RTR
+* Transparent object
 * Stochastic screen space reflection
 * Basic material editor
 * Basic resource browser

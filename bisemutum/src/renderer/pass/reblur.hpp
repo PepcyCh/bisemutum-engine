@@ -42,6 +42,8 @@ private:
     Ptr<gfx::Sampler> sampler_;
 
     std::unordered_map<gfx::Camera const*, uint64_t> last_frame_counts_;
+
+    bool half_resolution_ = false;
 };
 
 }

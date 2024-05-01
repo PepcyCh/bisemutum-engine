@@ -86,6 +86,28 @@ struct DeferredLightingSecondaryPassData final {
     gfx::TextureHandle weights;
 };
 
+BI_SHADER_PARAMETERS_BEGIN(SimpleUpscaleHitPassParams)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, output_tex, positions_tex_format)
+BI_SHADER_PARAMETERS_END()
+BI_SHADER_PARAMETERS_BEGIN(SimpleUpscaleColorPassParams)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, input_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, output_tex, reflection_tex_format)
+BI_SHADER_PARAMETERS_END()
+
+struct SimpleUpscalePassData final {
+    gfx::TextureHandle input_tex;
+    gfx::TextureHandle output_tex;
+    gfx::TextureHandle depth_tex;
+    gfx::TextureHandle normal_roughness_tex;
+};
+
 BI_SHADER_PARAMETERS_BEGIN(MergePassParams)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, color_tex)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, reflection_tex)
@@ -125,6 +147,15 @@ ReflectionPass::ReflectionPass() {
         rt_deferred_lighting_shader_.source.entry = "deferred_lighting_secondary_cs";
         rt_deferred_lighting_shader_.set_shader_params_struct<DeferredLightingSecondaryPassParams>();
     }
+
+    simple_upscale_hit_shader_params_.initialize<SimpleUpscaleHitPassParams>();
+    simple_upscale_hit_shader_.source.path = "/bisemutum/shaders/renderer/simple_upscale.hlsl";
+    simple_upscale_hit_shader_.source.entry = "simple_upscale_cs";
+    simple_upscale_hit_shader_.set_shader_params_struct<SimpleUpscaleHitPassParams>();
+    simple_upscale_color_shader_params_.initialize<SimpleUpscaleColorPassParams>();
+    simple_upscale_color_shader_.source.path = "/bisemutum/shaders/renderer/simple_upscale.hlsl";
+    simple_upscale_color_shader_.source.entry = "simple_upscale_cs";
+    simple_upscale_color_shader_.set_shader_params_struct<SimpleUpscaleColorPassParams>();
 
     merge_reflection_shader_params_.initialize<MergePassParams>();
     merge_reflection_shader_.source.path = "/bisemutum/shaders/renderer/reflection/merge.hlsl";
@@ -205,35 +236,42 @@ auto ReflectionPass::render_raytraced(
     auto width = camera.target_texture().desc().extent.width;
     auto height = camera.target_texture().desc().extent.height;
 
+    auto rfl_width = settings.half_resolution ? (width + 1) / 2 : width;
+    auto rfl_height = settings.half_resolution ? (height + 1) / 2 : height;
+
     GBufferTextures hit_gbuffer_texs{};
-    hit_gbuffer_texs.add_textures(rg, width, height, {rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+    hit_gbuffer_texs.add_textures(rg, rfl_width, rfl_height, {rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
 
-    hit_positions_tex_ = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    hit_positions_tex_ = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(positions_tex_format, width, height)
+            .dim_2d(positions_tex_format, rfl_width, rfl_height)
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
 
-    auto reflection_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto reflection_tex = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(reflection_tex_format, width, height)
+            .dim_2d(reflection_tex_format, rfl_width, rfl_height)
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
-    auto ray_origins_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto ray_origins_tex = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(positions_tex_format, width, height)
+            .dim_2d(positions_tex_format, rfl_width, rfl_height)
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
-    auto ray_directions_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto ray_directions_tex = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(directions_tex_format, width, height)
+            .dim_2d(directions_tex_format, rfl_width, rfl_height)
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
-    auto ray_weights_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+    auto ray_weights_tex = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
         builder
-            .dim_2d(reflection_tex_format, width, height)
+            .dim_2d(reflection_tex_format, rfl_width, rfl_height)
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
+
+    rt_direction_sample_shader_.modify_compiler_environment_func = [&settings](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("HALF_RESOLUTION", settings.half_resolution ? 1 : 0);
+    };
 
     {
         auto [builder, pass_data] = rg.add_compute_pass<DirectionSamplePassData>("RTR Sample Direction");
@@ -245,11 +283,11 @@ auto ReflectionPass::render_raytraced(
         pass_data->ray_weights = builder.write(ray_weights_tex);
 
         builder.set_execution_function<DirectionSamplePassData>(
-            [this, &camera, &settings, width, height](CRef<DirectionSamplePassData> pass_data, gfx::ComputePassContext const& ctx) {
+            [this, &camera, &settings, rfl_width, rfl_height](CRef<DirectionSamplePassData> pass_data, gfx::ComputePassContext const& ctx) {
                 auto params = rt_direction_sample_shader_params_.mutable_typed_data<DirectionSamplePassParams>();
                 params->max_roughness = settings.max_roughness;
                 params->fade_roughness = std::min(settings.fade_roughness, params->max_roughness - 0.0001f);
-                params->tex_size = {width, height};
+                params->tex_size = {rfl_width, rfl_height};
                 params->depth_tex = {ctx.rg->texture(pass_data->depth)};
                 params->gbuffer_textures[0] = {ctx.rg->texture(pass_data->gbuffer.base_color)};
                 params->gbuffer_textures[1] = {ctx.rg->texture(pass_data->gbuffer.normal_roughness)};
@@ -262,7 +300,7 @@ auto ReflectionPass::render_raytraced(
                 rt_direction_sample_shader_params_.update_uniform_buffer();
                 ctx.dispatch(
                     camera, rt_direction_sample_shader_, rt_direction_sample_shader_params_,
-                    ceil_div(width, 16u), ceil_div(height, 16u)
+                    ceil_div(rfl_width, 16u), ceil_div(rfl_height, 16u)
                 );
             }
         );
@@ -278,7 +316,7 @@ auto ReflectionPass::render_raytraced(
         pass_data->ray_directions = builder.read(ray_directions_tex);
 
         builder.set_execution_function<RtGBufferPassData>(
-            [this, &camera, &settings, width, height](CRef<RtGBufferPassData> pass_data, gfx::RaytracingPassContext const& ctx) {
+            [this, &camera, &settings, rfl_width, rfl_height](CRef<RtGBufferPassData> pass_data, gfx::RaytracingPassContext const& ctx) {
                 auto params = rt_gbuffer_shader_params_.mutable_typed_data<RtGBufferPassParams>();
                 params->ray_length = settings.range;
                 params->scene_accel = {ctx.rg->acceleration_structure(pass_data->scene_accel)};
@@ -292,7 +330,7 @@ auto ReflectionPass::render_raytraced(
                 rt_gbuffer_shader_params_.update_uniform_buffer();
                 ctx.dispatch_rays(
                     camera, rt_gbuffer_shader_, rt_gbuffer_shader_params_,
-                    width, height
+                    rfl_width, rfl_height
                 );
             }
         );
@@ -314,10 +352,10 @@ auto ReflectionPass::render_raytraced(
         builder.read(input.skybox.brdf_lut);
 
         builder.set_execution_function<DeferredLightingSecondaryPassData>(
-            [this, &camera, &settings, width, height](CRef<DeferredLightingSecondaryPassData> pass_data, gfx::ComputePassContext const& ctx) {
+            [this, &camera, &settings, rfl_width, rfl_height](CRef<DeferredLightingSecondaryPassData> pass_data, gfx::ComputePassContext const& ctx) {
                 auto params = rt_deferred_lighting_shader_params_.mutable_typed_data<DeferredLightingSecondaryPassParams>();
                 params->lighting_strength = settings.strength;
-                params->tex_size = {width, height};
+                params->tex_size = {rfl_width, rfl_height};
                 params->color_tex = {ctx.rg->texture(pass_data->color)};
                 params->view_positions = {ctx.rg->texture(pass_data->view_positions)};
                 params->hit_positions = {ctx.rg->texture(pass_data->hit_positions)};
@@ -330,10 +368,77 @@ auto ReflectionPass::render_raytraced(
                 rt_deferred_lighting_shader_params_.update_uniform_buffer();
                 ctx.dispatch(
                     camera, rt_deferred_lighting_shader_, rt_deferred_lighting_shader_params_,
-                    ceil_div(width, 16u), ceil_div(height, 16u)
+                    ceil_div(rfl_width, 16u), ceil_div(rfl_height, 16u)
                 );
             }
         );
+    }
+
+    if (settings.half_resolution) {
+        auto fr_hit_positions_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+            builder
+                .dim_2d(positions_tex_format, width, height)
+                .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+        });
+        auto fr_reflection_tex = rg.add_texture([width, height](gfx::TextureBuilder& builder) {
+            builder
+                .dim_2d(reflection_tex_format, width, height)
+                .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+        });
+
+        {
+            auto [builder, pass_data] = rg.add_compute_pass<SimpleUpscalePassData>("RTR Upscale Hit");
+
+            pass_data->input_tex = builder.read(hit_positions_tex_);
+            pass_data->output_tex = builder.write(fr_hit_positions_tex);
+            pass_data->depth_tex = builder.read(input.depth);
+            pass_data->normal_roughness_tex = builder.read(input.gbuffer.normal_roughness);
+
+            builder.set_execution_function<SimpleUpscalePassData>(
+                [this, &camera, width, height](CRef<SimpleUpscalePassData> pass_data, gfx::ComputePassContext const& ctx) {
+                    auto params = simple_upscale_hit_shader_params_.mutable_typed_data<SimpleUpscaleHitPassParams>();
+                    params->tex_size = {width, height};
+                    params->input_tex = {ctx.rg->texture(pass_data->input_tex)};
+                    params->output_tex = {ctx.rg->texture(pass_data->output_tex)};
+                    params->depth_tex = {ctx.rg->texture(pass_data->depth_tex)};
+                    params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness_tex)};
+                    simple_upscale_hit_shader_params_.update_uniform_buffer();
+                    ctx.dispatch(
+                        camera, simple_upscale_hit_shader_, simple_upscale_hit_shader_params_,
+                        ceil_div(width, 16u), ceil_div(height, 16u)
+                    );
+                }
+            );
+
+            hit_positions_tex_ = fr_hit_positions_tex;
+        }
+
+        {
+            auto [builder, pass_data] = rg.add_compute_pass<SimpleUpscalePassData>("RTR Upscale Color");
+
+            pass_data->input_tex = builder.read(reflection_tex);
+            pass_data->output_tex = builder.write(fr_reflection_tex);
+            pass_data->depth_tex = builder.read(input.depth);
+            pass_data->normal_roughness_tex = builder.read(input.gbuffer.normal_roughness);
+
+            builder.set_execution_function<SimpleUpscalePassData>(
+                [this, &camera, width, height](CRef<SimpleUpscalePassData> pass_data, gfx::ComputePassContext const& ctx) {
+                    auto params = simple_upscale_color_shader_params_.mutable_typed_data<SimpleUpscaleColorPassParams>();
+                    params->tex_size = {width, height};
+                    params->input_tex = {ctx.rg->texture(pass_data->input_tex)};
+                    params->output_tex = {ctx.rg->texture(pass_data->output_tex)};
+                    params->depth_tex = {ctx.rg->texture(pass_data->depth_tex)};
+                    params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness_tex)};
+                    simple_upscale_color_shader_params_.update_uniform_buffer();
+                    ctx.dispatch(
+                        camera, simple_upscale_color_shader_, simple_upscale_color_shader_params_,
+                        ceil_div(width, 16u), ceil_div(height, 16u)
+                    );
+                }
+            );
+
+            reflection_tex = fr_reflection_tex;
+        }
     }
 
     return reflection_tex;

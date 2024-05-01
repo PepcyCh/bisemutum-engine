@@ -246,11 +246,38 @@ ReblurPass::ReblurPass() {
         .address_mode_v = rhi::SamplerAddressMode::clamp_to_edge,
         .address_mode_w = rhi::SamplerAddressMode::clamp_to_edge,
     });
+
+    pre_blur_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
+    temporal_accumulate_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
+    fetch_linear_depth_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
+    fix_history_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
+    blur_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
+    temporal_stabilize_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
+    post_blur_shader_.modify_compiler_environment_func = [this](gfx::ShaderCompilationEnvironment& env) {
+        env.set_define("REBLUR_USE_HALF_RESOLUTION", half_resolution_ ? 1 : 0);
+    };
 }
 
 auto ReblurPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> gfx::TextureHandle {
-    auto width = camera.target_texture().desc().extent.width;
-    auto height = camera.target_texture().desc().extent.height;
+    auto camera_width = camera.target_texture().desc().extent.width;
+    auto camera_height = camera.target_texture().desc().extent.height;
+
+    auto width = rg.texture_desc(input.noised_tex)->extent.width;
+    auto height = rg.texture_desc(input.noised_tex)->extent.height;
+
+    half_resolution_ = width != camera_width;
 
     auto frame_count = g_engine->window()->frame_count();
     auto [frame_count_it, is_new_camera] = last_frame_counts_.try_emplace(&camera);

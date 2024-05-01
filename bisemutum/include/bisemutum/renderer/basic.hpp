@@ -61,6 +61,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         float max_roughness = 0.3f;
         float fade_roughness = 0.1f;
         bool denoise = true;
+        bool half_resolution = true;
     };
 
     struct PathTracingSettings final {
@@ -112,6 +113,7 @@ BI_SREFL(
     field(max_roughness, RangeF{0.0f, 1.0f}),
     field(fade_roughness, RangeF{0.0f, 1.0f}),
     field(denoise),
+    field(half_resolution),
 )
 BI_SREFL(
     type(BasicRenderer::PathTracingSettings),

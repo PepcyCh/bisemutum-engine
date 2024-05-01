@@ -68,6 +68,11 @@ private:
     gfx::ComputeShader rt_deferred_lighting_shader_;
     gfx::ShaderParameter rt_deferred_lighting_shader_params_;
 
+    gfx::ComputeShader simple_upscale_hit_shader_;
+    gfx::ShaderParameter simple_upscale_hit_shader_params_;
+    gfx::ComputeShader simple_upscale_color_shader_;
+    gfx::ShaderParameter simple_upscale_color_shader_params_;
+
     gfx::FragmentShader merge_reflection_shader_;
     gfx::ShaderParameter merge_reflection_shader_params_;
 
