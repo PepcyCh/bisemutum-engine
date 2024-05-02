@@ -75,6 +75,7 @@ struct DepthStencilAttachmentDesc final {
     uint8_t clear_stencil = 0;
     bool clear = false;
     bool store = true;
+    bool depth_read_only = false;
 };
 inline constexpr uint32_t max_num_render_targets = 8;
 struct RenderTargetDesc final {

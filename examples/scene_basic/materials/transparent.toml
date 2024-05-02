@@ -1,6 +1,7 @@
 blend_mode = 'translucent'
 material_function = '''surface.base_color = PARAM_base_color;
 surface.opacity = PARAM_opacity;
+surface.two_sided = true;
 '''
 surface_model = 'lit'
 

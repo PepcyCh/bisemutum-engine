@@ -47,6 +47,7 @@ struct TextureRenderTargetViewKeyD3D12 final {
     uint32_t num_layers;
     DXGI_FORMAT format;
     TextureViewType view_type;
+    bool depth_read_only;
 
     auto operator==(TextureRenderTargetViewKeyD3D12 const& rhs) const -> bool = default;
 };
@@ -78,9 +79,7 @@ struct TextureD3D12 final : Texture {
 
     auto raw_format() const -> DXGI_FORMAT;
 
-    auto get_render_target_view(
-        uint32_t level, uint32_t base_layer, uint32_t num_layers, DXGI_FORMAT format, TextureViewType view_type
-    ) -> uint64_t;
+    auto get_render_target_view(TextureRenderTargetViewKeyD3D12 const& view_desc) -> uint64_t;
 
     auto get_current_state() const -> D3D12_RESOURCE_STATES { return current_state_; }
     auto set_current_state(D3D12_RESOURCE_STATES state) -> void { current_state_ = state; }

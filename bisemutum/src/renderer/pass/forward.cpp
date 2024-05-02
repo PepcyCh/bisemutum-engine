@@ -130,7 +130,9 @@ auto ForwardTransparentPass::render(gfx::Camera const& camera, gfx::RenderGraph&
     auto [builder, pass_data] = rg.add_graphics_pass<PassData>("Forward Transparent Pass");
 
     pass_data->output = builder.use_color(0, input.color);
-    pass_data->depth = builder.use_depth_stencil(input.depth);
+    pass_data->depth = builder.use_depth_stencil(
+        gfx::GraphicsPassDepthStencilTargetBuilder{input.depth}.read_only()
+    );
 
     builder.read(input.shadow_maps.dir_lights_shadow_map);
     builder.read(input.shadow_maps.point_lights_shadow_map);

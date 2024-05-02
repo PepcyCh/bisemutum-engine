@@ -550,10 +550,14 @@ GraphicsCommandEncoderD3D12::GraphicsCommandEncoderD3D12(
         auto color_format = to_dx_format(texture_dx->desc().format);
         colors_desc[i] = D3D12_RENDER_PASS_RENDER_TARGET_DESC{
             .cpuDescriptor = {
-                texture_dx->get_render_target_view(
-                    target.texture.mip_level, target.texture.base_layer, target.texture.num_layers,
-                    color_format, TextureViewType::automatic
-                )
+                texture_dx->get_render_target_view({
+                    .level = target.texture.mip_level,
+                    .base_layer = target.texture.base_layer,
+                    .num_layers = target.texture.num_layers,
+                    .format = color_format,
+                    .view_type = TextureViewType::automatic,
+                    .depth_read_only = false,
+                })
             },
             .BeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS{
                 .Type = desc.colors[i].clear
@@ -585,10 +589,14 @@ GraphicsCommandEncoderD3D12::GraphicsCommandEncoderD3D12(
         auto depth_stencil_format = to_dx_format(texture_dx->desc().format);
         depth_stencil_desc = D3D12_RENDER_PASS_DEPTH_STENCIL_DESC{
             .cpuDescriptor = {
-                texture_dx->get_render_target_view(
-                    depth_stencil.texture.mip_level, depth_stencil.texture.base_layer, depth_stencil.texture.num_layers,
-                    depth_stencil_format, TextureViewType::automatic
-                )
+                texture_dx->get_render_target_view({
+                    .level = depth_stencil.texture.mip_level,
+                    .base_layer = depth_stencil.texture.base_layer,
+                    .num_layers = depth_stencil.texture.num_layers,
+                    .format = depth_stencil_format,
+                    .view_type = TextureViewType::automatic,
+                    .depth_read_only = depth_stencil.depth_read_only,
+                })
             },
             .DepthBeginningAccess = D3D12_RENDER_PASS_BEGINNING_ACCESS{
                 .Type = depth_stencil.clear

@@ -61,6 +61,7 @@ auto GraphicsPassDepthStencilTargetBuilder::generate_mipmaps() -> GraphicsPassDe
 }
 auto GraphicsPassDepthStencilTargetBuilder::read_only() -> GraphicsPassDepthStencilTargetBuilder& {
     target_.read_only = true;
+    target_.clear_value.reset();
     return *this;
 }
 

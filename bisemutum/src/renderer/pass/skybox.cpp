@@ -47,7 +47,7 @@ auto SkyboxPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputDa
 
     pass_data->output = builder.use_color(0, input.color);
     pass_data->depth = builder.use_depth_stencil(
-        gfx::GraphicsPassDepthStencilTargetBuilder{input.depth}//.read_only()
+        gfx::GraphicsPassDepthStencilTargetBuilder{input.depth}.read_only()
     );
 
     builder.read(input.skybox.skybox);

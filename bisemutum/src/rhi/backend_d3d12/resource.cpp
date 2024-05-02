@@ -9,7 +9,7 @@
 auto std::hash<bi::rhi::TextureRenderTargetViewKeyD3D12>::operator()(
     bi::rhi::TextureRenderTargetViewKeyD3D12 const& v
 ) const noexcept -> size_t {
-    return bi::hash(v.level, v.base_layer, v.num_layers, v.format, v.view_type);
+    return bi::hash(v.level, v.base_layer, v.num_layers, v.format, v.view_type, v.depth_read_only);
 }
 
 namespace bi::rhi {
@@ -198,81 +198,77 @@ auto TextureD3D12::raw_format() const -> DXGI_FORMAT {
     return to_dx_format(desc_.format);
 }
 
-auto TextureD3D12::get_render_target_view(
-    uint32_t level, uint32_t base_layer, uint32_t num_layers, DXGI_FORMAT format, TextureViewType view_type
-) -> uint64_t {
-    auto [view_it, create] = rtv_dsv_.try_emplace({level, base_layer, num_layers, format, view_type});
+auto TextureD3D12::get_render_target_view(TextureRenderTargetViewKeyD3D12 const& view_desc) -> uint64_t {
+    auto [view_it, create] = rtv_dsv_.try_emplace(view_desc);
     if (create) {
         auto is_color = is_color_format(desc_.format);
         auto heap = is_color ? device_->rtv_heap() : device_->dsv_heap();
         auto descriptor = heap->allocate();
+        auto view_type = view_desc.view_type;
+        if (view_type == TextureViewType::automatic) {
+            view_type = get_automatic_view_type();
+        }
         if (is_color) {
             D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{
-                .Format = format,
+                .Format = view_desc.format,
             };
-            if (view_type == TextureViewType::automatic) {
-                view_type = get_automatic_view_type();
-            }
             switch (view_type) {
                 case TextureViewType::d1:
                     rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
-                    rtv_desc.Texture1D.MipSlice = level;
+                    rtv_desc.Texture1D.MipSlice = view_desc.level;
                     break;
                 case TextureViewType::d1_array:
                     rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
-                    rtv_desc.Texture1DArray.MipSlice = level;
-                    rtv_desc.Texture1DArray.FirstArraySlice = base_layer;
-                    rtv_desc.Texture1DArray.ArraySize = num_layers;
+                    rtv_desc.Texture1DArray.MipSlice = view_desc.level;
+                    rtv_desc.Texture1DArray.FirstArraySlice = view_desc.base_layer;
+                    rtv_desc.Texture1DArray.ArraySize = view_desc.num_layers;
                     break;
                 case TextureViewType::d2:
                     rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-                    rtv_desc.Texture2D.MipSlice = level;
+                    rtv_desc.Texture2D.MipSlice = view_desc.level;
                     rtv_desc.Texture2D.PlaneSlice = 0;
                     break;
                 case TextureViewType::d2_array:
                     rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                    rtv_desc.Texture2DArray.MipSlice = level;
-                    rtv_desc.Texture2DArray.FirstArraySlice = base_layer;
-                    rtv_desc.Texture2DArray.ArraySize = num_layers;
+                    rtv_desc.Texture2DArray.MipSlice = view_desc.level;
+                    rtv_desc.Texture2DArray.FirstArraySlice = view_desc.base_layer;
+                    rtv_desc.Texture2DArray.ArraySize = view_desc.num_layers;
                     rtv_desc.Texture2DArray.PlaneSlice = 0;
                     break;
                 case TextureViewType::d3:
                     rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-                    rtv_desc.Texture3D.MipSlice = level;
-                    rtv_desc.Texture3D.FirstWSlice = base_layer;
-                    rtv_desc.Texture3D.WSize = num_layers;
+                    rtv_desc.Texture3D.MipSlice = view_desc.level;
+                    rtv_desc.Texture3D.FirstWSlice = view_desc.base_layer;
+                    rtv_desc.Texture3D.WSize = view_desc.num_layers;
                     break;
                 default: unreachable();
             }
             device_->raw()->CreateRenderTargetView(resource_.Get(), &rtv_desc, {descriptor});
         } else {
             D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{
-                .Format = format,
-                .Flags = D3D12_DSV_FLAG_NONE,
+                .Format = view_desc.format,
+                .Flags = view_desc.depth_read_only ? D3D12_DSV_FLAG_READ_ONLY_DEPTH : D3D12_DSV_FLAG_NONE,
             };
-            if (view_type == TextureViewType::automatic) {
-                view_type = get_automatic_view_type();
-            }
             switch (view_type) {
                 case TextureViewType::d1:
                     dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
-                    dsv_desc.Texture1D.MipSlice = level;
+                    dsv_desc.Texture1D.MipSlice = view_desc.level;
                     break;
                 case TextureViewType::d1_array:
                     dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
-                    dsv_desc.Texture1DArray.MipSlice = level;
-                    dsv_desc.Texture1DArray.FirstArraySlice = base_layer;
-                    dsv_desc.Texture1DArray.ArraySize = num_layers;
+                    dsv_desc.Texture1DArray.MipSlice = view_desc.level;
+                    dsv_desc.Texture1DArray.FirstArraySlice = view_desc.base_layer;
+                    dsv_desc.Texture1DArray.ArraySize = view_desc.num_layers;
                     break;
                 case TextureViewType::d2:
                     dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-                    dsv_desc.Texture2D.MipSlice = level;
+                    dsv_desc.Texture2D.MipSlice = view_desc.level;
                     break;
                 case TextureViewType::d2_array:
                     dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-                    dsv_desc.Texture2DArray.MipSlice = level;
-                    dsv_desc.Texture2DArray.FirstArraySlice = base_layer;
-                    dsv_desc.Texture2DArray.ArraySize = num_layers;
+                    dsv_desc.Texture2DArray.MipSlice = view_desc.level;
+                    dsv_desc.Texture2DArray.FirstArraySlice = view_desc.base_layer;
+                    dsv_desc.Texture2DArray.ArraySize = view_desc.num_layers;
                     break;
                 default: unreachable();
             }

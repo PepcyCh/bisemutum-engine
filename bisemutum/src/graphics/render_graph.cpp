@@ -1015,6 +1015,7 @@ auto RenderGraph::Impl::GraphicsPassNode::execute(
             },
             .clear = target.clear_value.has_value(),
             .store = target.store,
+            .depth_read_only = target.read_only,
         };
         if (target.clear_value.has_value()) {
             rt_desc.depth_stencil.value().clear_depth = target.clear_value.value().first;
