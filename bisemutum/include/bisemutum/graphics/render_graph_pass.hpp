@@ -6,6 +6,7 @@
 
 #include "handles.hpp"
 #include "render_graph_context.hpp"
+#include "mipmap_mode.hpp"
 #include "../rhi/command.hpp"
 #include "../math/math.hpp"
 #include "../prelude/ref.hpp"
@@ -41,7 +42,7 @@ struct GraphicsPassColorTarget {
     uint32_t level = 0;
     Option<float4> clear_color = {};
     bool store = true;
-    bool generate_mipmaps = false;
+    Option<MipmapMode> mipmap_mode = {};
 };
 struct GraphicsPassColorTargetBuilder final {
     GraphicsPassColorTargetBuilder(TextureHandle handle);
@@ -52,7 +53,7 @@ struct GraphicsPassColorTargetBuilder final {
     auto mip_level(uint32_t level) -> GraphicsPassColorTargetBuilder&;
     auto clear_color(float4 const& color = {0.0f, 0.0f, 0.0f, 1.0f}) -> GraphicsPassColorTargetBuilder&;
     auto dont_store() -> GraphicsPassColorTargetBuilder&;
-    auto generate_mipmaps() -> GraphicsPassColorTargetBuilder&;
+    auto generate_mipmaps(MipmapMode mode = MipmapMode::average) -> GraphicsPassColorTargetBuilder&;
 
 private:
     GraphicsPassColorTarget target_;
@@ -65,7 +66,7 @@ struct GraphicsPassDepthStencilTarget final {
     uint32_t level = 0;
     Option<std::pair<float, uint8_t>> clear_value = {};
     bool store = true;
-    bool generate_mipmaps = false;
+    Option<MipmapMode> mipmap_mode = {};
     bool read_only = false;
 };
 struct GraphicsPassDepthStencilTargetBuilder final {
@@ -77,7 +78,7 @@ struct GraphicsPassDepthStencilTargetBuilder final {
     auto mip_level(uint32_t level) -> GraphicsPassDepthStencilTargetBuilder&;
     auto clear_depth_stencil(float depth = 0.0f, uint8_t stencil = 0) -> GraphicsPassDepthStencilTargetBuilder&;
     auto dont_store() -> GraphicsPassDepthStencilTargetBuilder&;
-    auto generate_mipmaps() -> GraphicsPassDepthStencilTargetBuilder&;
+    auto generate_mipmaps(MipmapMode mode = MipmapMode::average) -> GraphicsPassDepthStencilTargetBuilder&;
     auto read_only() -> GraphicsPassDepthStencilTargetBuilder&;
 
 private:

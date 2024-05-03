@@ -93,6 +93,12 @@ struct TexturePool final {
 
 auto need_barrier(BitFlags<rhi::ResourceAccessType> from, BitFlags<rhi::ResourceAccessType> to) -> bool {
     BI_ASSERT(to != rhi::ResourceAccessType::none);
+    // if (
+    //     from == rhi::ResourceAccessType::sampled_texture_read
+    //     && to == rhi::ResourceAccessType::depth_stencil_attachment_read
+    // ) {
+    //     return false;
+    // }
     return from != to
         || (
             from.contains_any(rhi::ResourceAccessType::storage_resource_write)
@@ -115,7 +121,7 @@ struct RenderGraph::Impl final {
         auto is_pass() const -> bool { return !is_resource(); }
 
         virtual auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void {}
-        virtual auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void {}
+        virtual auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg) const -> void {}
 
         virtual auto create(RenderGraph::Impl& rg) -> void {}
         virtual auto destroy(RenderGraph::Impl& rg) -> void {}
@@ -165,21 +171,21 @@ struct RenderGraph::Impl final {
         std::any pass_data;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg) const -> void override;
     };
     struct ComputePassNode final : Node {
         ComputePassBuilder builder;
         std::any pass_data;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg) const -> void override;
     };
     struct RaytracingPassNode final : Node {
         RaytracingPassBuilder builder;
         std::any pass_data;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg) const -> void override;
     };
     struct BlitPassNode final : Node {
         TextureHandle src;
@@ -191,7 +197,7 @@ struct RenderGraph::Impl final {
         BlitPassMode mode;
 
         auto set_barriers(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph::Impl& rg) -> void override;
-        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg) const -> void override;
+        auto execute(Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg) const -> void override;
     };
     struct PresentPassNode final : Node {
         TextureHandle texture;
@@ -935,7 +941,6 @@ auto RenderGraph::Impl::GraphicsPassNode::set_barriers(
         }
     }
     if (builder.depth_stencil_target_.has_value()) {
-        // TODO - handle `read_only` correctly
         // TODO - seperate to `depth_read_only` and `stencil_read_only`
         target_access = builder.depth_stencil_target_.value().read_only
             ? rhi::ResourceAccessType::depth_stencil_attachment_read
@@ -955,7 +960,7 @@ auto RenderGraph::Impl::GraphicsPassNode::set_barriers(
     cmd_encoder->resource_barriers(buffer_barriers, texture_barriers);
 }
 auto RenderGraph::Impl::GraphicsPassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg
 ) const -> void {
     rhi::CommandLabel label{
         .label = name,
@@ -1047,7 +1052,25 @@ auto RenderGraph::Impl::GraphicsPassNode::execute(
     builder.execution_func_(&pass_data, context);
     graphics_encoder.reset();
 
-    // TODO - generate mipmaps for outputs
+    for (size_t i = 0; i < builder.color_targets_.size(); i++) {
+        auto const& target_opt = builder.color_targets_[i];
+        if (!target_opt.has_value()) { break; }
+        auto const& target = target_opt.value();
+        if (!target.mipmap_mode) { continue; }
+        auto texture = rg.impl()->pool_texture(target.handle);
+        g_engine->graphics_manager()->generate_mipmaps_2d(
+            cmd_encoder, texture.texture, *texture.p_access, target.mipmap_mode.value()
+        );
+    }
+    if (builder.depth_stencil_target_.has_value()) {
+        auto const& target = builder.depth_stencil_target_.value();
+        if (target.mipmap_mode) {
+            auto texture = rg.impl()->pool_texture(target.handle);
+            g_engine->graphics_manager()->generate_mipmaps_2d(
+                cmd_encoder, texture.texture, *texture.p_access, target.mipmap_mode.value()
+            );
+        }
+    }
 }
 
 auto RenderGraph::Impl::ComputePassNode::set_barriers(
@@ -1069,7 +1092,7 @@ auto RenderGraph::Impl::ComputePassNode::set_barriers(
     cmd_encoder->resource_barriers(buffer_barriers, texture_barriers);
 }
 auto RenderGraph::Impl::ComputePassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg
 ) const -> void {
     rhi::CommandLabel label{
         .label = name,
@@ -1106,7 +1129,7 @@ auto RenderGraph::Impl::RaytracingPassNode::set_barriers(
     cmd_encoder->resource_barriers(buffer_barriers, texture_barriers);
 }
 auto RenderGraph::Impl::RaytracingPassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg
 ) const -> void {
     rhi::CommandLabel label{
         .label = name,
@@ -1160,7 +1183,7 @@ auto RenderGraph::Impl::BlitPassNode::set_barriers(
     cmd_encoder->resource_barriers({}, texture_barriers);
 }
 auto RenderGraph::Impl::BlitPassNode::execute(
-    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph const& rg
+    Ref<rhi::CommandEncoder> cmd_encoder, RenderGraph& rg
 ) const -> void {
     switch (mode) {
         case BlitPassMode::normal:

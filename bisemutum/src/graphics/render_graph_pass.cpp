@@ -26,8 +26,8 @@ auto GraphicsPassColorTargetBuilder::dont_store() -> GraphicsPassColorTargetBuil
     target_.store = false;
     return *this;
 }
-auto GraphicsPassColorTargetBuilder::generate_mipmaps() -> GraphicsPassColorTargetBuilder& {
-    target_.generate_mipmaps = true;
+auto GraphicsPassColorTargetBuilder::generate_mipmaps(MipmapMode mode) -> GraphicsPassColorTargetBuilder& {
+    target_.mipmap_mode = mode;
     return *this;
 }
 
@@ -55,8 +55,8 @@ auto GraphicsPassDepthStencilTargetBuilder::dont_store() -> GraphicsPassDepthSte
     target_.store = false;
     return *this;
 }
-auto GraphicsPassDepthStencilTargetBuilder::generate_mipmaps() -> GraphicsPassDepthStencilTargetBuilder& {
-    target_.generate_mipmaps = true;
+auto GraphicsPassDepthStencilTargetBuilder::generate_mipmaps(MipmapMode mode) -> GraphicsPassDepthStencilTargetBuilder& {
+    target_.mipmap_mode = mode;
     return *this;
 }
 auto GraphicsPassDepthStencilTargetBuilder::read_only() -> GraphicsPassDepthStencilTargetBuilder& {

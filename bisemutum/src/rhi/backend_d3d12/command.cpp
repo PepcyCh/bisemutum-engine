@@ -73,13 +73,19 @@ auto to_dx_buffer_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_STA
     return states;
 }
 
-auto to_dx_texture_state(BitFlags<ResourceAccessType> type) -> D3D12_RESOURCE_STATES {
+auto to_dx_texture_state(BitFlags<ResourceAccessType> type, bool is_depth_stencil) -> D3D12_RESOURCE_STATES {
     auto states = D3D12_RESOURCE_STATE_COMMON;
     if (
         type.contains_any(ResourceAccessType::sampled_texture_read)
         || type.contains_any(ResourceAccessType::storage_resource_read)
     ) {
+        // if (is_depth_stencil) {
+        //     states |= D3D12_RESOURCE_STATE_DEPTH_READ;
+        // } else {
+        //     states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        // }
         states |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        if (is_depth_stencil) states |= D3D12_RESOURCE_STATE_DEPTH_READ;
     }
     if (type.contains_any(ResourceAccessType::storage_resource_write)) {
         states |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -452,11 +458,12 @@ auto CommandEncoderD3D12::resource_barriers(
     }
     for (auto const& barrier : texture_barriers) {
         auto texture_dx = barrier.texture.cast_to<TextureD3D12>();
-        auto src_states = to_dx_texture_state(barrier.src_access_type);
+        auto is_depth_stencil = is_depth_stencil_format(texture_dx->desc().format);
+        auto src_states = to_dx_texture_state(barrier.src_access_type, is_depth_stencil);
         if (barrier.src_access_type == ResourceAccessType::none) {
             src_states = texture_dx->get_current_state();
         }
-        auto dst_states = to_dx_texture_state(barrier.dst_access_type);
+        auto dst_states = to_dx_texture_state(barrier.dst_access_type, is_depth_stencil);
         texture_dx->set_current_state(dst_states);
         uint32_t subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         if (barrier.num_levels == 1 || barrier.base_layer == 1) {

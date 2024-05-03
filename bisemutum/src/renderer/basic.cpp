@@ -15,6 +15,7 @@
 #include "pass/forward.hpp"
 #include "pass/gbuffer.hpp"
 #include "pass/deferred_lighting.hpp"
+#include "pass/depth_pyramid.hpp"
 #include "pass/validate_history.hpp"
 #include "pass/ambient_occlusion.hpp"
 #include "pass/reflection.hpp"
@@ -131,6 +132,10 @@ struct BasicRenderer::Impl final {
         }
 
         if (pipeline_mode != PipelineMode::path_tracing) {
+            auto depth_pramid = depth_pyramid_pass.render(camera, rg, {
+                .depth = depth,
+            });
+
             auto skybox_output = skybox_pass.render(camera, rg, {
                 .color = color,
                 .depth = depth,
@@ -205,6 +210,7 @@ struct BasicRenderer::Impl final {
 
     PathTracingPass path_tracing_pass;
 
+    DepthPyramidPass depth_pyramid_pass;
     ValidateHistoryPass validate_history_pass;
 
     AmbientOcclusionPass ambient_occlusion_pass;

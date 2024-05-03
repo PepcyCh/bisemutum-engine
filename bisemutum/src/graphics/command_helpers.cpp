@@ -435,6 +435,7 @@ auto CommandHelpers::get_mipmap_pipeline(Ref<Texture> dst_texture, MipmapMode mo
             .push_constants = push_constants,
             .depth_stencil_state = {
                 .format = key.first,
+                .depth_test = false,
             },
             .shaders = {
                 .vertex = {mipmap_vs_.value(), "mipmap_vs"},

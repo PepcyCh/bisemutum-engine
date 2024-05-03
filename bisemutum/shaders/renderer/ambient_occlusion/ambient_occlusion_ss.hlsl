@@ -10,7 +10,7 @@
 #include <bisemutum/shaders/core/shader_params/fragment.hlsl>
 
 float4 ambient_occlusion_ss_fs(VertexAttributesOutput fin) : SV_Target {
-    float depth = depth_tex.Sample(input_sampler, fin.texcoord).x;
+    float depth = depth_tex.SampleLevel(input_sampler, fin.texcoord, 0).x;
     if (is_depth_background(depth)) {
         return float4(1.0, 0.0, 0.0, 0.0);
     }
