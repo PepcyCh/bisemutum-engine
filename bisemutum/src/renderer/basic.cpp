@@ -132,7 +132,7 @@ struct BasicRenderer::Impl final {
         }
 
         if (pipeline_mode != PipelineMode::path_tracing) {
-            auto depth_pramid = depth_pyramid_pass.render(camera, rg, {
+            auto depth_pyramid = depth_pyramid_pass.render(camera, rg, {
                 .depth = depth,
             });
 
@@ -166,7 +166,7 @@ struct BasicRenderer::Impl final {
                     color = reflection_pass.render(camera, rg, {
                         .color = color,
                         .velocity = velocity,
-                        .depth = depth,
+                        .depth = depth_pyramid,
                         .gbuffer = gbuffer,
                         .history_validation = history_validation,
                         .shadow_maps = shadow_maps,

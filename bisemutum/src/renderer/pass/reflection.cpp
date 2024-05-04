@@ -17,6 +17,43 @@ constexpr rhi::ResourceFormat reflection_tex_format = rhi::ResourceFormat::rgba1
 constexpr rhi::ResourceFormat positions_tex_format = rhi::ResourceFormat::rgba32_sfloat;
 constexpr rhi::ResourceFormat directions_tex_format = rhi::ResourceFormat::rgba16_sfloat;
 
+BI_SHADER_PARAMETERS_BEGIN(SsrPassParams)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER(float, max_roughness)
+    BI_SHADER_PARAMETER(float, ssr_thickness)
+    BI_SHADER_PARAMETER(uint, max_num_iterations)
+    BI_SHADER_PARAMETER(uint, pyramid_max_level)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, normal_roughness_tex)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, hit_uvz_pdf_tex, reflection_tex_format)
+BI_SHADER_PARAMETERS_END()
+
+struct SsrPassData final {
+    gfx::TextureHandle depth_tex;
+    gfx::TextureHandle normal_roughness_tex;
+    gfx::TextureHandle hit_uvz_pdf_tex;
+};
+
+BI_SHADER_PARAMETERS_BEGIN(SsSpatialFilterPassParams)
+    BI_SHADER_PARAMETER(uint2, tex_size)
+    BI_SHADER_PARAMETER(float, fade_roughness)
+    BI_SHADER_PARAMETER(float, max_roughness)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, color_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, depth_tex)
+    BI_SHADER_PARAMETER_SRV_TEXTURE_ARRAY(Texture2D, gbuffer_textures, [GBufferTextures::count])
+    BI_SHADER_PARAMETER_SAMPLER(SamplerState, gbuffer_sampler)
+    BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, hit_uvz_pdf_tex)
+    BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float4>, reflection_tex, reflection_tex_format)
+BI_SHADER_PARAMETERS_END()
+
+struct SsSpatialFilterPassData final {
+    GBufferTextures gbuffer;
+    gfx::TextureHandle color_tex;
+    gfx::TextureHandle depth_tex;
+    gfx::TextureHandle hit_uvz_pdf_tex;
+    gfx::TextureHandle reflection_tex;
+};
+
 BI_SHADER_PARAMETERS_BEGIN(DirectionSamplePassParams)
     BI_SHADER_PARAMETER(float, fade_roughness)
     BI_SHADER_PARAMETER(float, max_roughness)
@@ -123,7 +160,15 @@ struct MergePassData final {
 }
 
 ReflectionPass::ReflectionPass() {
-    // TODO - SSR
+    screen_space_shader_params_.initialize<SsrPassParams>();
+    screen_space_shader_.source.path = "/bisemutum/shaders/renderer/reflection/reflection_ss.hlsl";
+    screen_space_shader_.source.entry = "reflection_ss_cs";
+    screen_space_shader_.set_shader_params_struct<SsrPassParams>();
+
+    ss_spatial_filter_shader_params_.initialize<SsSpatialFilterPassParams>();
+    ss_spatial_filter_shader_.source.path = "/bisemutum/shaders/renderer/reflection/spatial_filter.hlsl";
+    ss_spatial_filter_shader_.source.entry = "ssr_spatial_filter_cs";
+    ss_spatial_filter_shader_.set_shader_params_struct<SsSpatialFilterPassParams>();
 
     if (g_engine->graphics_manager()->device()->properties().raytracing_pipeline) {
         rt_direction_sample_shader_params_.initialize<DirectionSamplePassParams>();
@@ -201,8 +246,6 @@ auto ReflectionPass::render(
         mode = BasicRenderer::ReflectionSettings::Mode::screen_space;
     }
 
-    // TODO - half resolution reflection
-
     switch (settings.mode) {
         case BasicRenderer::ReflectionSettings::Mode::screen_space:
             reflection_tex = render_screen_space(camera, rg, input, settings);
@@ -225,8 +268,90 @@ auto ReflectionPass::render_screen_space(
     gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
     BasicRenderer::ReflectionSettings const& settings
 ) -> gfx::TextureHandle {
-    // TODO - SSR
-    return gfx::TextureHandle::invalid;
+    auto width = camera.target_texture().desc().extent.width;
+    auto height = camera.target_texture().desc().extent.height;
+
+    // TODO - half resolution SSR
+    // auto rfl_width = settings.half_resolution ? (width + 1) / 2 : width;
+    // auto rfl_height = settings.half_resolution ? (height + 1) / 2 : height;
+    auto rfl_width = width;
+    auto rfl_height = height;
+
+    auto reflection_tex = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(reflection_tex_format, rfl_width, rfl_height)
+            .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+    });
+    auto hit_uvz_pdf_tex = rg.add_texture([rfl_width, rfl_height](gfx::TextureBuilder& builder) {
+        builder
+            .dim_2d(reflection_tex_format, rfl_width, rfl_height)
+            .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
+    });
+
+    {
+        auto [builder, pass_data] = rg.add_compute_pass<SsrPassData>("SSR Trace");
+
+        pass_data->depth_tex = builder.read(input.depth);
+        pass_data->normal_roughness_tex = builder.read(input.gbuffer.normal_roughness);
+        pass_data->hit_uvz_pdf_tex = builder.write(hit_uvz_pdf_tex);
+
+        builder.set_execution_function<SsrPassData>(
+            [this, &camera, &settings, rfl_width, rfl_height](CRef<SsrPassData> pass_data, gfx::ComputePassContext const& ctx) {
+                auto params = screen_space_shader_params_.mutable_typed_data<SsrPassParams>();
+                params->tex_size = {rfl_width, rfl_height};
+                params->max_roughness = settings.max_roughness;
+                params->ssr_thickness = 0.0001f;
+                auto depth_tex = ctx.rg->texture(pass_data->depth_tex);
+                params->pyramid_max_level = (depth_tex->desc().levels + 1) / 2;
+                params->max_num_iterations = 32;
+                params->depth_tex = {depth_tex};
+                params->normal_roughness_tex = {ctx.rg->texture(pass_data->normal_roughness_tex)};
+                params->hit_uvz_pdf_tex = {ctx.rg->texture(pass_data->hit_uvz_pdf_tex)};
+                screen_space_shader_params_.update_uniform_buffer();
+                ctx.dispatch(
+                    camera, screen_space_shader_, screen_space_shader_params_,
+                    ceil_div(rfl_width, 16u), ceil_div(rfl_height, 16u)
+                );
+            }
+        );
+    }
+
+    {
+        auto [builder, pass_data] = rg.add_compute_pass<SsSpatialFilterPassData>("SSR Spatial Filter");
+
+        pass_data->color_tex = builder.read(input.color);
+        pass_data->depth_tex = builder.read(input.depth);
+        pass_data->gbuffer = input.gbuffer.read(builder);
+        pass_data->hit_uvz_pdf_tex = builder.read(hit_uvz_pdf_tex);
+        pass_data->reflection_tex = builder.write(reflection_tex);
+
+        builder.set_execution_function<SsSpatialFilterPassData>(
+            [this, &camera, &settings, rfl_width, rfl_height](CRef<SsSpatialFilterPassData> pass_data, gfx::ComputePassContext const& ctx) {
+                auto params = ss_spatial_filter_shader_params_.mutable_typed_data<SsSpatialFilterPassParams>();
+                params->tex_size = {rfl_width, rfl_height};
+                params->max_roughness = settings.max_roughness;
+                params->fade_roughness = settings.fade_roughness;
+                params->color_tex = {ctx.rg->texture(pass_data->color_tex)};
+                params->depth_tex = {ctx.rg->texture(pass_data->depth_tex)};
+                params->gbuffer_textures[0] = {ctx.rg->texture(pass_data->gbuffer.base_color)};
+                params->gbuffer_textures[1] = {ctx.rg->texture(pass_data->gbuffer.normal_roughness)};
+                params->gbuffer_textures[2] = {ctx.rg->texture(pass_data->gbuffer.fresnel)};
+                params->gbuffer_textures[3] = {ctx.rg->texture(pass_data->gbuffer.material_0)};
+                params->gbuffer_sampler = {pass_data->gbuffer.get_sampler()};
+                params->hit_uvz_pdf_tex = {ctx.rg->texture(pass_data->hit_uvz_pdf_tex)};
+                params->reflection_tex = {ctx.rg->texture(pass_data->reflection_tex)};
+                ss_spatial_filter_shader_params_.update_uniform_buffer();
+                ctx.dispatch(
+                    camera, ss_spatial_filter_shader_, ss_spatial_filter_shader_params_,
+                    ceil_div(rfl_width, 16u), ceil_div(rfl_height, 16u)
+                );
+            }
+        );
+    }
+
+    // TODO - SSR denoise
+
+    return reflection_tex;
 }
 
 auto ReflectionPass::render_raytraced(
@@ -449,7 +574,7 @@ auto ReflectionPass::render_denoise(
     BasicRenderer::ReflectionSettings const& settings,
     gfx::TextureHandle reflection_tex
 ) -> gfx::TextureHandle {
-    if (settings.denoise) {
+    if (settings.denoise && settings.mode == BasicRenderer::ReflectionSettings::Mode::raytraced) {
         return reblur_pass_.render(camera, rg, {
             .velocity = input.velocity,
             .depth = input.depth,

@@ -56,8 +56,11 @@ private:
         gfx::TextureHandle color_tex, gfx::TextureHandle reflection_tex
     ) -> gfx::TextureHandle;
 
-    gfx::FragmentShader screen_space_shader_;
+    gfx::ComputeShader screen_space_shader_;
     gfx::ShaderParameter screen_space_shader_params_;
+
+    gfx::ComputeShader ss_spatial_filter_shader_;
+    gfx::ShaderParameter ss_spatial_filter_shader_params_;
 
     gfx::ComputeShader rt_direction_sample_shader_;
     gfx::ShaderParameter rt_direction_sample_shader_params_;

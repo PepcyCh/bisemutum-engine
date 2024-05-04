@@ -33,9 +33,19 @@ float get_linear_01_depth(float depth, float4x4 inv_proj) {
     const float b = inv_proj[3].w;
     return (1.0 - depth) * b / (a * depth + b);
 }
+float get_ndc_depth_from_linear_01_depth(float linear_depth, float4x4 inv_proj) {
+    const float a = inv_proj[3].z;
+    const float b = inv_proj[3].w;
+    return (1.0 - linear_depth) * b / (a * linear_depth + b);
+}
 
 float get_linear_depth(float depth, float4x4 inv_proj) {
     const float a = inv_proj[3].z;
     const float b = inv_proj[3].w;
     return 1.0 / (a * depth + b);
+}
+float get_ndc_depth_from_linear_depth(float linear_depth, float4x4 inv_proj) {
+    const float a = inv_proj[3].z;
+    const float b = inv_proj[3].w;
+    return (1.0 - b) / (a * linear_depth);
 }

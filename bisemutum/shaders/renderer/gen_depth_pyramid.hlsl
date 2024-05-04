@@ -22,6 +22,10 @@ void safe_image_store(RWTexture2D<float> out_tex, float value, uint2 pixel_coord
     }
 }
 
+float nearest_depth_of(float d0, float d1, float d2, float d3) {
+    return max(max(d0, d1), max(d2, d3));
+}
+
 groupshared float s_intermediate[16][16];
 
 [numthreads(256, 1, 1)]
@@ -45,28 +49,28 @@ void gen_depth_pyramid_cs(
     float d01 = safe_texel_fetch(pixel_coord_0 + uint2(1, 0));
     float d02 = safe_texel_fetch(pixel_coord_0 + uint2(0, 1));
     float d03 = safe_texel_fetch(pixel_coord_0 + uint2(1, 1));
-    float d0m = min(min(d00, d01), min(d02, d03));
+    float d0m = nearest_depth_of(d00, d01, d02, d03);
 
     const uint2 pixel_coord_1 = pixel_coord_0 + uint2(32, 0);
     float d10 = safe_texel_fetch(pixel_coord_1);
     float d11 = safe_texel_fetch(pixel_coord_1 + uint2(1, 0));
     float d12 = safe_texel_fetch(pixel_coord_1 + uint2(0, 1));
     float d13 = safe_texel_fetch(pixel_coord_1 + uint2(1, 1));
-    float d1m = min(min(d10, d11), min(d12, d13));
+    float d1m = nearest_depth_of(d10, d11, d12, d13);
 
     const uint2 pixel_coord_2 = pixel_coord_0 + uint2(0, 32);
     float d20 = safe_texel_fetch(pixel_coord_2);
     float d21 = safe_texel_fetch(pixel_coord_2 + uint2(1, 0));
     float d22 = safe_texel_fetch(pixel_coord_2 + uint2(0, 1));
     float d23 = safe_texel_fetch(pixel_coord_2 + uint2(1, 1));
-    float d2m = min(min(d20, d21), min(d22, d23));
+    float d2m = nearest_depth_of(d20, d21, d22, d23);
 
     const uint2 pixel_coord_3 = pixel_coord_0 + uint2(32, 32);
     float d30 = safe_texel_fetch(pixel_coord_3);
     float d31 = safe_texel_fetch(pixel_coord_3 + uint2(1, 0));
     float d32 = safe_texel_fetch(pixel_coord_3 + uint2(0, 1));
     float d33 = safe_texel_fetch(pixel_coord_3 + uint2(1, 1));
-    float d3m = min(min(d30, d31), min(d32, d33));
+    float d3m = nearest_depth_of(d30, d31, d32, d33);
 
 #if FROM_DEPTH_TEXTURE
     safe_image_store(out_depth_tex[0], d00, pixel_coord_0, tex_size);
@@ -100,25 +104,25 @@ void gen_depth_pyramid_cs(
     d01 = WaveReadLaneAt(d0m, quad_index | 1);
     d02 = WaveReadLaneAt(d0m, quad_index | 2);
     d03 = WaveReadLaneAt(d0m, quad_index | 3);
-    d0m = min(min(d00, d01), min(d02, d03));
+    d0m = nearest_depth_of(d00, d01, d02, d03);
 
     d10 = WaveReadLaneAt(d1m, quad_index);
     d11 = WaveReadLaneAt(d1m, quad_index | 1);
     d12 = WaveReadLaneAt(d1m, quad_index | 2);
     d13 = WaveReadLaneAt(d1m, quad_index | 3);
-    d1m = min(min(d10, d11), min(d12, d13));
+    d1m = nearest_depth_of(d10, d11, d12, d13);
 
     d20 = WaveReadLaneAt(d2m, quad_index);
     d21 = WaveReadLaneAt(d2m, quad_index | 1);
     d22 = WaveReadLaneAt(d2m, quad_index | 2);
     d23 = WaveReadLaneAt(d2m, quad_index | 3);
-    d2m = min(min(d20, d21), min(d22, d23));
+    d2m = nearest_depth_of(d20, d21, d22, d23);
 
     d30 = WaveReadLaneAt(d3m, quad_index);
     d31 = WaveReadLaneAt(d3m, quad_index | 1);
     d32 = WaveReadLaneAt(d3m, quad_index | 2);
     d33 = WaveReadLaneAt(d3m, quad_index | 3);
-    d3m = min(min(d30, d31), min(d32, d33));
+    d3m = nearest_depth_of(d30, d31, d32, d33);
 
     if ((local_index & 3) == 0) {
         safe_image_store(out_depth_tex[OUT_BASE + 1], d0m, pixel_coord_0 >> 2, tex_size >> 2);
@@ -141,7 +145,7 @@ void gen_depth_pyramid_cs(
     float d1 = WaveReadLaneAt(dt, quad_index | 1);
     float d2 = WaveReadLaneAt(dt, quad_index | 2);
     float d3 = WaveReadLaneAt(dt, quad_index | 3);
-    float dm = min(min(d0, d1), min(d2, d3));
+    float dm = nearest_depth_of(d0, d1, d2, d3);
     if ((local_index & 3) == 0) {
         safe_image_store(out_depth_tex[OUT_BASE + 2], dm, group_index * 8 + uint2(local_x / 2, local_y / 2), tex_size >> 3);
         s_intermediate[local_x][local_y] = dm;
@@ -158,7 +162,7 @@ void gen_depth_pyramid_cs(
         d1 = WaveReadLaneAt(dt, quad_index | 1);
         d2 = WaveReadLaneAt(dt, quad_index | 2);
         d3 = WaveReadLaneAt(dt, quad_index | 3);
-        dm = min(min(d0, d1), min(d2, d3));
+        dm = nearest_depth_of(d0, d1, d2, d3);
         if ((local_index & 3) == 0) {
             safe_image_store(out_depth_tex[OUT_BASE + 3], dm, group_index * 4 + uint2(local_x / 2, local_y / 2), tex_size >> 4);
             s_intermediate[local_x * 2][local_y * 2] = dm;
@@ -176,7 +180,7 @@ void gen_depth_pyramid_cs(
         d1 = WaveReadLaneAt(dt, quad_index | 1);
         d2 = WaveReadLaneAt(dt, quad_index | 2);
         d3 = WaveReadLaneAt(dt, quad_index | 3);
-        dm = min(min(d0, d1), min(d2, d3));
+        dm = nearest_depth_of(d0, d1, d2, d3);
         if ((local_index & 3) == 0) {
             safe_image_store(out_depth_tex[OUT_BASE + 4], dm, group_index * 2 + uint2(local_x / 2, local_y / 2), tex_size >> 5);
             s_intermediate[local_x * 4][local_y * 4] = dm;
@@ -194,7 +198,7 @@ void gen_depth_pyramid_cs(
         d1 = WaveReadLaneAt(dt, quad_index | 1);
         d2 = WaveReadLaneAt(dt, quad_index | 2);
         d3 = WaveReadLaneAt(dt, quad_index | 3);
-        dm = min(min(d0, d1), min(d2, d3));
+        dm = nearest_depth_of(d0, d1, d2, d3);
         if ((local_index & 3) == 0) {
             safe_image_store(out_depth_tex[OUT_BASE + 5], dm, group_index + uint2(local_x / 2, local_y / 2), tex_size >> 6);
         }

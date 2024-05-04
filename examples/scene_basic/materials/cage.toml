@@ -2,6 +2,7 @@ blend_mode = 'alpha_test'
 material_function = '''float4 value = PARAM_cage_tex.Sample(PARAM_cage_tex_sampler, vertex.texcoord);
 surface.base_color = value.xyz;
 surface.opacity = value.w < 0.5 ? 0.0 : 1.0;
+surface.two_sided = true;
 '''
 surface_model = 'lit'
 
