@@ -10,7 +10,8 @@
 
 float safe_texel_fetch(int2 pixel_coord) {
 #if FROM_DEPTH_TEXTURE
-    return in_depth_tex.Load(int3(clamp(pixel_coord, 0, tex_size - 1), 0)).x;
+    // return in_depth_tex.Load(int3(clamp(pixel_coord, 0, tex_size - 1), 0)).x;
+    return in_depth_tex.SampleLevel(depth_sampler, (pixel_coord + 0.5) / tex_size, 0).x;
 #else
     return in_depth_tex[clamp(pixel_coord, 0, tex_size - 1)];
 #endif
@@ -100,28 +101,28 @@ void gen_depth_pyramid_cs(
 
     // level 2
 
-    d00 = WaveReadLaneAt(d0m, quad_index);
-    d01 = WaveReadLaneAt(d0m, quad_index | 1);
-    d02 = WaveReadLaneAt(d0m, quad_index | 2);
-    d03 = WaveReadLaneAt(d0m, quad_index | 3);
+    d00 = QuadReadLaneAt(d0m, quad_index);
+    d01 = QuadReadLaneAt(d0m, quad_index | 1);
+    d02 = QuadReadLaneAt(d0m, quad_index | 2);
+    d03 = QuadReadLaneAt(d0m, quad_index | 3);
     d0m = nearest_depth_of(d00, d01, d02, d03);
 
-    d10 = WaveReadLaneAt(d1m, quad_index);
-    d11 = WaveReadLaneAt(d1m, quad_index | 1);
-    d12 = WaveReadLaneAt(d1m, quad_index | 2);
-    d13 = WaveReadLaneAt(d1m, quad_index | 3);
+    d10 = QuadReadLaneAt(d1m, quad_index);
+    d11 = QuadReadLaneAt(d1m, quad_index | 1);
+    d12 = QuadReadLaneAt(d1m, quad_index | 2);
+    d13 = QuadReadLaneAt(d1m, quad_index | 3);
     d1m = nearest_depth_of(d10, d11, d12, d13);
 
-    d20 = WaveReadLaneAt(d2m, quad_index);
-    d21 = WaveReadLaneAt(d2m, quad_index | 1);
-    d22 = WaveReadLaneAt(d2m, quad_index | 2);
-    d23 = WaveReadLaneAt(d2m, quad_index | 3);
+    d20 = QuadReadLaneAt(d2m, quad_index);
+    d21 = QuadReadLaneAt(d2m, quad_index | 1);
+    d22 = QuadReadLaneAt(d2m, quad_index | 2);
+    d23 = QuadReadLaneAt(d2m, quad_index | 3);
     d2m = nearest_depth_of(d20, d21, d22, d23);
 
-    d30 = WaveReadLaneAt(d3m, quad_index);
-    d31 = WaveReadLaneAt(d3m, quad_index | 1);
-    d32 = WaveReadLaneAt(d3m, quad_index | 2);
-    d33 = WaveReadLaneAt(d3m, quad_index | 3);
+    d30 = QuadReadLaneAt(d3m, quad_index);
+    d31 = QuadReadLaneAt(d3m, quad_index | 1);
+    d32 = QuadReadLaneAt(d3m, quad_index | 2);
+    d33 = QuadReadLaneAt(d3m, quad_index | 3);
     d3m = nearest_depth_of(d30, d31, d32, d33);
 
     if ((local_index & 3) == 0) {
@@ -141,10 +142,10 @@ void gen_depth_pyramid_cs(
 
     GroupMemoryBarrierWithGroupSync();
     float dt = s_intermediate[local_x][local_y];
-    float d0 = WaveReadLaneAt(dt, quad_index);
-    float d1 = WaveReadLaneAt(dt, quad_index | 1);
-    float d2 = WaveReadLaneAt(dt, quad_index | 2);
-    float d3 = WaveReadLaneAt(dt, quad_index | 3);
+    float d0 = QuadReadLaneAt(dt, quad_index);
+    float d1 = QuadReadLaneAt(dt, quad_index | 1);
+    float d2 = QuadReadLaneAt(dt, quad_index | 2);
+    float d3 = QuadReadLaneAt(dt, quad_index | 3);
     float dm = nearest_depth_of(d0, d1, d2, d3);
     if ((local_index & 3) == 0) {
         safe_image_store(out_depth_tex[OUT_BASE + 2], dm, group_index * 8 + uint2(local_x / 2, local_y / 2), tex_size >> 3);
@@ -158,10 +159,10 @@ void gen_depth_pyramid_cs(
     GroupMemoryBarrierWithGroupSync();
     if (local_index < 64) {
         dt = s_intermediate[local_x * 2][local_y * 2];
-        d0 = WaveReadLaneAt(dt, quad_index);
-        d1 = WaveReadLaneAt(dt, quad_index | 1);
-        d2 = WaveReadLaneAt(dt, quad_index | 2);
-        d3 = WaveReadLaneAt(dt, quad_index | 3);
+        d0 = QuadReadLaneAt(dt, quad_index);
+        d1 = QuadReadLaneAt(dt, quad_index | 1);
+        d2 = QuadReadLaneAt(dt, quad_index | 2);
+        d3 = QuadReadLaneAt(dt, quad_index | 3);
         dm = nearest_depth_of(d0, d1, d2, d3);
         if ((local_index & 3) == 0) {
             safe_image_store(out_depth_tex[OUT_BASE + 3], dm, group_index * 4 + uint2(local_x / 2, local_y / 2), tex_size >> 4);
@@ -176,10 +177,10 @@ void gen_depth_pyramid_cs(
     GroupMemoryBarrierWithGroupSync();
     if (local_index < 16) {
         dt = s_intermediate[local_x * 4][local_y * 4];
-        d0 = WaveReadLaneAt(dt, quad_index);
-        d1 = WaveReadLaneAt(dt, quad_index | 1);
-        d2 = WaveReadLaneAt(dt, quad_index | 2);
-        d3 = WaveReadLaneAt(dt, quad_index | 3);
+        d0 = QuadReadLaneAt(dt, quad_index);
+        d1 = QuadReadLaneAt(dt, quad_index | 1);
+        d2 = QuadReadLaneAt(dt, quad_index | 2);
+        d3 = QuadReadLaneAt(dt, quad_index | 3);
         dm = nearest_depth_of(d0, d1, d2, d3);
         if ((local_index & 3) == 0) {
             safe_image_store(out_depth_tex[OUT_BASE + 4], dm, group_index * 2 + uint2(local_x / 2, local_y / 2), tex_size >> 5);
@@ -194,10 +195,10 @@ void gen_depth_pyramid_cs(
     GroupMemoryBarrierWithGroupSync();
     if (local_index < 4) {
         dt = s_intermediate[local_x * 8][local_y * 8];
-        d0 = WaveReadLaneAt(dt, quad_index);
-        d1 = WaveReadLaneAt(dt, quad_index | 1);
-        d2 = WaveReadLaneAt(dt, quad_index | 2);
-        d3 = WaveReadLaneAt(dt, quad_index | 3);
+        d0 = QuadReadLaneAt(dt, quad_index);
+        d1 = QuadReadLaneAt(dt, quad_index | 1);
+        d2 = QuadReadLaneAt(dt, quad_index | 2);
+        d3 = QuadReadLaneAt(dt, quad_index | 3);
         dm = nearest_depth_of(d0, d1, d2, d3);
         if ((local_index & 3) == 0) {
             safe_image_store(out_depth_tex[OUT_BASE + 5], dm, group_index + uint2(local_x / 2, local_y / 2), tex_size >> 6);

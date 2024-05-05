@@ -20,6 +20,8 @@ private:
 
     gfx::ComputeShader depth_pyramid_shader_2_;
     gfx::ShaderParameter depth_pyramid_shader_2_params_;
+
+    Ptr<gfx::Sampler> sampler_;
 };
 
 }

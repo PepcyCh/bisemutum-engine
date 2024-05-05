@@ -105,7 +105,7 @@ name = 'Transparent Cube'
         [objects.components.value]
         rotation = [ 0.0, 30.000001907348633, 0.0 ]
         scaling = [ 1.0, 1.0, 1.0 ]
-        translation = [ 2.5, 0.0, 2.5 ]
+        translation = [ 2.5, 0.01, 2.5 ]
 
     [[objects.components]]
     type = 'StaticMeshComponent'

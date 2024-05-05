@@ -16,6 +16,7 @@ struct ReflectionPass final {
         gfx::TextureHandle color;
         gfx::TextureHandle velocity;
         gfx::TextureHandle depth;
+        gfx::TextureHandle depth_pyramid;
         GBufferTextures gbuffer;
         gfx::TextureHandle history_validation;
 
@@ -38,12 +39,16 @@ private:
     auto render_screen_space(
         gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
         BasicRenderer::ReflectionSettings const& settings
-    ) -> gfx::TextureHandle;
+    ) -> void;
 
     auto render_raytraced(
         gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
         BasicRenderer::ReflectionSettings const& settings
-    ) -> gfx::TextureHandle;
+    ) -> void;
+
+    auto render_upscale(
+        gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input
+    ) -> void;
 
     auto render_denoise(
         gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input,
@@ -58,9 +63,6 @@ private:
 
     gfx::ComputeShader screen_space_shader_;
     gfx::ShaderParameter screen_space_shader_params_;
-
-    gfx::ComputeShader ss_spatial_filter_shader_;
-    gfx::ShaderParameter ss_spatial_filter_shader_params_;
 
     gfx::ComputeShader rt_direction_sample_shader_;
     gfx::ShaderParameter rt_direction_sample_shader_params_;
@@ -83,6 +85,7 @@ private:
 
     std::unordered_map<gfx::Camera const*, uint64_t> last_frame_counts_;
 
+    gfx::TextureHandle reflection_tex_;
     gfx::TextureHandle hit_positions_tex_;
 
     ReblurPass reblur_pass_;

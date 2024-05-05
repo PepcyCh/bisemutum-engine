@@ -166,7 +166,8 @@ struct BasicRenderer::Impl final {
                     color = reflection_pass.render(camera, rg, {
                         .color = color,
                         .velocity = velocity,
-                        .depth = depth_pyramid,
+                        .depth = depth,
+                        .depth_pyramid = depth_pyramid,
                         .gbuffer = gbuffer,
                         .history_validation = history_validation,
                         .shadow_maps = shadow_maps,

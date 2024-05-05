@@ -21,7 +21,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Rect light via LTC (anisotropic GGX)
   * Skybox & IBL
   * SSAO & RTAO (can be rendered in full or half resolution)
-  * RTR (can be rendered in full or half resolution)
+  * SSR & RTR (can be rendered in full or half resolution), denoised with implemented ReBLUR
   * Bloom
   * Reverse-Z
 * Core
@@ -42,7 +42,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Stochastic screen space reflection
+* DDGI
 * Basic material editor
 * Basic resource browser
 
@@ -51,6 +51,10 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 Path traced Sponza
 
 ![](./images/gallary-pt.png)
+
+Screen space reflection
+
+![](./images/gallary-ssr.png)
 
 Raytraced reflection
 
