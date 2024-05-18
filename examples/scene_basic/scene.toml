@@ -210,7 +210,6 @@ name = 'Renderer Override'
     type = 'BasicRendererOverrideVolume'
 
         [objects.components.value]
-        global = true
         priority = 0.0
 
             [objects.components.value.settings]

@@ -134,14 +134,14 @@ BI_SREFL(
 struct BasicRendererOverrideVolume final {
     static constexpr std::string_view component_type_name = "BasicRendererOverrideVolume";
 
-    bool global{true};
+    // For volume componnet
+    static constexpr bool global{true};
     float priority{0.0f};
 
     BasicRenderer::Settings settings;
 };
 BI_SREFL(
     type(BasicRendererOverrideVolume),
-    field(global),
     field(priority, RangeF{}),
     field(settings),
 )

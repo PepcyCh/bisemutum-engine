@@ -1,7 +1,7 @@
 #pragma once
 
 #include <bisemutum/graphics/render_graph.hpp>
-#include <bisemutum/scene_basic/post_process_volume.hpp>
+#include <bisemutum/renderer/post_process_volume.hpp>
 
 namespace bi {
 
