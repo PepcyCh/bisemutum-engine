@@ -29,6 +29,11 @@ SurfaceData surface_data_default() {
     surface.two_sided = false;
     return surface;
 }
+SurfaceData surface_data_diffuse(float3 base_color) {
+    SurfaceData surface = surface_data_default();
+    surface.base_color = base_color;
+    return surface;
+}
 
 #define ALPHA_TEST_OPACITY_THRESHOLD 0.01
 
