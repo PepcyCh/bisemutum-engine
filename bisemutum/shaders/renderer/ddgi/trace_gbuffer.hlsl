@@ -17,10 +17,10 @@ void ddgi_trace_gbuffer_rgen() {
         (probe_index_linear / DDGI_PROBES_SIZE) % DDGI_PROBES_SIZE,
         probe_index_linear / DDGI_PROBES_SIZE / DDGI_PROBES_SIZE
     );
-    float3 probe_center = probe_base_position
-        + probe_index.x * probe_extent_x / (DDGI_PROBES_SIZE - 1) * probe_frame_x
-        + probe_index.y * probe_extent_y / (DDGI_PROBES_SIZE - 1) * probe_frame_y
-        + probe_index.z * probe_extent_z / (DDGI_PROBES_SIZE - 1) * probe_frame_z;
+    float3 probe_center = volume_base_position
+        + probe_index.x * volume_extent_x / (DDGI_PROBES_SIZE - 1) * volume_frame_x
+        + probe_index.y * volume_extent_y / (DDGI_PROBES_SIZE - 1) * volume_frame_y
+        + probe_index.z * volume_extent_z / (DDGI_PROBES_SIZE - 1) * volume_frame_z;
 
     uint rng_seed = rng_tea(probe_index_linear, frame_index);
     uint rand_index = (uint(rng_next(rng_seed) * DDGI_SAMPLE_RANDOM_SIZE) + ray_index) % DDGI_SAMPLE_RANDOM_SIZE;
@@ -38,7 +38,7 @@ void ddgi_trace_gbuffer_rgen() {
     gbuffer.opacity_random = gen_opacity_random_for(probe_center, ray_dir);
     TraceRay(scene_accel, RAY_FLAG_NONE, 0xff, 0, 0, 0, ray, gbuffer);
 
-    uint2 output_coord = uint2(ray_index, probe_index_linear)
+    uint2 output_coord = uint2(ray_index, probe_index_linear);
     if (gbuffer.hit_t > 0.0) {
         probe_gbuffer_base_color[output_coord] = gbuffer.gbuffer.base_color;
         probe_gbuffer_normal_roughness[output_coord] = gbuffer.gbuffer.normal_roughness;

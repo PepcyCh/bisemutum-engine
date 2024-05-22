@@ -3,6 +3,8 @@
 #include <bisemutum/graphics/render_graph.hpp>
 
 #include "../context/ddgi.hpp"
+#include "../context/lights.hpp"
+#include "../context/skybox.hpp"
 
 namespace bi {
 
@@ -12,6 +14,10 @@ struct DdgiUpdatePass final {
     };
 
     DdgiUpdatePass();
+
+    auto update_params(
+        DdgiContext& ddgi_ctx, LightsContext& lights_ctx, SkyboxContext& skybox_ctx
+    ) -> void;
 
     auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
 

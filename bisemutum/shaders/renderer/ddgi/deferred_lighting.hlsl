@@ -14,17 +14,17 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     uint probe_index_linear = global_thread_id.x;
     uint ray_index = global_thread_id.y;
     if (probe_index_linear >= DDGI_PROBES_COUNT || ray_index >= DDGI_NUM_RAYS_PER_PROBE) { return; }
-    uint2 output_coord = uint2(ray_index, probe_index_linear)
+    uint2 output_coord = uint2(ray_index, probe_index_linear);
 
     uint3 probe_index = uint3(
         probe_index_linear % DDGI_PROBES_SIZE,
         (probe_index_linear / DDGI_PROBES_SIZE) % DDGI_PROBES_SIZE,
         probe_index_linear / DDGI_PROBES_SIZE / DDGI_PROBES_SIZE
     );
-    float3 probe_center = probe_base_position
-        + probe_index.x * probe_extent_x / (DDGI_PROBES_SIZE - 1) * probe_frame_x
-        + probe_index.y * probe_extent_y / (DDGI_PROBES_SIZE - 1) * probe_frame_y
-        + probe_index.z * probe_extent_z / (DDGI_PROBES_SIZE - 1) * probe_frame_z;
+    float3 probe_center = volume_base_position
+        + probe_index.x * volume_extent_x / (DDGI_PROBES_SIZE - 1) * volume_frame_x
+        + probe_index.y * volume_extent_y / (DDGI_PROBES_SIZE - 1) * volume_frame_y
+        + probe_index.z * volume_extent_z / (DDGI_PROBES_SIZE - 1) * volume_frame_z;
 
     float4 hit_position = probe_gbuffer_position.Load(int3(output_coord, 0));
     if (hit_position.w < 0.0) {
@@ -42,6 +42,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     float3 B = cross(N, T);
 
     SurfaceData surface = surface_data_diffuse(base_color.xyz);
+    const uint surface_model = MATERIAL_SURFACE_MODEL_LIT;
 
     float3 position_world = hit_position.xyz;
     float3 V = normalize(probe_center - position_world);
