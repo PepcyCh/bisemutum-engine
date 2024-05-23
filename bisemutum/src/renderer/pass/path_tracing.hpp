@@ -6,14 +6,12 @@
 #include "../context/lights.hpp"
 #include "../context/skybox.hpp"
 #include "../context/gbuffer.hpp"
-#include "skybox_precompute.hpp"
 
 namespace bi {
 
 struct PathTracingPass final {
     struct InputData final {
         ShadowMapTextures shadow_maps;
-        PrecomputedSkybox skybox;
         gfx::AccelerationStructureHandle scene_accel;
     };
 

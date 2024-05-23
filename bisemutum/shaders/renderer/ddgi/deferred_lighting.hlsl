@@ -6,13 +6,12 @@
 #include "../gbuffer.hlsl"
 #include "../skybox/skybox_common.hlsl"
 
-#include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 [numthreads(32, 8, 1)]
 void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
-    uint probe_index_linear = global_thread_id.x;
-    uint ray_index = global_thread_id.y;
+    uint ray_index = global_thread_id.x;
+    uint probe_index_linear = global_thread_id.y;
     if (probe_index_linear >= DDGI_PROBES_COUNT || ray_index >= DDGI_NUM_RAYS_PER_PROBE) { return; }
     uint2 output_coord = uint2(ray_index, probe_index_linear);
 

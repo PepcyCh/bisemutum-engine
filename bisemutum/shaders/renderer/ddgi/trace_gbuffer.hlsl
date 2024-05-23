@@ -9,8 +9,8 @@
 
 [shader("raygeneration")]
 void ddgi_trace_gbuffer_rgen() {
-    uint probe_index_linear = DispatchRaysIndex().x;
-    uint ray_index = DispatchRaysIndex().y;
+    uint ray_index = DispatchRaysIndex().x;
+    uint probe_index_linear = DispatchRaysIndex().y;
 
     uint3 probe_index = uint3(
         probe_index_linear % DDGI_PROBES_SIZE,

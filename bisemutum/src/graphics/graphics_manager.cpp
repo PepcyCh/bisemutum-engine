@@ -470,7 +470,6 @@ struct GraphicsManager::Impl final {
 
     auto execute_in_this_frame(std::function<auto(Ref<rhi::CommandEncoder>) -> void>&& func) -> void {
         if (curr_cmd_encoder) {
-            BI_ASSERT_MSG(curr_cmd_encoder->valid(), "`execute_in_this_frame()` cannot be called in pass");
             func(curr_cmd_encoder.value());
         } else {
             execute_immediately(std::move(func));

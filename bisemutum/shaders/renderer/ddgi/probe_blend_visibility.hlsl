@@ -3,7 +3,6 @@
 #include "ddgi_struct.hlsl"
 #include "probe_blend_common.hlsl"
 
-#include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 groupshared float4 s_hit_position[DDGI_NUM_RAYS_PER_PROBE];
@@ -51,15 +50,17 @@ void ddgi_probe_blend_visibility_cs(
     }
 
     float2 visibility = weight_sum == 0.0 ? 0.0 : sum / weight_sum;
-    float3 hist_visibility = probe_visibility[probe_coord].xyz;
-    visibility = pow(
-        lerp(
-            pow(visibility, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
-            pow(hist_visibility, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
-            history_valid != 0 ? DDGI_TEMPORAL_ACCUMULATE_ALPHA : 0.0
-        ),
-        DDGI_TEMPORAL_ACCUMULATE_GAMMA
-    );
+    if (history_valid != 0) {
+        float2 hist_visibility = history_probe_visibility.Load(int3(probe_coord)).xy;
+        visibility = pow(
+            lerp(
+                pow(visibility, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
+                pow(hist_visibility, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
+                DDGI_TEMPORAL_ACCUMULATE_ALPHA
+            ),
+            DDGI_TEMPORAL_ACCUMULATE_GAMMA
+        );
+    }
     probe_visibility[probe_coord] = visibility;
 
     uint2 probe_border_coord = get_probe_border_coord(probe_coord, DDGI_PROBE_VISIBILITY_SIZE);

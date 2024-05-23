@@ -3,7 +3,6 @@
 #include "ddgi_struct.hlsl"
 #include "probe_blend_common.hlsl"
 
-#include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 groupshared float3 s_radiance[DDGI_NUM_RAYS_PER_PROBE];
@@ -53,15 +52,17 @@ void ddgi_probe_blend_irradiance_cs(
     }
 
     float3 irradiance = weight_sum == 0.0 ? 0.0 : sum / weight_sum;
-    float3 hist_irradiance = probe_irradiance[probe_coord].xyz;
-    irradiance = pow(
-        lerp(
-            pow(irradiance, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
-            pow(hist_irradiance, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
-            history_valid != 0 ? DDGI_TEMPORAL_ACCUMULATE_ALPHA : 0.0
-        ),
-        DDGI_TEMPORAL_ACCUMULATE_GAMMA
-    );
+    if (history_valid != 0) {
+        float3 hist_irradiance = history_probe_irradiance.Load(int3(probe_coord, 0)).xyz;
+        irradiance = pow(
+            lerp(
+                pow(irradiance, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
+                pow(hist_irradiance, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
+                DDGI_TEMPORAL_ACCUMULATE_ALPHA
+            ),
+            DDGI_TEMPORAL_ACCUMULATE_GAMMA
+        );
+    }
     probe_irradiance[probe_coord] = float4(irradiance, 1.0);
 
     uint2 probe_border_coord = get_probe_border_coord(probe_coord, DDGI_PROBE_IRRADIANCE_SIZE);

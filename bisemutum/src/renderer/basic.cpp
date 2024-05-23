@@ -119,7 +119,6 @@ struct BasicRenderer::Impl final {
             case PipelineMode::path_tracing: {
                 auto pt_output = path_tracing_pass.render(camera, rg, {
                     .shadow_maps = shadow_maps,
-                    .skybox = skybox,
                     .scene_accel = scene_accel,
                 }, settings.path_tracing);
                 color = pt_output.color;

@@ -11,6 +11,12 @@ namespace bi {
 struct DdgiUpdatePass final {
     struct InputData final {
         DdgiContext& ddgi_ctx;
+        ShadowMapTextures shadow_maps;
+        gfx::AccelerationStructureHandle scene_accel;
+    };
+    struct OutputData final {
+        gfx::TextureHandle irradiance;
+        gfx::TextureHandle visibility;
     };
 
     DdgiUpdatePass();
@@ -19,7 +25,7 @@ struct DdgiUpdatePass final {
         DdgiContext& ddgi_ctx, LightsContext& lights_ctx, SkyboxContext& skybox_ctx
     ) -> void;
 
-    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> void;
+    auto render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData;
 
 private:
     gfx::RaytracingShaders trace_gbuffer_shader_;
@@ -33,6 +39,10 @@ private:
 
     gfx::ComputeShader probe_blend_visibility_shader_;
     std::vector<gfx::ShaderParameter> probe_blend_visibility_shader_params_;
+
+    uint64_t last_frame_;
+    Box<gfx::Texture> irradiance_texture_;
+    Box<gfx::Texture> visibility_texture_;
 };
 
 }

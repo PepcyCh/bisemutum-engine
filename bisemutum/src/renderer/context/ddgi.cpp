@@ -1,29 +1,12 @@
 #include "ddgi.hpp"
 
-#include <numbers>
-
 #include <bisemutum/engine/engine.hpp>
+#include <bisemutum/graphics/graphics_manager.hpp>
 #include <bisemutum/graphics/resource_builder.hpp>
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
 
 namespace bi {
-
-namespace {
-
-constexpr uint32_t ddgi_probes_size = 8;
-constexpr uint32_t ddgi_probe_irradiance_size = 8;
-constexpr uint32_t ddgi_probe_visibility_size = 16;
-
-constexpr uint32_t ddgi_irradiance_texture_width = ddgi_probes_size * ddgi_probes_size * ddgi_probe_irradiance_size;
-constexpr uint32_t ddgi_irradiance_texture_height = ddgi_probes_size * ddgi_probe_irradiance_size;
-
-constexpr uint32_t ddgi_visibility_texture_width = ddgi_probes_size * ddgi_probes_size * ddgi_probe_visibility_size;
-constexpr uint32_t ddgi_visibility_texture_height = ddgi_probes_size * ddgi_probe_visibility_size;
-
-constexpr uint32_t ddgi_sample_randoms_size = 8192;
-
-}
 
 auto DdgiContext::update_frame() -> void {
     init_sample_randoms();
@@ -37,36 +20,19 @@ auto DdgiContext::update_frame() -> void {
     }
 
     auto ddgi_volumes_view = scene->ecs_registry().view<DdgiVolumeComponent>();
+    uint32_t index = 0;
     for (auto entity : ddgi_volumes_view) {
         auto& ddgi_volume = ddgi_volumes_view.get<DdgiVolumeComponent>(entity);
         auto object = scene->object_of(entity);
         auto id = object->get_id();
         objects_to_be_removed.erase(id);
 
-        auto [ddgi_data_it, is_new_volume] = ddgi_volumes_data_.try_emplace(id);
-        if (is_new_volume) {
-            ddgi_data_it->second.irradiance = gfx::Texture{
-                gfx::TextureBuilder{}
-                    .dim_2d(
-                        rhi::ResourceFormat::rgba16_sfloat,
-                        ddgi_irradiance_texture_width,
-                        ddgi_irradiance_texture_height
-                    )
-                    .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write})
-            };
-            ddgi_data_it->second.visibility = gfx::Texture{
-                gfx::TextureBuilder{}
-                    .dim_2d(
-                        rhi::ResourceFormat::rg16_sfloat,
-                        ddgi_visibility_texture_width,
-                        ddgi_visibility_texture_height
-                    )
-                    .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write})
-            };
-        }
+        auto [ddgi_data_it, _] = ddgi_volumes_data_.try_emplace(id);
 
         auto& transform = object->world_transform();
-        ddgi_data_it->second.base_point = transform.transform_position({-1.0f, -1.0f, -1.0f});
+        ddgi_data_it->second.prev_index = ddgi_data_it->second.index;
+        ddgi_data_it->second.index = index++;
+        ddgi_data_it->second.base_position = transform.transform_position({-1.0f, -1.0f, -1.0f});
         ddgi_data_it->second.frame_x = transform.transform_direction_without_scaling({1.0f, 0.0f, 0.0f});
         ddgi_data_it->second.frame_y = transform.transform_direction_without_scaling({0.0f, 1.0f, 0.0f});
         ddgi_data_it->second.frame_z = transform.transform_direction_without_scaling({0.0f, 0.0f, 1.0f});
@@ -82,9 +48,16 @@ auto DdgiContext::num_ddgi_volumes() const -> uint32_t {
     return ddgi_volumes_data_.size();
 }
 
+auto DdgiContext::for_each_ddgi_volume(std::function<auto(DdgiVolumeData const&) -> void> func) const -> void {
+    for (auto& [_, data] : ddgi_volumes_data_) {
+        func(data);
+    }
+}
+
 auto DdgiContext::init_sample_randoms() -> void {
     if (sample_randoms_buffer_.has_value()) { return; }
 
+    constexpr auto ddgi_sample_randoms_size = 8192u;
     constexpr auto phi2 = 1.0 / 1.3247179572447;
     constexpr auto delta = float2{phi2, phi2 * phi2};
 
