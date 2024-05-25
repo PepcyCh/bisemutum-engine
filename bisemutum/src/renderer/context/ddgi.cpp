@@ -2,14 +2,40 @@
 
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
+#include <bisemutum/graphics/render_graph.hpp>
 #include <bisemutum/graphics/resource_builder.hpp>
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
+#include <bisemutum/window/window.hpp>
 
 namespace bi {
 
+DdgiContext::DdgiContext() {
+    sampler_ = g_engine->graphics_manager()->get_sampler(rhi::SamplerDesc{
+        .mag_filter = rhi::SamplerFilterMode::linear,
+        .min_filter = rhi::SamplerFilterMode::linear,
+    });
+
+    shader_data_[0].num_volumes = 0;
+    shader_data_[0].sampler = {sampler_};
+
+    shader_data_[1].num_volumes = 0;
+    shader_data_[1].sampler = {sampler_};
+}
+
 auto DdgiContext::update_frame() -> void {
     init_sample_randoms();
+
+    auto this_frame = g_engine->window()->frame_count();
+    if (last_frame_ + 1 != this_frame) {
+        shader_data_[db_ind_].num_volumes = 0;
+        shader_data_[db_ind_].irradiance_texture = {};
+        shader_data_[db_ind_].visibility_texture = {};
+        irradiance_texture_[db_ind_].reset();
+        visibility_texture_[db_ind_].reset();
+    }
+    last_frame_ = this_frame;
+    db_ind_ ^= 1;
 
     auto scene = g_engine->world()->current_scene().value();
 
@@ -21,6 +47,7 @@ auto DdgiContext::update_frame() -> void {
 
     auto ddgi_volumes_view = scene->ecs_registry().view<DdgiVolumeComponent>();
     uint32_t index = 0;
+    std::vector<DdgiVolumeData> volumes_data;
     for (auto entity : ddgi_volumes_view) {
         auto& ddgi_volume = ddgi_volumes_view.get<DdgiVolumeComponent>(entity);
         auto object = scene->object_of(entity);
@@ -36,8 +63,22 @@ auto DdgiContext::update_frame() -> void {
         ddgi_data_it->second.frame_x = transform.transform_direction_without_scaling({1.0f, 0.0f, 0.0f});
         ddgi_data_it->second.frame_y = transform.transform_direction_without_scaling({0.0f, 1.0f, 0.0f});
         ddgi_data_it->second.frame_z = transform.transform_direction_without_scaling({0.0f, 0.0f, 1.0f});
-        ddgi_data_it->second.voluem_extent = transform.scaling;
+        ddgi_data_it->second.voluem_extent = transform.scaling * 2.0f;
+
+        volumes_data.push_back(DdgiVolumeData{
+            .base_position = ddgi_data_it->second.base_position,
+            .frame_x = ddgi_data_it->second.frame_x,
+            .extent_x = ddgi_data_it->second.voluem_extent.x,
+            .frame_y = ddgi_data_it->second.frame_y,
+            .extent_y = ddgi_data_it->second.voluem_extent.y,
+            .frame_z = ddgi_data_it->second.frame_z,
+            .extent_z = ddgi_data_it->second.voluem_extent.z,
+        });
     }
+
+    gfx::Buffer::update_with_container<true>(volumes_buffer_[db_ind_], volumes_data);
+    shader_data_[db_ind_].num_volumes = volumes_data.size();
+    shader_data_[db_ind_].volumes = {&volumes_buffer_[db_ind_]};
 
     for (auto id : objects_to_be_removed) {
         ddgi_volumes_data_.erase(id);
@@ -48,10 +89,20 @@ auto DdgiContext::num_ddgi_volumes() const -> uint32_t {
     return ddgi_volumes_data_.size();
 }
 
-auto DdgiContext::for_each_ddgi_volume(std::function<auto(DdgiVolumeData const&) -> void> func) const -> void {
+auto DdgiContext::for_each_ddgi_volume(std::function<auto(DdgiVolumeInfo const&) -> void> func) const -> void {
     for (auto& [_, data] : ddgi_volumes_data_) {
         func(data);
     }
+}
+
+auto DdgiContext::set_irradiance_texture(gfx::TextureHandle irradiance) -> void {
+    irradiance_texture_[db_ind_] = g_engine->graphics_manager()->render_graph().take_texture(irradiance);
+    shader_data_[db_ind_].irradiance_texture = {irradiance_texture_[db_ind_].ref()};
+}
+
+auto DdgiContext::set_visibility_texture(gfx::TextureHandle visibility) -> void {
+    visibility_texture_[db_ind_] = g_engine->graphics_manager()->render_graph().take_texture(visibility);
+    shader_data_[db_ind_].visibility_texture = {visibility_texture_[db_ind_].ref()};
 }
 
 auto DdgiContext::init_sample_randoms() -> void {

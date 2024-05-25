@@ -11,7 +11,7 @@ namespace bi {
 namespace {
 
 BI_SHADER_PARAMETERS_BEGIN(TraceGBufferParams)
-    BI_SHADER_PARAMETER(DdgiVolumeShaderData, volume)
+    BI_SHADER_PARAMETER(DdgiVolumeData, volume)
     BI_SHADER_PARAMETER(float, ray_length)
     BI_SHADER_PARAMETER_SRV_ACCEL(RaytracingAccelerationStructure, scene_accel)
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<float2>, sample_randoms)
@@ -29,7 +29,7 @@ struct TraceGBufferPassData final {
 };
 
 BI_SHADER_PARAMETERS_BEGIN(DeferredLightingParams)
-    BI_SHADER_PARAMETER(DdgiVolumeShaderData, volume)
+    BI_SHADER_PARAMETER(DdgiVolumeData, volume)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, probe_gbuffer_base_color)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, probe_gbuffer_normal_roughness)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, probe_gbuffer_position)
@@ -37,6 +37,7 @@ BI_SHADER_PARAMETERS_BEGIN(DeferredLightingParams)
 
     BI_SHADER_PARAMETER_INCLUDE(LightsContextShaderData, lights_ctx)
     BI_SHADER_PARAMETER_INCLUDE(SkyboxContextShaderData, skybox_ctx)
+    BI_SHADER_PARAMETER(DdgiVolumeLightingData, ddgi)
 
     BI_SHADER_PARAMETER(float3, skybox_color)
     BI_SHADER_PARAMETER_SRV_TEXTURE(TextureCube, skybox)
@@ -51,7 +52,7 @@ struct DeferredLightingPassData final {
 
 BI_SHADER_PARAMETERS_BEGIN(ProbeBlendIrradianceParams)
     BI_SHADER_PARAMETER(uint, history_valid)
-    BI_SHADER_PARAMETER(DdgiVolumeShaderData, volume)
+    BI_SHADER_PARAMETER(DdgiVolumeData, volume)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, trace_radiance)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, trace_gbuffer_position)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, history_probe_irradiance)
@@ -67,7 +68,7 @@ struct ProbeBlendIrradiancePassData final {
 
 BI_SHADER_PARAMETERS_BEGIN(ProbeBlendVisibilityParams)
     BI_SHADER_PARAMETER(uint, history_valid)
-    BI_SHADER_PARAMETER(DdgiVolumeShaderData, volume)
+    BI_SHADER_PARAMETER(DdgiVolumeData, volume)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, trace_gbuffer_position)
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2D, history_probe_visibility)
     BI_SHADER_PARAMETER_UAV_TEXTURE(RWTexture2D<float2>, probe_visibility, rhi::ResourceFormat::rg16_sfloat)
@@ -82,7 +83,7 @@ struct ProbeBlendVisibilityPassData final {
 } // namespace
 
 DdgiUpdatePass::DdgiUpdatePass() {
-    trace_gbuffer_shader_.raygen_source.path = "/bisemutum/shaders/renderer/ddgi/trace_gbufer.hlsl";
+    trace_gbuffer_shader_.raygen_source.path = "/bisemutum/shaders/renderer/ddgi/trace_gbuffer.hlsl";
     trace_gbuffer_shader_.raygen_source.entry = "ddgi_trace_gbuffer_rgen";
     trace_gbuffer_shader_.closest_hit_source.path = "/bisemutum/shaders/renderer/raytracing/hits/rt_gbuffer_hit.hlsl";
     trace_gbuffer_shader_.closest_hit_source.entry = "rt_gbuffer_rchit";
@@ -128,6 +129,7 @@ auto DdgiUpdatePass::update_params(
         params_data->skybox_ctx = skybox_ctx.shader_data;
         params_data->skybox_color = current_skybox.color;
         params_data->skybox = {current_skybox.tex};
+        params_data->ddgi = ddgi_ctx.get_shader_data_prev();
     }
 
     probe_blend_irradiance_shader_params_.resize(num_volumes);
@@ -145,11 +147,11 @@ auto DdgiUpdatePass::update_params(
     }
 }
 
-auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData {
+auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> DdgiTextures {
     auto this_frame = g_engine->window()->frame_count();
     if (last_frame_ == this_frame) {
-        auto irradiance = rg.import_texture(irradiance_texture_.ref());
-        auto visibility = rg.import_texture(visibility_texture_.ref());
+        auto irradiance = rg.import_texture(input.ddgi_ctx.get_irradiance_texture());
+        auto visibility = rg.import_texture(input.ddgi_ctx.get_visibility_texture());
         return {
             .irradiance = irradiance,
             .visibility = visibility,
@@ -177,12 +179,19 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
             .usage({rhi::TextureUsage::sampled, rhi::TextureUsage::storage_read_write});
     });
 
-    auto history_irradiance = rg.import_texture(irradiance_texture_.ref());
-    auto history_visibility = rg.import_texture(visibility_texture_.ref());
+    auto history_irradiance = gfx::TextureHandle::invalid;
+    auto history_visibility = gfx::TextureHandle::invalid;
+    if (input.ddgi_ctx.is_texture_prev_valid() && last_frame_ + 1 == this_frame) {
+        history_irradiance = rg.import_texture(input.ddgi_ctx.get_irradiance_texture_prev());
+        history_visibility = rg.import_texture(input.ddgi_ctx.get_visibility_texture_prev());
+    }
 
     auto sample_randoms = rg.import_buffer(input.ddgi_ctx.sample_randoms_buffer());
+    size_t curr_volume_index = 0;
 
-    input.ddgi_ctx.for_each_ddgi_volume([&](DdgiVolumeData const& volume_data) {
+    input.ddgi_ctx.for_each_ddgi_volume([&](DdgiVolumeInfo const& volume_data) {
+        ++curr_volume_index;
+
         auto trace_gbuffer_base_color = rg.add_texture([](gfx::TextureBuilder& builder) {
             builder
                 .dim_2d(
@@ -287,6 +296,8 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
             );
         }
 
+        auto temp_ddgi_ctx = curr_volume_index == input.ddgi_ctx.num_ddgi_volumes() ? &input.ddgi_ctx : nullptr;
+
         {
             auto [builder, pass_data] = rg.add_compute_pass<ProbeBlendIrradiancePassData>(
                 fmt::format("DDGI Probe Blend Irradiance #{}", volume_data.index)
@@ -295,10 +306,13 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
             pass_data->trace_gbuffer_position = builder.read(trace_gbuffer_position);
             pass_data->trace_radiance = builder.read(trace_radiance);
             pass_data->probe_irradiance = builder.write(irradiance);
-            pass_data->history_probe_irradiance = builder.write(history_irradiance);
+            irradiance = pass_data->probe_irradiance;
+            if (history_irradiance != gfx::TextureHandle::invalid) {
+                pass_data->history_probe_irradiance = builder.read(history_irradiance);
+            }
 
             builder.set_execution_function<ProbeBlendIrradiancePassData>(
-                [this, &volume_data](CRef<ProbeBlendIrradiancePassData> pass_data, gfx::ComputePassContext const& ctx) {
+                [this, &volume_data, temp_ddgi_ctx](CRef<ProbeBlendIrradiancePassData> pass_data, gfx::ComputePassContext const& ctx) {
                     auto params = probe_blend_irradiance_shader_params_[volume_data.index].mutable_typed_data<ProbeBlendIrradianceParams>();
                     params->volume.base_position = volume_data.base_position;
                     params->volume.frame_x = volume_data.frame_x;
@@ -309,13 +323,13 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                     params->volume.extent_z = volume_data.voluem_extent.z;
                     params->trace_gbuffer_position = {ctx.rg->texture(pass_data->trace_gbuffer_position)};
                     params->trace_radiance = {ctx.rg->texture(pass_data->trace_radiance)};
-                    params->probe_irradiance = {ctx.rg->texture(pass_data->probe_irradiance), 0, volume_data.index};
+                    params->probe_irradiance = {ctx.rg->texture(pass_data->probe_irradiance), 0, volume_data.index, 1};
                     if (volume_data.prev_index == 0xffffffffu) {
                         params->history_valid = 0;
                     } else {
                         params->history_valid = 1;
                         params->history_probe_irradiance = {
-                            ctx.rg->texture(pass_data->history_probe_irradiance), 0, volume_data.prev_index,
+                            ctx.rg->texture(pass_data->history_probe_irradiance), 0, 1, volume_data.prev_index, 1,
                         };
                     }
                     probe_blend_irradiance_shader_params_[volume_data.index].update_uniform_buffer();
@@ -323,6 +337,10 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                         probe_blend_irradiance_shader_, probe_blend_irradiance_shader_params_[volume_data.index],
                         DdgiContext::probes_total_count
                     );
+
+                    if (temp_ddgi_ctx) {
+                        temp_ddgi_ctx->set_irradiance_texture(pass_data->probe_irradiance);
+                    }
                 }
             );
         }
@@ -334,10 +352,13 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
 
             pass_data->trace_gbuffer_position = builder.read(trace_gbuffer_position);
             pass_data->probe_visibility = builder.write(visibility);
-            pass_data->history_probe_visibility = builder.write(history_visibility);
+            visibility = pass_data->probe_visibility;
+            if (history_visibility != gfx::TextureHandle::invalid) {
+                pass_data->history_probe_visibility = builder.read(history_visibility);
+            }
 
             builder.set_execution_function<ProbeBlendVisibilityPassData>(
-                [this, &volume_data](CRef<ProbeBlendVisibilityPassData> pass_data, gfx::ComputePassContext const& ctx) {
+                [this, &volume_data, temp_ddgi_ctx](CRef<ProbeBlendVisibilityPassData> pass_data, gfx::ComputePassContext const& ctx) {
                     auto params = probe_blend_visibility_shader_params_[volume_data.index].mutable_typed_data<ProbeBlendVisibilityParams>();
                     params->volume.base_position = volume_data.base_position;
                     params->volume.frame_x = volume_data.frame_x;
@@ -347,13 +368,13 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                     params->volume.extent_y = volume_data.voluem_extent.y;
                     params->volume.extent_z = volume_data.voluem_extent.z;
                     params->trace_gbuffer_position = {ctx.rg->texture(pass_data->trace_gbuffer_position)};
-                    params->probe_visibility = {ctx.rg->texture(pass_data->probe_visibility), 0, volume_data.index};
+                    params->probe_visibility = {ctx.rg->texture(pass_data->probe_visibility), 0, volume_data.index, 1};
                     if (volume_data.prev_index == 0xffffffffu) {
                         params->history_valid = 0;
                     } else {
                         params->history_valid = 1;
                         params->history_probe_visibility = {
-                            ctx.rg->texture(pass_data->history_probe_visibility), 0, volume_data.prev_index,
+                            ctx.rg->texture(pass_data->history_probe_visibility), 0, 1, volume_data.prev_index, 1,
                         };
                     }
                     probe_blend_visibility_shader_params_[volume_data.index].update_uniform_buffer();
@@ -361,13 +382,16 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                         probe_blend_visibility_shader_, probe_blend_visibility_shader_params_[volume_data.index],
                         DdgiContext::probes_total_count
                     );
+
+                    if (temp_ddgi_ctx) {
+                        temp_ddgi_ctx->set_visibility_texture(pass_data->probe_visibility);
+                    }
                 }
             );
         }
     });
 
-    irradiance_texture_ = rg.take_texture(irradiance);
-    visibility_texture_ = rg.take_texture(visibility);
+    last_frame_ = this_frame;
 
     return {
         .irradiance = irradiance,

@@ -1,7 +1,7 @@
 #include <bisemutum/shaders/core/material.hlsl>
 #include <bisemutum/shaders/core/utils/projection.hlsl>
 
-#include "ddgi_struct.hlsl"
+#include "ddgi_lighting.hlsl"
 #include "../lights.hlsl"
 #include "../gbuffer.hlsl"
 #include "../skybox/skybox_common.hlsl"
@@ -28,7 +28,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     float4 hit_position = probe_gbuffer_position.Load(int3(output_coord, 0));
     if (hit_position.w < 0.0) {
         float3 dir = mul((float3x3) skybox_transform, hit_position.xyz);
-        float3 color = skybox.SampleLevel(skybox_sampler, dir, 0) * float4(skybox_color, 1.0);
+        float3 color = skybox.SampleLevel(skybox_sampler, dir, 0).xyz * skybox_color;
         trace_radiance[output_coord] = float4(color, 1.0);
         return;
     }
@@ -55,7 +55,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         float3 le = dir_light_eval(light, position_world, light_dir);
         float shadow_factor = dir_light_shadow_factor(
             light, position_world, N,
-            camera_position_world(),
+            probe_center,
             dir_lights_shadow_transform, dir_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);
@@ -65,7 +65,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         float3 le = point_light_eval(light, position_world, light_dir);
         float shadow_factor = point_light_shadow_factor(
             light, position_world, N,
-            camera_position_world(),
+            probe_center,
             point_lights_shadow_transform, point_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);
@@ -97,7 +97,21 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         color += lighting;
     }
 
-    // TODO: calc DDGI here
+    float4 ddgi_color = 0.0;
+    for (uint i = 0; i < ddgi_num_volumes; i++) {
+        ddgi_color += calc_ddgi_volume_lighting(
+            position_world, N,
+            ddgi_volumes[i],
+            i,
+            ddgi_irradiance_texture,
+            ddgi_visibility_texture,
+            ddgi_sampler
+        );
+    }
+    if (ddgi_color.a > 0.0) {
+        ddgi_color /= ddgi_color.a;
+        color += ddgi_color.xyz * surface.base_color * INV_PI;
+    }
 
     trace_radiance[output_coord] = float4(color, 1.0);
 }

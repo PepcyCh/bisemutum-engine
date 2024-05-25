@@ -7,6 +7,7 @@ namespace {
 BI_SHADER_PARAMETERS_BEGIN(ForwardPassParams)
     BI_SHADER_PARAMETER_INCLUDE(LightsContextShaderData, lights_ctx)
     BI_SHADER_PARAMETER_INCLUDE(SkyboxContextShaderData, skybox_ctx)
+    BI_SHADER_PARAMETER(DdgiVolumeLightingData, ddgi)
 BI_SHADER_PARAMETERS_END()
 
 struct PassData final {
@@ -15,6 +16,8 @@ struct PassData final {
     gfx::TextureHandle depth;
 
     gfx::RenderedObjectListHandle list;
+
+    DdgiTextures ddgi;
 };
 
 }
@@ -86,6 +89,18 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
     builder.read(input.skybox.specular_filtered);
     builder.read(input.skybox.brdf_lut);
 
+    if (input.ddgi.irradiance != gfx::TextureHandle::invalid) {
+        builder.read(input.ddgi.irradiance);
+        builder.read(input.ddgi.visibility);
+        pass_data->ddgi = input.ddgi;
+
+        auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
+        params->ddgi = input.ddgi_ctx.get_shader_data();
+    } else {
+        auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
+        params->ddgi.num_volumes = 0;
+    }
+
     pass_data->list = rg.add_rendered_object_list(gfx::RenderedObjectListDesc{
         .camera = camera,
         .fragment_shader = fragment_shader_,
@@ -153,6 +168,12 @@ auto ForwardTransparentPass::render(gfx::Camera const& camera, gfx::RenderGraph&
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+            auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
+            if (pass_data->ddgi.irradiance != gfx::TextureHandle::invalid) {
+                params->ddgi.irradiance_texture = {ctx.rg->texture(pass_data->ddgi.irradiance)};
+                params->ddgi.visibility_texture = {ctx.rg->texture(pass_data->ddgi.visibility)};
+            }
+            fragment_shader_params_.update_uniform_buffer();
             ctx.render_list(pass_data->list, fragment_shader_params_);
         }
     );

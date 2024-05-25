@@ -9,6 +9,7 @@
 
 #include "context/lights.hpp"
 #include "context/skybox.hpp"
+#include "context/ddgi.hpp"
 #include "pass/skybox_precompute.hpp"
 #include "pass/skybox.hpp"
 #include "pass/shadow_mapping.hpp"
@@ -19,6 +20,7 @@
 #include "pass/validate_history.hpp"
 #include "pass/ambient_occlusion.hpp"
 #include "pass/reflection.hpp"
+#include "pass/ddgi_update.hpp"
 #include "pass/path_tracing.hpp"
 #include "pass/post_process.hpp"
 
@@ -50,6 +52,23 @@ struct BasicRenderer::Impl final {
         ) {
             reflection_pass.update_params(lights_ctx, skybox_ctx);
         }
+
+        indirect_diffuse_mode = settings.indirect_diffuse.mode;
+        if (
+            indirect_diffuse_mode == IndirectDiffuseSettings::Mode::ddgi
+            && !g_engine->graphics_manager()->device()->properties().raytracing_pipeline
+        ) {
+            log::warn("general", "Hardware raytracing is not supported but is used.");
+            indirect_diffuse_mode = IndirectDiffuseSettings::Mode::none;
+        }
+        if (indirect_diffuse_mode == IndirectDiffuseSettings::Mode::ddgi) {
+            ddgi_ctx.update_frame();
+            if (ddgi_ctx.num_ddgi_volumes() == 0) {
+                indirect_diffuse_mode = IndirectDiffuseSettings::Mode::none;
+            } else {
+                ddgi_update_pass.update_params(ddgi_ctx, lights_ctx, skybox_ctx);
+            }
+        }
     }
 
     auto prepare_renderer_per_camera_data(gfx::Camera const& camera) -> void {
@@ -78,6 +97,15 @@ struct BasicRenderer::Impl final {
             .lights_ctx = lights_ctx,
         });
 
+        DdgiTextures ddgi_textures;
+        if (indirect_diffuse_mode == IndirectDiffuseSettings::Mode::ddgi) {
+            ddgi_textures = ddgi_update_pass.render(camera, rg, {
+                .ddgi_ctx = ddgi_ctx,
+                .shadow_maps = shadow_maps,
+                .scene_accel = scene_accel,
+            });
+        }
+
         gfx::TextureHandle color;
         gfx::TextureHandle depth;
         gfx::TextureHandle velocity;
@@ -95,6 +123,8 @@ struct BasicRenderer::Impl final {
                     .drawables = drawables,
                     .shadow_maps = shadow_maps,
                     .skybox = skybox,
+                    .ddgi = ddgi_textures,
+                    .ddgi_ctx = ddgi_ctx,
                 });
                 color = forward_output_data.output;
                 depth = forward_output_data.depth;
@@ -110,6 +140,8 @@ struct BasicRenderer::Impl final {
                     .gbuffer = gbuffer_output.gbuffer,
                     .shadow_maps = shadow_maps,
                     .skybox = skybox,
+                    .ddgi = ddgi_textures,
+                    .ddgi_ctx = ddgi_ctx,
                 });
                 color = lighting_output.output;
                 depth = gbuffer_output.depth;
@@ -197,6 +229,7 @@ struct BasicRenderer::Impl final {
 
     LightsContext lights_ctx;
     SkyboxContext skybox_ctx;
+    DdgiContext ddgi_ctx;
     gfx::AccelerationStructureHandle scene_accel = gfx::AccelerationStructureHandle::invalid;
 
     SkyboxPrecomputePass skybox_precompute_pass;
@@ -215,7 +248,11 @@ struct BasicRenderer::Impl final {
 
     AmbientOcclusionPass ambient_occlusion_pass;
     ReflectionPass reflection_pass;
+    DdgiUpdatePass ddgi_update_pass;
+
     PostProcessPass post_process_pass;
+
+    IndirectDiffuseSettings::Mode indirect_diffuse_mode = IndirectDiffuseSettings::Mode::none;
 };
 
 BasicRenderer::BasicRenderer() = default;

@@ -64,6 +64,14 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         bool half_resolution = true;
     };
 
+    struct IndirectDiffuseSettings final {
+        enum class Mode : uint8_t {
+            none,
+            ddgi,
+        };
+        Mode mode = Mode::none;
+    };
+
     struct PathTracingSettings final {
         float ray_length = 100.0f;
         uint32_t max_bounces = 3;
@@ -76,6 +84,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         ShadowSettings shadow;
         AmbientOcclusionSettings ambient_occlusion;
         ReflectionSettings reflection;
+        IndirectDiffuseSettings indirect_diffuse;
         PathTracingSettings path_tracing;
     };
 
@@ -116,6 +125,10 @@ BI_SREFL(
     field(half_resolution),
 )
 BI_SREFL(
+    type(BasicRenderer::IndirectDiffuseSettings),
+    field(mode),
+)
+BI_SREFL(
     type(BasicRenderer::PathTracingSettings),
     field(ray_length, RangeF{}),
     field(max_bounces, RangeI{2, 16}),
@@ -128,6 +141,7 @@ BI_SREFL(
     field(shadow),
     field(ambient_occlusion),
     field(reflection),
+    field(indirect_diffuse),
     field(path_tracing),
 )
 

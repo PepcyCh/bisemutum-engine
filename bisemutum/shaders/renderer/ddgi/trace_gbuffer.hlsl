@@ -35,7 +35,7 @@ void ddgi_trace_gbuffer_rgen() {
     ray.Direction = ray_dir;
 
     GBufferPayload gbuffer;
-    gbuffer.opacity_random = gen_opacity_random_for(probe_center, ray_dir);
+    gbuffer.opacity_random = gen_opacity_random_for(probe_center, ray_dir, frame_index);
     TraceRay(scene_accel, RAY_FLAG_NONE, 0xff, 0, 0, 0, ray, gbuffer);
 
     uint2 output_coord = uint2(ray_index, probe_index_linear);

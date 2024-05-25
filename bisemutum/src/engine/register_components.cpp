@@ -11,6 +11,7 @@
 #include <bisemutum/scene_basic/mesh_renderer.hpp>
 
 #include <bisemutum/renderer/basic.hpp>
+#include <bisemutum/renderer/ddgi_volume.hpp>
 #include <bisemutum/renderer/post_process_volume.hpp>
 
 namespace bi {
@@ -27,6 +28,7 @@ auto register_components(Ref<rt::ComponentManager> mgr) -> void {
     mgr->register_component<MeshRendererComponent>();
 
     mgr->register_component<BasicRendererOverrideVolume>();
+    mgr->register_component<DdgiVolumeComponent>();
     mgr->register_component<PostProcessVolumeComponent>();
 }
 

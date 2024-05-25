@@ -23,3 +23,20 @@ struct DdgiVolumeData {
     float3 frame_z;
     float extent_z;
 };
+
+bool calc_ddgi_volume_probe_index(float3 pos, DdgiVolumeData volume, out float3 index) {
+    float3 vec = pos - volume.base_position;
+    float x = dot(vec, volume.frame_x);
+    float y = dot(vec, volume.frame_y);
+    float z = dot(vec, volume.frame_z);
+    if (
+        x >= 0.0 && x <= volume.extent_x
+        && y >= 0.0 && y <= volume.extent_y
+        && z >= 0.0 && z <= volume.extent_z
+    ) {
+        index = float3(x, y, z);
+        return true;
+    } else {
+        return false;
+    }
+}

@@ -5,6 +5,7 @@
 #include "../context/lights.hpp"
 #include "../context/skybox.hpp"
 #include "skybox_precompute.hpp"
+#include "ddgi_update.hpp"
 
 namespace bi {
 
@@ -13,6 +14,9 @@ struct ForwardPass final {
         Span<Ref<gfx::Drawable>> drawables;
         ShadowMapTextures shadow_maps;
         PrecomputedSkybox skybox;
+        DdgiTextures ddgi;
+
+        DdgiContext const& ddgi_ctx;
     };
 
     struct OutputData final {

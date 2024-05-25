@@ -21,7 +21,7 @@ void rt_gbuffer_rgen() {
     ray.Direction = ray_direction;
 
     GBufferPayload gbuffer;
-    gbuffer.opacity_random = gen_opacity_random_for(ray_origin, ray_direction);
+    gbuffer.opacity_random = gen_opacity_random_for(ray_origin, ray_direction, frame_index);
     TraceRay(scene_accel, RAY_FLAG_NONE, 0xff, 0, 0, 0, ray, gbuffer);
 
     if (gbuffer.hit_t > 0.0) {

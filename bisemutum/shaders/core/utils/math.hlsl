@@ -12,10 +12,14 @@ static const float SQRT_2 = 1.41421356237309504880;
 float pow2(float x) {
     return x * x;
 }
-
+float pow3(float x) {
+    return x * x * x;
+}
+float pow4(float x) {
+    return pow2(pow2(x));
+}
 float pow5(float x) {
-    float x2 = x * x;
-    return x2 * x2 * x;
+    return pow4(x) * x;
 }
 
 float2x2 inverse(float2x2 m) {

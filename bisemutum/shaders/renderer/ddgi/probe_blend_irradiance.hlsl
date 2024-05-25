@@ -27,6 +27,7 @@ void ddgi_probe_blend_irradiance_cs(
         + probe_index.y * volume_extent_y / (DDGI_PROBES_SIZE - 1) * volume_frame_y
         + probe_index.z * volume_extent_z / (DDGI_PROBES_SIZE - 1) * volume_frame_z;
 
+    uint2 probe_start = uint2(probe_index.y * DDGI_PROBES_SIZE + probe_index.x, probe_index.z) * (DDGI_PROBE_IRRADIANCE_SIZE + 2);
     uint2 probe_coord = local_thread_id.xy + 1;
     float3 probe_dir = oct_decode_01((local_thread_id.xy + 0.5) / DDGI_PROBE_IRRADIANCE_SIZE);
 
@@ -53,7 +54,7 @@ void ddgi_probe_blend_irradiance_cs(
 
     float3 irradiance = weight_sum == 0.0 ? 0.0 : sum / weight_sum;
     if (history_valid != 0) {
-        float3 hist_irradiance = history_probe_irradiance.Load(int3(probe_coord, 0)).xyz;
+        float3 hist_irradiance = history_probe_irradiance.Load(int3(probe_start + probe_coord, 0)).xyz;
         irradiance = pow(
             lerp(
                 pow(irradiance, 1.0 / DDGI_TEMPORAL_ACCUMULATE_GAMMA),
@@ -63,8 +64,17 @@ void ddgi_probe_blend_irradiance_cs(
             DDGI_TEMPORAL_ACCUMULATE_GAMMA
         );
     }
-    probe_irradiance[probe_coord] = float4(irradiance, 1.0);
+    probe_irradiance[probe_start + probe_coord] = float4(irradiance, 1.0);
 
     uint2 probe_border_coord = get_probe_border_coord(probe_coord, DDGI_PROBE_IRRADIANCE_SIZE);
-    probe_irradiance[probe_border_coord] = float4(irradiance, 1.0);
+    probe_irradiance[probe_start + probe_border_coord] = float4(irradiance, 1.0);
+
+    uint2 probe_corner_coord1, probe_corner_coord2;
+    if (get_probe_corner_coord(
+        probe_coord, DDGI_PROBE_IRRADIANCE_SIZE,
+        probe_corner_coord1, probe_corner_coord2
+    )) {
+        probe_irradiance[probe_start + probe_corner_coord1] = float4(irradiance, 1.0);
+        probe_irradiance[probe_start + probe_corner_coord2] = float4(irradiance, 1.0);
+    }
 }

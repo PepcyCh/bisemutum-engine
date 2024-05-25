@@ -1,7 +1,7 @@
 #pragma once
 
 #include "frame.hlsl"
-#include "../utils/math.hlsl"
+#include "math.hlsl"
 
 float2 pack_u32_to_unorm16x2(uint x) {
     return float2((x & 0xffffu) / 65536.0, (x >> 16) / 65536.0);

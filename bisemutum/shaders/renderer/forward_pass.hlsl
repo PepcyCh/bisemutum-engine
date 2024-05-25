@@ -2,6 +2,7 @@
 
 #include "lights.hlsl"
 #include "skybox/skybox_common.hlsl"
+#include "ddgi/ddgi_lighting.hlsl"
 
 #include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/material.hlsl>
@@ -96,6 +97,22 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     float2 ibl_brdf = skybox_brdf_lut.Sample(skybox_sampler, float2(dot(N, V), surface.roughness)).xy;
     float3 ibl = surface_eval_lut(N, V, surface, ibl_diffuse, ibl_specular, ibl_brdf);
     color += ibl;
+
+    float4 ddgi_color = 0.0;
+    for (uint i = 0; i < ddgi_num_volumes; i++) {
+        ddgi_color += calc_ddgi_volume_lighting(
+            fin.position_world, N,
+            ddgi_volumes[i],
+            i,
+            ddgi_irradiance_texture,
+            ddgi_visibility_texture,
+            ddgi_sampler
+        );
+    }
+    if (ddgi_color.a > 0.0) {
+        ddgi_color /= ddgi_color.a;
+        color += ddgi_color.xyz * surface.base_color * INV_PI;
+    }
 
     Output result;
     result.color = float4(color, surface.opacity);

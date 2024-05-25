@@ -5,6 +5,7 @@
 #include "../context/gbuffer.hpp"
 #include "../context/lights.hpp"
 #include "../context/skybox.hpp"
+#include "ddgi_update.hpp"
 #include "skybox_precompute.hpp"
 
 namespace bi {
@@ -17,6 +18,9 @@ struct DeferredLightingPass final {
 
         ShadowMapTextures shadow_maps;
         PrecomputedSkybox skybox;
+        DdgiTextures ddgi;
+
+        DdgiContext const& ddgi_ctx;
     };
 
     struct OutputData final {
