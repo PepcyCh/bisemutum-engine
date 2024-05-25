@@ -112,6 +112,12 @@ auto ForwardPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputD
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
+            auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
+            if (pass_data->ddgi.irradiance != gfx::TextureHandle::invalid) {
+                params->ddgi.irradiance_texture = {ctx.rg->texture(pass_data->ddgi.irradiance)};
+                params->ddgi.visibility_texture = {ctx.rg->texture(pass_data->ddgi.visibility)};
+            }
+            fragment_shader_params_.update_uniform_buffer();
             ctx.render_list(pass_data->list, fragment_shader_params_);
         }
     );
@@ -137,6 +143,7 @@ auto ForwardTransparentPass::update_params(LightsContext& lights_ctx, SkyboxCont
     auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
     params->lights_ctx = lights_ctx.shader_data;
     params->skybox_ctx = skybox_ctx.shader_data;
+    params->ddgi.num_volumes = 0;
 }
 
 auto ForwardTransparentPass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, InputData const& input) -> OutputData {
@@ -168,12 +175,6 @@ auto ForwardTransparentPass::render(gfx::Camera const& camera, gfx::RenderGraph&
 
     builder.set_execution_function<PassData>(
         [this, &camera](CRef<PassData> pass_data, gfx::GraphicsPassContext const& ctx) {
-            auto params = fragment_shader_params_.mutable_typed_data<ForwardPassParams>();
-            if (pass_data->ddgi.irradiance != gfx::TextureHandle::invalid) {
-                params->ddgi.irradiance_texture = {ctx.rg->texture(pass_data->ddgi.irradiance)};
-                params->ddgi.visibility_texture = {ctx.rg->texture(pass_data->ddgi.visibility)};
-            }
-            fragment_shader_params_.update_uniform_buffer();
             ctx.render_list(pass_data->list, fragment_shader_params_);
         }
     );

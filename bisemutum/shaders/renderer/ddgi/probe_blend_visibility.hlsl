@@ -22,9 +22,9 @@ void ddgi_probe_blend_visibility_cs(
         probe_index_linear / DDGI_PROBES_SIZE / DDGI_PROBES_SIZE
     );
     float3 probe_center = volume_base_position
-        + probe_index.x * volume_extent_x / (DDGI_PROBES_SIZE - 1) * volume_frame_x
-        + probe_index.y * volume_extent_y / (DDGI_PROBES_SIZE - 1) * volume_frame_y
-        + probe_index.z * volume_extent_z / (DDGI_PROBES_SIZE - 1) * volume_frame_z;
+        + probe_index.x * volume_extent_x / DDGI_PROBES_SIZE_M_1 * volume_frame_x
+        + probe_index.y * volume_extent_y / DDGI_PROBES_SIZE_M_1 * volume_frame_y
+        + probe_index.z * volume_extent_z / DDGI_PROBES_SIZE_M_1 * volume_frame_z;
 
     uint2 probe_start = uint2(probe_index.y * DDGI_PROBES_SIZE + probe_index.x, probe_index.z) * (DDGI_PROBE_VISIBILITY_SIZE + 2);
     uint2 probe_coord = local_thread_id.xy + 1;

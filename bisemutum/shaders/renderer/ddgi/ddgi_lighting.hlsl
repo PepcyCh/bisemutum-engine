@@ -30,11 +30,11 @@ float4 calc_ddgi_volume_lighting(
     float2 visibility_probe_uv = (oct_norm * DDGI_PROBE_VISIBILITY_SIZE + 1) / (DDGI_PROBE_VISIBILITY_SIZE + 2);
 
     float3 index_f = float3(
-        x * DDGI_PROBES_SIZE / volume.extent_x,
-        y * DDGI_PROBES_SIZE / volume.extent_y,
-        z * DDGI_PROBES_SIZE / volume.extent_z
+        x * DDGI_PROBES_SIZE_M_1 / volume.extent_x,
+        y * DDGI_PROBES_SIZE_M_1 / volume.extent_y,
+        z * DDGI_PROBES_SIZE_M_1 / volume.extent_z
     );
-    uint3 index = min(uint3(index_f), DDGI_PROBES_SIZE - 1);
+    uint3 index = min(uint3(index_f), DDGI_PROBES_SIZE_M_1 - 1);
     index_f -= index;
 
     float3 sum = 0.0;
@@ -44,14 +44,14 @@ float4 calc_ddgi_volume_lighting(
         uint dx = i & 1;
         uint dy = (i >> 1) & 1;
         uint dz = i >> 2;
-        float3 w_probe3 = lerp(1.0f - index_f, index, uint3(dx, dy, dz));
+        float3 w_probe3 = lerp(1.0f - index_f, index_f, float3(dx, dy, dz));
         float w_probe = w_probe3.x * w_probe3.y * w_probe3.z;
 
         uint3 probe_index = index + uint3(dx, dy, dz);
         float3 probe_center = volume.base_position
-            + probe_index.x * volume.extent_x / (DDGI_PROBES_SIZE - 1) * volume.frame_x
-            + probe_index.y * volume.extent_y / (DDGI_PROBES_SIZE - 1) * volume.frame_y
-            + probe_index.z * volume.extent_z / (DDGI_PROBES_SIZE - 1) * volume.frame_z;
+            + probe_index.x * volume.extent_x / DDGI_PROBES_SIZE_M_1 * volume.frame_x
+            + probe_index.y * volume.extent_y / DDGI_PROBES_SIZE_M_1 * volume.frame_y
+            + probe_index.z * volume.extent_z / DDGI_PROBES_SIZE_M_1 * volume.frame_z;
         float3 dir = normalize(probe_center - pos);
         float w_dir = pow2((dot(dir, normal) + 1.0) * 0.5) + 0.2;
 

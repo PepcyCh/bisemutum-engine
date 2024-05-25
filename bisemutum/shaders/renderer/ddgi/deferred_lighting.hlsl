@@ -21,9 +21,9 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         probe_index_linear / DDGI_PROBES_SIZE / DDGI_PROBES_SIZE
     );
     float3 probe_center = volume_base_position
-        + probe_index.x * volume_extent_x / (DDGI_PROBES_SIZE - 1) * volume_frame_x
-        + probe_index.y * volume_extent_y / (DDGI_PROBES_SIZE - 1) * volume_frame_y
-        + probe_index.z * volume_extent_z / (DDGI_PROBES_SIZE - 1) * volume_frame_z;
+        + probe_index.x * volume_extent_x / DDGI_PROBES_SIZE_M_1 * volume_frame_x
+        + probe_index.y * volume_extent_y / DDGI_PROBES_SIZE_M_1 * volume_frame_y
+        + probe_index.z * volume_extent_z / DDGI_PROBES_SIZE_M_1 * volume_frame_z;
 
     float4 hit_position = probe_gbuffer_position.Load(int3(output_coord, 0));
     if (hit_position.w < 0.0) {
