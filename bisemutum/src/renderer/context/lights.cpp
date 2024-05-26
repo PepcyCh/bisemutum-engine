@@ -20,7 +20,7 @@ LightsContext::LightsContext() {
         .address_mode_u = rhi::SamplerAddressMode::clamp_to_border,
         .address_mode_v = rhi::SamplerAddressMode::clamp_to_border,
         .address_mode_w = rhi::SamplerAddressMode::clamp_to_border,
-        .border_color = rhi::SamplerBorderColor::white_float,
+        .border_color = rhi::SamplerBorderColor::black_float,
     });
 
     ltc_matrix_lut0 = g_engine->asset_manager()->get_and_load_asset<TextureAsset>(
