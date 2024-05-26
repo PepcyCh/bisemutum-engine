@@ -101,7 +101,7 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     float4 ddgi_color = 0.0;
     for (uint i = 0; i < ddgi_num_volumes; i++) {
         ddgi_color += calc_ddgi_volume_lighting(
-            fin.position_world, N,
+            fin.position_world, N, V,
             ddgi_volumes[i],
             i,
             ddgi_irradiance_texture,
@@ -111,7 +111,7 @@ Output forward_pass_fs(VertexAttributesOutput fin) {
     }
     if (ddgi_color.a > 0.0) {
         ddgi_color /= ddgi_color.a;
-        color += ddgi_color.xyz * surface.base_color * INV_PI;
+        color += ddgi_color.xyz * surface.base_color * INV_PI * ddgi_strength;
     }
 
     Output result;

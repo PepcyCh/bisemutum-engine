@@ -274,7 +274,7 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
             builder.read(input.shadow_maps.point_lights_shadow_map);
 
             builder.set_execution_function<DeferredLightingPassData>(
-                [this, &volume_data](CRef<DeferredLightingPassData> pass_data, gfx::ComputePassContext const& ctx) {
+                [this, &camera, &volume_data](CRef<DeferredLightingPassData> pass_data, gfx::ComputePassContext const& ctx) {
                     auto params = deferred_lighting_shader_params_[volume_data.index].mutable_typed_data<DeferredLightingParams>();
                     params->volume.base_position = volume_data.base_position;
                     params->volume.frame_x = volume_data.frame_x;
@@ -289,7 +289,7 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                     params->trace_radiance = {ctx.rg->texture(pass_data->trace_radiance)};
                     deferred_lighting_shader_params_[volume_data.index].update_uniform_buffer();
                     ctx.dispatch(
-                        deferred_lighting_shader_, deferred_lighting_shader_params_[volume_data.index],
+                        camera, deferred_lighting_shader_, deferred_lighting_shader_params_[volume_data.index],
                         ceil_div(DdgiContext::num_rays_per_probe, 32u), ceil_div(DdgiContext::probes_total_count, 8u)
                     );
                 }
@@ -326,6 +326,7 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                     params->probe_irradiance = {ctx.rg->texture(pass_data->probe_irradiance), 0, volume_data.index, 1};
                     if (volume_data.prev_index == 0xffffffffu) {
                         params->history_valid = 0;
+                        params->history_probe_irradiance = {};
                     } else {
                         params->history_valid = 1;
                         params->history_probe_irradiance = {
@@ -371,6 +372,7 @@ auto DdgiUpdatePass::render(gfx::Camera const& camera, gfx::RenderGraph& rg, Inp
                     params->probe_visibility = {ctx.rg->texture(pass_data->probe_visibility), 0, volume_data.index, 1};
                     if (volume_data.prev_index == 0xffffffffu) {
                         params->history_valid = 0;
+                        params->history_probe_visibility = {};
                     } else {
                         params->history_valid = 1;
                         params->history_probe_visibility = {

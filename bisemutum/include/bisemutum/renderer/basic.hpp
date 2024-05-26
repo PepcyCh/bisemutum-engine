@@ -70,6 +70,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
             ddgi,
         };
         Mode mode = Mode::none;
+        float strength = 1.0f;
     };
 
     struct PathTracingSettings final {
@@ -127,6 +128,7 @@ BI_SREFL(
 BI_SREFL(
     type(BasicRenderer::IndirectDiffuseSettings),
     field(mode),
+    field(strength, RangeF{0.0f, 1.0f}),
 )
 BI_SREFL(
     type(BasicRenderer::PathTracingSettings),

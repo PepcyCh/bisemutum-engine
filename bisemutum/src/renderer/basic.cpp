@@ -62,7 +62,7 @@ struct BasicRenderer::Impl final {
             indirect_diffuse_mode = IndirectDiffuseSettings::Mode::none;
         }
         if (indirect_diffuse_mode == IndirectDiffuseSettings::Mode::ddgi) {
-            ddgi_ctx.update_frame();
+            ddgi_ctx.update_frame(settings.indirect_diffuse);
             if (ddgi_ctx.num_ddgi_volumes() == 0) {
                 indirect_diffuse_mode = IndirectDiffuseSettings::Mode::none;
             } else {

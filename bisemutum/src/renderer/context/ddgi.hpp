@@ -4,6 +4,7 @@
 #include <bisemutum/graphics/resource.hpp>
 #include <bisemutum/graphics/shader_param.hpp>
 #include <bisemutum/graphics/handles.hpp>
+#include <bisemutum/renderer/basic.hpp>
 #include <bisemutum/renderer/ddgi_volume.hpp>
 
 namespace bi {
@@ -32,6 +33,7 @@ BI_SHADER_PARAMETERS_END()
 
 BI_SHADER_PARAMETERS_BEGIN(DdgiVolumeLightingData)
     BI_SHADER_PARAMETER(uint, num_volumes);
+    BI_SHADER_PARAMETER(float, strength);
     BI_SHADER_PARAMETER_SRV_BUFFER(StructuredBuffer<DdgiVolumeData>, volumes);
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, irradiance_texture);
     BI_SHADER_PARAMETER_SRV_TEXTURE(Texture2DArray, visibility_texture);
@@ -41,7 +43,7 @@ BI_SHADER_PARAMETERS_END()
 struct DdgiContext final {
     DdgiContext();
 
-    auto update_frame() -> void;
+    auto update_frame(BasicRenderer::IndirectDiffuseSettings const& settings) -> void;
 
     auto num_ddgi_volumes() const -> uint32_t;
 

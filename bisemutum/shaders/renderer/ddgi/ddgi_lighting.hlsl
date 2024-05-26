@@ -5,14 +5,15 @@
 #include "ddgi_struct.hlsl"
 
 float4 calc_ddgi_volume_lighting(
-    float3 pos,
-    float3 normal,
+    float3 pos, float3 normal, float3 view,
     DdgiVolumeData volume,
     uint volume_index,
     Texture2DArray irradiance_texture,
     Texture2DArray visibility_texture,
     SamplerState sampler
 ) {
+    pos += normal * 0.2 + view * 0.8;
+
     float3 vec = pos - volume.base_position;
     float x = dot(vec, volume.frame_x);
     float y = dot(vec, volume.frame_y);

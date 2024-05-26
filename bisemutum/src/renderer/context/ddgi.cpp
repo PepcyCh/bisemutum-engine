@@ -23,16 +23,20 @@ DdgiContext::DdgiContext() {
     shader_data_[1].sampler = {sampler_};
 }
 
-auto DdgiContext::update_frame() -> void {
+auto DdgiContext::update_frame(BasicRenderer::IndirectDiffuseSettings const& settings) -> void {
     init_sample_randoms();
 
     auto this_frame = g_engine->window()->frame_count();
-    if (last_frame_ + 1 != this_frame) {
+    auto history_valid = last_frame_ + 1 == this_frame;
+    shader_data_[db_ind_].strength = settings.strength;
+    if (!history_valid) {
         shader_data_[db_ind_].num_volumes = 0;
         shader_data_[db_ind_].irradiance_texture = {};
         shader_data_[db_ind_].visibility_texture = {};
+        shader_data_[db_ind_].volumes = {};
         irradiance_texture_[db_ind_].reset();
         visibility_texture_[db_ind_].reset();
+        volumes_buffer_[db_ind_].reset();
     }
     last_frame_ = this_frame;
     db_ind_ ^= 1;
@@ -57,12 +61,24 @@ auto DdgiContext::update_frame() -> void {
         auto [ddgi_data_it, _] = ddgi_volumes_data_.try_emplace(id);
 
         auto& transform = object->world_transform();
-        ddgi_data_it->second.prev_index = ddgi_data_it->second.index;
+        ddgi_data_it->second.prev_index = history_valid ? ddgi_data_it->second.index : 0xffffffffu;
         ddgi_data_it->second.index = index++;
-        ddgi_data_it->second.base_position = transform.transform_position({-1.0f, -1.0f, -1.0f});
-        ddgi_data_it->second.frame_x = transform.transform_direction_without_scaling({1.0f, 0.0f, 0.0f});
-        ddgi_data_it->second.frame_y = transform.transform_direction_without_scaling({0.0f, 1.0f, 0.0f});
-        ddgi_data_it->second.frame_z = transform.transform_direction_without_scaling({0.0f, 0.0f, 1.0f});
+        auto base_position = transform.transform_position({-1.0f, -1.0f, -1.0f});
+        auto frame_x = transform.transform_direction_without_scaling({1.0f, 0.0f, 0.0f});
+        auto frame_y = transform.transform_direction_without_scaling({0.0f, 1.0f, 0.0f});
+        auto frame_z = transform.transform_direction_without_scaling({0.0f, 0.0f, 1.0f});
+        if (
+            ddgi_data_it->second.base_position != base_position
+            || ddgi_data_it->second.frame_x != frame_x
+            || ddgi_data_it->second.frame_y != frame_y
+            || ddgi_data_it->second.frame_z != frame_z
+        ) {
+            ddgi_data_it->second.prev_index = 0xffffffffu;
+        }
+        ddgi_data_it->second.base_position = base_position;
+        ddgi_data_it->second.frame_x = frame_x;
+        ddgi_data_it->second.frame_y = frame_y;
+        ddgi_data_it->second.frame_z = frame_z;
         ddgi_data_it->second.voluem_extent = transform.scaling * 2.0f;
 
         volumes_data.push_back(DdgiVolumeData{
@@ -77,6 +93,7 @@ auto DdgiContext::update_frame() -> void {
     }
 
     gfx::Buffer::update_with_container<true>(volumes_buffer_[db_ind_], volumes_data);
+    shader_data_[db_ind_].strength = settings.strength;
     shader_data_[db_ind_].num_volumes = volumes_data.size();
     shader_data_[db_ind_].volumes = {&volumes_buffer_[db_ind_]};
 

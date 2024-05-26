@@ -6,6 +6,7 @@
 #include "../gbuffer.hlsl"
 #include "../skybox/skybox_common.hlsl"
 
+#include <bisemutum/shaders/core/shader_params/camera.hlsl>
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
 [numthreads(32, 8, 1)]
@@ -55,7 +56,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         float3 le = dir_light_eval(light, position_world, light_dir);
         float shadow_factor = dir_light_shadow_factor(
             light, position_world, N,
-            probe_center,
+            camera_position_world(),
             dir_lights_shadow_transform, dir_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);
@@ -65,7 +66,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
         float3 le = point_light_eval(light, position_world, light_dir);
         float shadow_factor = point_light_shadow_factor(
             light, position_world, N,
-            probe_center,
+            camera_position_world(),
             point_lights_shadow_transform, point_lights_shadow_map, shadow_map_sampler
         );
         color += le * shadow_factor * surface_eval(N, T, B, V, light_dir, surface, surface_model);
@@ -100,7 +101,7 @@ void ddgi_deferred_lighting_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     float4 ddgi_color = 0.0;
     for (uint i = 0; i < ddgi_num_volumes; i++) {
         ddgi_color += calc_ddgi_volume_lighting(
-            position_world, N,
+            position_world, N, V,
             ddgi_volumes[i],
             i,
             ddgi_irradiance_texture,

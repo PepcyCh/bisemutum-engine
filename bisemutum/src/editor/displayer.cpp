@@ -180,6 +180,7 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         if (!selected_object_) {
             ImGui::Text("No object is selected.");
         } else {
+            ImGui::PushID(static_cast<int>(reinterpret_cast<size_t>(selected_object_.get())));
             ImGui::Text("%s", selected_object_->get_name_cstr());
             bool edited = false;
             selected_object_->for_each_component([this, &edited](std::string_view component_type_name, void* value) {
@@ -188,6 +189,15 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
                     edited = editor_func(selected_object_.value(), value);
                 }
             });
+            ImGui::PopID();
+        }
+    });
+
+    wm->imgui_window("Editor", [this, &editor_camera](ImGuiWindowArgs const& args) {
+        if (ImGui::CollapsingHeader("Editor Camera")) {
+            ImGui::Text("Position ( %f, %f, %f )", editor_camera->position.x, editor_camera->position.y, editor_camera->position.z);
+            ImGui::Text("Forward ( %f, %f, %f )", editor_camera->front_dir.x, editor_camera->front_dir.y, editor_camera->front_dir.z);
+            ImGui::Text("Up ( %f, %f, %f )", editor_camera->up_dir.x, editor_camera->up_dir.y, editor_camera->up_dir.z);
         }
     });
 

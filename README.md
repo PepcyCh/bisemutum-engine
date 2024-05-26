@@ -22,6 +22,7 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
   * Skybox & IBL
   * SSAO & RTAO (can be rendered in full or half resolution)
   * SSR & RTR (can be rendered in full or half resolution), denoised with implemented ReBLUR
+  * DDGI
   * Bloom
   * Reverse-Z
 * Core
@@ -42,15 +43,19 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* DDGI
+* Gizmo
 * Basic material editor
 * Basic resource browser
 
 ## Gallary
 
-Path traced Sponza
+Path traced Sponza (directional light + skybox)
 
 ![](./images/gallary-pt.png)
+
+DDGI Sponza (directional light only)
+
+![](./images/gallary-ddgi.png)
 
 Screen space reflection
 
