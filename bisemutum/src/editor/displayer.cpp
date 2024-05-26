@@ -209,9 +209,12 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         ImGui::PushID(static_cast<int>(reinterpret_cast<size_t>(this)));
 
         if (ImGui::CollapsingHeader("Editor Camera")) {
-            ImGui::Text("Position ( %f, %f, %f )", editor_camera->position.x, editor_camera->position.y, editor_camera->position.z);
-            ImGui::Text("Forward ( %f, %f, %f )", editor_camera->front_dir.x, editor_camera->front_dir.y, editor_camera->front_dir.z);
-            ImGui::Text("Up ( %f, %f, %f )", editor_camera->up_dir.x, editor_camera->up_dir.y, editor_camera->up_dir.z);
+            auto temp_pos = editor_camera->position;
+            auto temp_front = editor_camera->front_dir;
+            auto temp_up = editor_camera->up_dir;
+            editor::edit_float3("position", temp_pos);
+            editor::edit_float3("forward", temp_front);
+            editor::edit_float3("up", temp_up);
 
             if (ImGui::Button("Set To Scene Camera")) {
                 scene_camera->position = editor_camera->position;
