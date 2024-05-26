@@ -3,6 +3,7 @@
 #include <functional>
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/runtime/world.hpp>
 #include <bisemutum/runtime/scene.hpp>
@@ -45,6 +46,9 @@ auto EditorDisplayer::init_displayer() -> void {
             }
         }
     );
+
+    mani_gizmo_op_ = ImGuizmo::OPERATION::TRANSLATE;
+    mani_gizmo_mode_ = ImGuizmo::MODE::WORLD;
 }
 
 auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Texture> target_texture) -> void {
@@ -116,6 +120,14 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
     wm->imgui_window(
         g_engine->window_manager()->main_viewport_name(),
         [displayed_camera](ImGuiWindowArgs const& args) {
+            auto draw_list = ImGui::GetWindowDrawList();
+            ImGuizmo::SetDrawlist(draw_list);
+            draw_list->PushClipRect(
+                ImVec2(args.window_pos.x, args.window_pos.y),
+                ImVec2(args.window_pos.x + args.window_size.x, args.window_pos.y + args.window_size.y)
+            );
+            ImGuizmo::SetRect(args.window_pos.x, args.window_pos.y, args.window_size.x, args.window_size.y);
+
             ImGui::Image(
                 &displayed_camera->target_texture(),
                 {static_cast<float>(args.window_size.x), static_cast<float>(args.window_size.y)}
@@ -193,17 +205,54 @@ auto EditorDisplayer::display(Ref<rhi::CommandEncoder> cmd_encoder, Ref<gfx::Tex
         }
     });
 
-    wm->imgui_window("Editor", [this, &editor_camera](ImGuiWindowArgs const& args) {
+    wm->imgui_window("Editor", [this, &editor_camera, &scene_camera](ImGuiWindowArgs const& args) {
+        ImGui::PushID(static_cast<int>(reinterpret_cast<size_t>(this)));
+
         if (ImGui::CollapsingHeader("Editor Camera")) {
             ImGui::Text("Position ( %f, %f, %f )", editor_camera->position.x, editor_camera->position.y, editor_camera->position.z);
             ImGui::Text("Forward ( %f, %f, %f )", editor_camera->front_dir.x, editor_camera->front_dir.y, editor_camera->front_dir.z);
             ImGui::Text("Up ( %f, %f, %f )", editor_camera->up_dir.x, editor_camera->up_dir.y, editor_camera->up_dir.z);
+
+            if (ImGui::Button("Set To Scene Camera")) {
+                scene_camera->position = editor_camera->position;
+                scene_camera->front_dir = editor_camera->front_dir;
+                scene_camera->up_dir = editor_camera->up_dir;
+                scene_camera->yfov = editor_camera->yfov;
+            }
         }
+
+        if (ImGui::CollapsingHeader("Gizmo")) {
+            ImGui::Text("Manipulation Mode");
+            ImGui::RadioButton("Translation", &mani_gizmo_op_, ImGuizmo::OPERATION::TRANSLATE);
+            ImGui::RadioButton("Rotation", &mani_gizmo_op_, ImGuizmo::OPERATION::ROTATE);
+            ImGui::RadioButton("Scaling", &mani_gizmo_op_, ImGuizmo::OPERATION::SCALE);
+            ImGui::Text("Manipulation Space");
+            ImGui::RadioButton("World", &mani_gizmo_mode_, ImGuizmo::MODE::WORLD);
+            ImGui::RadioButton("Local", &mani_gizmo_mode_, ImGuizmo::MODE::LOCAL);
+        }
+
+        ImGui::PopID();
     });
 
     wm->imgui_window("Contents", [](ImGuiWindowArgs const& args) {
         // TODO - contents viewer
     });
+
+    if (!display_scene_camera_this_frame && selected_object_) {
+        auto view = editor_camera->matrix_view();
+        auto proj = editor_camera->matrix_proj();
+        auto matrix = selected_object_->world_transform().matrix();
+        if (ImGuizmo::Manipulate(
+            &view[0][0], &proj[0][0],
+            static_cast<ImGuizmo::OPERATION>(mani_gizmo_op_),
+            static_cast<ImGuizmo::MODE>(mani_gizmo_mode_),
+            &matrix[0][0]
+        )) {
+            selected_object_->update_component<Transform>([&matrix](Transform& trans) {
+                trans = Transform::from_matrix(matrix);
+            });
+        }
+    }
 
     file_dialog_.update();
 

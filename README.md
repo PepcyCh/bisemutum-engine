@@ -103,6 +103,7 @@ Editor
 
 * [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
 * [ImGui File Dialog](https://github.com/aiekick/ImGuiFileDialog) (MIT) (in source)
+* [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) (MIT) (in source)
 
 Asset
 

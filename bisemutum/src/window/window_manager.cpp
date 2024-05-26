@@ -69,7 +69,8 @@ struct WindowManager::Impl final {
         auto window_size = ImGui::GetWindowSize();
         if (enabled) {
             func(ImGuiWindowArgs{
-                .window_size = {window_size.x, window_size.y},
+                .window_pos = {static_cast<uint32_t>(window_pos.x), static_cast<uint32_t>(window_pos.y)},
+                .window_size = {static_cast<uint32_t>(window_size.x), static_cast<uint32_t>(window_size.y)},
             });
         }
         ImGui::End();

@@ -15,6 +15,7 @@ struct ImGuiWindowConfig final {
 };
 
 struct ImGuiWindowArgs final {
+    uint2 window_pos;
     uint2 window_size;
 };
 

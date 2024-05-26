@@ -30,6 +30,8 @@ struct Camera final {
     auto update_shader_params() -> void;
 
     // The values are updated after `update_shader_params()`.
+    auto matrix_proj() const -> float4x4 const&;
+    auto matrix_view() const -> float4x4 const&;
     auto matrix_proj_view() const -> float4x4 const& { return matrix_proj_view_; }
     auto history_matrix_proj_view() const -> float4x4 const& { return history_matrix_proj_view_; }
 

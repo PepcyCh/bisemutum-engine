@@ -18,7 +18,7 @@ target("bisemutum-lib")
 
     add_deps("anyany", {public = true})
     add_deps("pep-cprep")
-    add_deps("imgui-file-dialog")
+    add_deps("imgui-file-dialog", "imguizmo")
 
     add_packages("fmt", "spdlog", "miniz", "glm", "entt", "magic_enum", "imgui", {public = true})
     add_defines("MAGIC_ENUM_RANGE_MAX=8192")

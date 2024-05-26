@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
+#include <ImGuizmo.h>
 #include <bisemutum/engine/engine.hpp>
 #include <bisemutum/window/window.hpp>
 #include <bisemutum/graphics/graphics_manager.hpp>
@@ -164,6 +165,8 @@ struct ImGuiRenderer::Impl final {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::PushFont(imgui_curr_font);
+
+        ImGuizmo::BeginFrame();
     }
 
     auto create_device_objects(gfx::GraphicsManager& gfx_mgr) -> void {

@@ -116,6 +116,12 @@ auto Camera::update_shader_params() -> void {
     uniform_data->camera.history_matrix_inv_proj = uniform_data->camera.matrix_inv_proj;
     uniform_data->camera.history_matrix_inv_view = uniform_data->camera.matrix_inv_view;
 }
+auto Camera::matrix_proj() const -> float4x4 const& {
+    return shader_parameter_.typed_data<GraphicsInput>()->camera.matrix_proj;
+}
+auto Camera::matrix_view() const -> float4x4 const& {
+    return shader_parameter_.typed_data<GraphicsInput>()->camera.matrix_view;
+}
 
 auto Camera::get_frustum_planes() const -> std::array<float4, 6> {
     std::array<float4, 6> planes;

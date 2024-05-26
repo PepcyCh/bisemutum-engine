@@ -34,6 +34,9 @@ private:
     WindowManager::ResizeCallbackHandle editor_camera_resize_;
 
     editor::FileDialog file_dialog_;
+
+    int mani_gizmo_op_ = 0;
+    int mani_gizmo_mode_ = 0;
 };
 
 }
