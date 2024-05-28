@@ -27,8 +27,7 @@ auto AssetPtr::edit(std::string_view type) -> bool {
     auto curr_asset = asset_mgr->metadata_of(asset_id);
     auto all_assets = asset_mgr->all_metadata_of_type(type);
     auto edited = false;
-    auto label = fmt::format("{}##{}", type, reinterpret_cast<size_t>(this));
-    if (ImGui::BeginCombo(label.c_str(), curr_asset ? curr_asset->path.c_str() : "<null>")) {
+    if (ImGui::BeginCombo(editor::label(type, this).c_str(), curr_asset ? curr_asset->path.c_str() : "<null>")) {
         for (auto& asset : all_assets) {
             auto selected = asset->id == static_cast<uint64_t>(asset_id);
             if (ImGui::Selectable(asset->path.c_str(), selected) && !selected) {

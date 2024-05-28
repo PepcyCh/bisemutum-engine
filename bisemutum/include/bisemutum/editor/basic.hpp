@@ -11,6 +11,8 @@
 
 namespace bi::editor {
 
+auto label(std::string_view name, void const* p_data = nullptr) -> std::string;
+
 template <traits::Enum E>
 auto edit_enum(std::string_view name, E& value) -> bool {
     constexpr auto values = magic_enum::enum_values<E>();
@@ -19,7 +21,7 @@ auto edit_enum(std::string_view name, E& value) -> bool {
         names[i] = magic_enum::enum_name<E>(magic_enum::enum_value<E>(i)).data();
     }
     auto curr = static_cast<int>(magic_enum::enum_index<E>(value).value());
-    auto dirty = ImGui::Combo(name.data(), &curr, names.data(), names.size());
+    auto dirty = ImGui::Combo(label(name, &value).c_str(), &curr, names.data(), names.size());
     value = magic_enum::enum_value<E>(curr);
     return dirty;
 }
