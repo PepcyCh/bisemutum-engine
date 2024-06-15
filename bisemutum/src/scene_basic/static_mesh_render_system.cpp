@@ -119,10 +119,6 @@ struct StaticMeshRenderSystem::Impl final {
 };
 
 StaticMeshRenderSystem::StaticMeshRenderSystem() = default;
-StaticMeshRenderSystem::~StaticMeshRenderSystem() = default;
-
-StaticMeshRenderSystem::StaticMeshRenderSystem(StaticMeshRenderSystem&& rhs) noexcept = default;
-auto StaticMeshRenderSystem::operator=(StaticMeshRenderSystem&& rhs) noexcept -> StaticMeshRenderSystem& = default;
 
 auto StaticMeshRenderSystem::init_on(Ref<rt::Scene> scene) -> void {
     impl()->init_on(scene);

@@ -32,7 +32,6 @@ struct Engine final : PImpl<Engine> {
     struct Impl;
 
     Engine();
-    ~Engine();
 
     auto initialize(int argc, char** argv) -> bool;
     auto finalize() -> bool;

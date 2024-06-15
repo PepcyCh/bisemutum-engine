@@ -23,7 +23,6 @@ struct RenderGraph final : PImpl<RenderGraph> {
     struct Impl;
 
     RenderGraph();
-    ~RenderGraph();
 
     auto add_buffer(std::function<auto(BufferBuilder&) -> void> setup_func) -> BufferHandle;
     auto import_buffer(Ref<Buffer> buffer) -> BufferHandle;

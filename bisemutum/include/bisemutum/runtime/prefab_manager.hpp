@@ -11,10 +11,6 @@ struct PrefabManager final : PImpl<PrefabManager> {
     struct Impl;
 
     PrefabManager();
-    ~PrefabManager();
-
-    PrefabManager(PrefabManager&& rhs) noexcept;
-    auto operator=(PrefabManager&& rhs) noexcept -> PrefabManager&;
 
     auto update() -> void;
 

@@ -90,10 +90,6 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
     };
 
     BasicRenderer();
-    ~BasicRenderer();
-
-    BasicRenderer(BasicRenderer&& rhs) noexcept;
-    auto operator=(BasicRenderer&& rhs) noexcept -> BasicRenderer&;
 
     static constexpr std::string_view renderer_type_name = "BasicRenderer";
 

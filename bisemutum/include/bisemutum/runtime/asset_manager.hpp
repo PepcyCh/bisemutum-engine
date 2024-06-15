@@ -22,7 +22,6 @@ struct AssetManager final : PImpl<AssetManager> {
     struct Impl;
 
     AssetManager();
-    ~AssetManager();
 
     struct AssetFunctions final {
         std::function<AssetLoader> loader;

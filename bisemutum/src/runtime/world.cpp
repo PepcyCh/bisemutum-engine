@@ -70,8 +70,6 @@ struct World::Impl final {
 
 World::World() = default;
 
-World::~World() = default;
-
 auto World::current_scene() -> Ptr<Scene> {
     return impl()->current_scene;
 }

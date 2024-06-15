@@ -462,7 +462,6 @@ struct ImGuiRenderer::Impl final {
 };
 
 ImGuiRenderer::ImGuiRenderer() = default;
-ImGuiRenderer::~ImGuiRenderer() = default;
 
 auto ImGuiRenderer::initialize(Window& window, gfx::GraphicsManager& gfx_mgr) -> void {
     impl()->initialize(window, gfx_mgr);

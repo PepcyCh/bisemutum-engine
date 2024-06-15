@@ -38,7 +38,6 @@ struct FileSystem final : PImpl<FileSystem> {
     struct Impl;
 
     FileSystem();
-    ~FileSystem();
 
     auto mount(std::string_view target, Dyn<ISubFileSystem>::Box sub_fs) -> bool;
     auto umount(std::string_view target) -> bool;

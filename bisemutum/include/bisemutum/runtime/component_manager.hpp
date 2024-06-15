@@ -19,7 +19,6 @@ struct ComponentManager final : PImpl<ComponentManager> {
     struct Impl;
 
     ComponentManager();
-    ~ComponentManager();
 
     struct ComponentMetadata final {
         std::type_index type_index;

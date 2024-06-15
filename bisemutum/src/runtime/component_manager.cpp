@@ -25,7 +25,6 @@ struct ComponentManager::Impl final {
 };
 
 ComponentManager::ComponentManager() = default;
-ComponentManager::~ComponentManager() = default;
 
 auto ComponentManager::register_component(
     std::string_view type,

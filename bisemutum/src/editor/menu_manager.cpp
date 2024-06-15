@@ -66,7 +66,6 @@ struct MenuManager::Impl final {
 };
 
 MenuManager::MenuManager() = default;
-MenuManager::~MenuManager() = default;
 
 auto MenuManager::register_action(std::string_view path, BitFlags<MenuItemFlag> flags, MenuAction action) -> bool {
     return impl()->register_action(path, flags, std::move(action));

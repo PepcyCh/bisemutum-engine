@@ -17,7 +17,6 @@ struct ShaderCompiler final : PImpl<ShaderCompiler> {
     struct Impl;
 
     ShaderCompiler();
-    ~ShaderCompiler();
 
     auto initialize(Ref<rhi::Device> device) -> void;
 

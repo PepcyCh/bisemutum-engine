@@ -12,10 +12,6 @@ struct PrefabManager::Impl final {
 };
 
 PrefabManager::PrefabManager() = default;
-PrefabManager::~PrefabManager() = default;
-
-PrefabManager::PrefabManager(PrefabManager&& rhs) noexcept = default;
-auto PrefabManager::operator=(PrefabManager&& rhs) noexcept -> PrefabManager& = default;
 
 auto PrefabManager::update() -> void {}
 

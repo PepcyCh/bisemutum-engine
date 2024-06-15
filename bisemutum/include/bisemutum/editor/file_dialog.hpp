@@ -11,7 +11,6 @@ struct FileDialog final : PImpl<FileDialog> {
     struct Impl;
 
     FileDialog();
-    ~FileDialog();
 
     FileDialog(FileDialog&& rhs);
     auto operator=(FileDialog&& rhs) -> FileDialog&;

@@ -39,7 +39,6 @@ struct FileDialog::Impl final {
 };
 
 FileDialog::FileDialog() = default;
-FileDialog::~FileDialog() = default;
 
 FileDialog::FileDialog(FileDialog&& rhs) = default;
 auto FileDialog::operator=(FileDialog&& rhs) -> FileDialog& = default;

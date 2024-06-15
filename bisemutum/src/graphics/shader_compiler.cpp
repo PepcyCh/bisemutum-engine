@@ -349,8 +349,6 @@ struct ShaderCompiler::Impl final {
 
 ShaderCompiler::ShaderCompiler() = default;
 
-ShaderCompiler::~ShaderCompiler() = default;
-
 auto ShaderCompiler::initialize(Ref<rhi::Device> device) -> void {
     impl()->initialize(device);
 }

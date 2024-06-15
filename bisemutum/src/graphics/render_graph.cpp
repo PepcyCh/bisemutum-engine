@@ -1224,8 +1224,6 @@ auto RenderGraph::Impl::PresentPassNode::set_barriers(
 
 RenderGraph::RenderGraph() = default;
 
-RenderGraph::~RenderGraph() = default;
-
 auto RenderGraph::add_buffer(std::function<auto(BufferBuilder&) -> void> setup_func) -> BufferHandle {
     return impl()->add_buffer(std::move(setup_func));
 }

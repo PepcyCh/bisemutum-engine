@@ -162,7 +162,6 @@ struct AssetManager::Impl final {
 };
 
 AssetManager::AssetManager() = default;
-AssetManager::~AssetManager() = default;
 
 auto AssetManager::initialize(Dyn<IFile>::Ref metadata_file) -> bool {
     return impl()->initialize(metadata_file);

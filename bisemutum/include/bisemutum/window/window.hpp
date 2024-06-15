@@ -19,7 +19,6 @@ struct Window final : PImpl<Window> {
     struct Impl;
 
     Window(uint32_t width, uint32_t height, std::string_view title);
-    ~Window();
 
     auto frame_size() const -> WindowSize;
     auto logic_size() const -> WindowSize;

@@ -72,7 +72,6 @@ struct GraphicsManager final : PImpl<GraphicsManager> {
     struct Impl;
 
     GraphicsManager();
-    ~GraphicsManager();
 
     auto initialize(GraphicsSettings const& settings, std::string_view pipeline_cache_file) -> void;
 

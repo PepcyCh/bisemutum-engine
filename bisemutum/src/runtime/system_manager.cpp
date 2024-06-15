@@ -69,8 +69,6 @@ struct SystemManager::Impl final {
 
 SystemManager::SystemManager() = default;
 
-SystemManager::~SystemManager() = default;
-
 auto SystemManager::init_on(Ref<Scene> scene) -> void {
     impl()->init_on(scene);
 }

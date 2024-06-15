@@ -190,8 +190,6 @@ Window::Window(uint32_t width, uint32_t height, std::string_view title) {
     impl()->init(this, width, height, title);
 }
 
-Window::~Window() = default;
-
 auto Window::frame_size() const -> WindowSize { return impl()->frame_size; }
 auto Window::logic_size() const -> WindowSize { return impl()->logic_size; }
 

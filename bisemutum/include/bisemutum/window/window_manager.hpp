@@ -23,7 +23,6 @@ struct WindowManager final : PImpl<WindowManager> {
     struct Impl;
 
     WindowManager();
-    ~WindowManager();
 
     auto new_frame() -> void;
 

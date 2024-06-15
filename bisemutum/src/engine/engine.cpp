@@ -128,7 +128,7 @@ struct Engine::Impl final {
 
         auto scene_file_opt = file_system.get_file(project_info.scene_file);
         if (!scene_file_opt) {
-            log::critical("general", "Scene file '{}' not founc.", project_info.scene_file);
+            log::critical("general", "Scene file '{}' not found.", project_info.scene_file);
             return false;
         }
         if (!world.load_scene(scene_file_opt.value().read_string_data())) { return false; }
@@ -237,8 +237,6 @@ struct Engine::Impl final {
 };
 
 Engine::Engine() = default;
-
-Engine::~Engine() = default;
 
 auto Engine::initialize(int argc, char** argv) -> bool { return impl()->initialize(argc, argv); }
 auto Engine::finalize() -> bool { return impl()->finalize(); }

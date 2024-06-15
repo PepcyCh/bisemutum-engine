@@ -256,10 +256,6 @@ struct BasicRenderer::Impl final {
 };
 
 BasicRenderer::BasicRenderer() = default;
-BasicRenderer::~BasicRenderer() = default;
-
-BasicRenderer::BasicRenderer(BasicRenderer&& rhs) noexcept = default;
-auto BasicRenderer::operator=(BasicRenderer&& rhs) noexcept -> BasicRenderer& = default;
 
 auto BasicRenderer::override_volume_component_name() const -> std::string_view {
     return BasicRendererOverrideVolume::component_type_name;

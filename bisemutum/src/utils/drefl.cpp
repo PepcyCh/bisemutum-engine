@@ -23,7 +23,6 @@ struct ReflectionManager::Impl final {
 };
 
 ReflectionManager::ReflectionManager() = default;
-ReflectionManager::~ReflectionManager() = default;
 
 auto ReflectionManager::register_type(std::type_index type, TypeInfo&& info) -> void {
     impl()->register_type(type, std::move(info));

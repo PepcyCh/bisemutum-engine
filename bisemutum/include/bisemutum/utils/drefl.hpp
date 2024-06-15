@@ -28,7 +28,6 @@ struct ReflectionManager final : PImpl<ReflectionManager> {
     struct Impl;
 
     ReflectionManager();
-    ~ReflectionManager();
 
     template <typename T>
     auto register_type() -> void {

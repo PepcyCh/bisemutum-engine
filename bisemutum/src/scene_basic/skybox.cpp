@@ -82,10 +82,6 @@ struct SkyboxSystem::Impl final {
 };
 
 SkyboxSystem::SkyboxSystem() = default;
-SkyboxSystem::~SkyboxSystem() = default;
-
-SkyboxSystem::SkyboxSystem(SkyboxSystem&& rhs) noexcept = default;
-auto SkyboxSystem::operator=(SkyboxSystem&& rhs) noexcept -> SkyboxSystem& = default;
 
 auto SkyboxSystem::init_on(Ref<rt::Scene> scene) -> void {
     impl()->init_on(scene);

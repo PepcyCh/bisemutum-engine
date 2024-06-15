@@ -18,7 +18,6 @@ struct ImGuiRenderer final : PImpl<ImGuiRenderer> {
     struct Impl;
 
     ImGuiRenderer();
-    ~ImGuiRenderer();
 
     auto initialize(Window& window, gfx::GraphicsManager& gfx_mgr) -> void;
     auto finalize() -> void;

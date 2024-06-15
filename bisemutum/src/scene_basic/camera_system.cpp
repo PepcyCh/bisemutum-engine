@@ -145,10 +145,6 @@ struct CameraSystem::Impl final {
 };
 
 CameraSystem::CameraSystem() = default;
-CameraSystem::~CameraSystem() = default;
-
-CameraSystem::CameraSystem(CameraSystem&& rhs) noexcept = default;
-auto CameraSystem::operator=(CameraSystem&& rhs) noexcept -> CameraSystem& = default;
 
 auto CameraSystem::init_on(Ref<rt::Scene> scene) -> void {
     impl()->init_on(scene);

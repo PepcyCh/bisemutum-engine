@@ -57,7 +57,6 @@ struct SystemManager final : PImpl<SystemManager> {
     struct Impl;
 
     SystemManager();
-    ~SystemManager();
 
     template <typename GlobalSystem>
     auto register_global_system() -> void {

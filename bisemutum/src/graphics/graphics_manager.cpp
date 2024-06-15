@@ -1465,7 +1465,6 @@ struct GraphicsManager::Impl final {
 };
 
 GraphicsManager::GraphicsManager() = default;
-GraphicsManager::~GraphicsManager() = default;
 
 auto GraphicsManager::initialize(GraphicsSettings const& settings, std::string_view pipeline_cache_file) -> void {
     impl()->initialize(settings, pipeline_cache_file);

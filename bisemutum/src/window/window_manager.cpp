@@ -119,7 +119,6 @@ struct WindowManager::Impl final {
 };
 
 WindowManager::WindowManager() = default;
-WindowManager::~WindowManager() = default;
 
 auto WindowManager::new_frame() -> void {
     impl()->new_frame(*this);

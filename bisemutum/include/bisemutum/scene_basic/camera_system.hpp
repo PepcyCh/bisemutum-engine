@@ -12,10 +12,6 @@ struct CameraSystem final : PImpl<CameraSystem> {
     struct Impl;
 
     CameraSystem();
-    ~CameraSystem();
-
-    CameraSystem(CameraSystem&& rhs) noexcept;
-    auto operator=(CameraSystem&& rhs) noexcept -> CameraSystem&;
 
     auto init_on(Ref<rt::Scene> scene) -> void;
     auto update() -> void;

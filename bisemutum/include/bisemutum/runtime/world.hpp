@@ -13,7 +13,6 @@ struct World final : PImpl<World> {
     struct Impl;
 
     World();
-    ~World();
 
     auto current_scene() -> Ptr<Scene>;
     auto current_scene() const -> CPtr<Scene>;

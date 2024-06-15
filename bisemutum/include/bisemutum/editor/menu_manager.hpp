@@ -31,7 +31,6 @@ struct MenuManager final : PImpl<MenuManager> {
     struct Impl;
 
     MenuManager();
-    ~MenuManager();
 
     auto register_action(std::string_view path, BitFlags<MenuItemFlag> flags, MenuAction action) -> bool;
 

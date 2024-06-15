@@ -285,7 +285,6 @@ struct FileSystem::Impl final {
 };
 
 FileSystem::FileSystem() = default;
-FileSystem::~FileSystem() = default;
 
 auto FileSystem::mount(std::string_view target, Dyn<ISubFileSystem>::Box sub_fs) -> bool {
     return impl()->mount(target, std::move(sub_fs));

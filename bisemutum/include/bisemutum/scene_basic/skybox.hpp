@@ -32,10 +32,6 @@ struct SkyboxSystem final : PImpl<SkyboxSystem> {
     struct Impl;
 
     SkyboxSystem();
-    ~SkyboxSystem();
-
-    SkyboxSystem(SkyboxSystem&& rhs) noexcept;
-    auto operator=(SkyboxSystem&& rhs) noexcept -> SkyboxSystem&;
 
     auto init_on(Ref<rt::Scene> scene) -> void;
     auto update() -> void;

@@ -152,10 +152,6 @@ struct GpuSceneSystem::Impl final {
 };
 
 GpuSceneSystem::GpuSceneSystem() = default;
-GpuSceneSystem::~GpuSceneSystem() = default;
-
-GpuSceneSystem::GpuSceneSystem(GpuSceneSystem&& rhs) noexcept = default;
-auto GpuSceneSystem::operator=(GpuSceneSystem&& rhs) noexcept -> GpuSceneSystem& = default;
 
 auto GpuSceneSystem::init_on(Ref<rt::Scene> scene) -> void {
     impl()->init_on(scene);

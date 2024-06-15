@@ -43,7 +43,6 @@ My personal renderer using C++20 and modern graphics API (Vulkan and D3D12).
 
 ### Features to be Developed Next
 
-* Gizmo
 * Basic material editor
 * Basic resource browser
 
