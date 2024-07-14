@@ -93,17 +93,12 @@ struct TexturePool final {
 
 auto need_barrier(BitFlags<rhi::ResourceAccessType> from, BitFlags<rhi::ResourceAccessType> to) -> bool {
     BI_ASSERT(to != rhi::ResourceAccessType::none);
-    // if (
-    //     from == rhi::ResourceAccessType::sampled_texture_read
-    //     && to == rhi::ResourceAccessType::depth_stencil_attachment_read
-    // ) {
-    //     return false;
-    // }
     return from != to
-        || (
-            from.contains_any(rhi::ResourceAccessType::storage_resource_write)
-            && to.contains_any(rhi::ResourceAccessType::storage_resource_write)
-        );
+        || from.contains_any({
+            rhi::ResourceAccessType::storage_resource_write,
+            rhi::ResourceAccessType::color_attachment_write,
+            rhi::ResourceAccessType::depth_stencil_attachment_write,
+        });
 }
 
 } // namespace

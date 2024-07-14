@@ -62,11 +62,13 @@ struct ExecutableOptions final {
 auto parse_options(int argc, char** argv) -> ExecutableOptions {
     ExecutableOptions opt{};
 
-    if (argc < 2) { return opt; }
-    opt.project_file = argv[1];
-
-    for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "-editor") == 0) {
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-project") == 0) {
+            if (i + 1 < argc) {
+                ++i;
+                opt.project_file = argv[i];
+            }
+        } else if (strcmp(argv[i], "-editor") == 0) {
             opt.editor = true;
         } else {
             log::warn("general", "Unknown comman line option '{}'", argv[i]);
@@ -89,21 +91,38 @@ struct Engine::Impl final {
         if (!mount_engine_path()) { return false; }
 
         auto opt = parse_options(argc, argv);
-        if (!opt.project_file) {
-            log::critical("general", "Project file is not specified.");
-            return false;
-        }
         is_editor_mode = opt.editor;
 
         do_register();
 
-        auto project_info_opt = read_project_file(opt.project_file);
-        if (!project_info_opt) { return false; }
-        project_info = std::move(project_info_opt).value();
-        file_system.mount(
-            "/project/",
-            rt::PhysicalSubFileSystem{std::filesystem::path{opt.project_file}.parent_path()}
-        );
+        if (opt.project_file) {
+            auto project_info_opt = read_project_file(opt.project_file);
+            if (!project_info_opt) { return false; }
+            project_info = std::move(project_info_opt).value();
+            file_system.mount(
+                "/project/",
+                rt::PhysicalSubFileSystem{std::filesystem::path{opt.project_file}.parent_path()}
+            );
+        } else {
+            project_info.name = "In Memory Empty Project";
+            project_info.renderer = "BasicRenderer";
+            project_info.scene_file = "/project/scene.toml";
+            project_info.asset_metadata_file = "/project/asset_metadata.toml";
+            project_info.settings.graphics.backend = rhi::Backend::vulkan;
+            file_system.mount("/project/", rt::MemorySubFileSystem{});
+            auto scene_file = file_system.create_file(project_info.scene_file);
+            scene_file.value().write_string_data(R"(
+                [[objects]]
+                name = 'Camera'
+                [[objects.components]]
+                type = 'Transform'
+                [[objects.components]]
+                type = 'CameraComponent'
+                [objects.components.value]
+                render_target_format = 'rgba16_sfloat'
+            )");
+            file_system.create_file(project_info.asset_metadata_file);
+        }
 
         auto asset_metadata_file = file_system.get_file(project_info.asset_metadata_file).value();
         if (!asset_manager.initialize(*&asset_metadata_file)) {

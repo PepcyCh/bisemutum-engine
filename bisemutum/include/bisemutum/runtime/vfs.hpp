@@ -87,4 +87,41 @@ private:
     bool writable_;
 };
 
+
+struct MemorySubFileSystem;
+
+struct MemoryFile final : PImpl<MemoryFile>  {
+    struct Impl;
+
+    auto is_writable() const -> bool;
+    auto filename() const -> std::string;
+    auto extension() const -> std::string;
+
+    auto read_string_data() -> std::string;
+    auto read_binary_data() -> std::vector<std::byte>;
+
+    auto write_string_data(std::string_view data) -> bool;
+    auto write_binary_data(CSpan<std::byte> data) -> bool;
+
+private:
+    friend MemorySubFileSystem;
+    MemoryFile(std::string filename, bool writable);
+};
+
+struct MemorySubFileSystem final : PImpl<MemorySubFileSystem> {
+    struct Impl;
+
+    MemorySubFileSystem(bool writable = true);
+
+    auto is_writable() const -> bool;
+
+    auto has_file(std::string_view path) const -> bool;
+    auto get_file(std::string_view path) const -> Option<Dyn<IFile>::Box>;
+
+    auto create_file(std::string_view path) -> Option<Dyn<IFile>::Box>;
+    auto remove_file(std::string_view path) -> bool;
+
+    auto get_physical_path() const -> std::filesystem::path { return {}; }
+};
+
 }

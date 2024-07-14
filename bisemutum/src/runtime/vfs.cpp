@@ -163,7 +163,7 @@ struct VirtualDirectory final {
     auto get_sub_fs() -> Dyn<ISubFileSystem>::Ptr { return &sub_fs_.value(); }
     auto get_sub_fs() const -> Dyn<ISubFileSystem>::CPtr { return &sub_fs_.value(); }
     auto set_sub_fs(Dyn<ISubFileSystem>::Box&& sub_fs) -> void  { sub_fs_ = std::move(sub_fs); }
-    auto reset_sub_fs() { sub_fs_.reset(); }
+    auto reset_sub_fs() -> void { sub_fs_.reset(); }
 
 private:
     template <typename Self>
@@ -333,12 +333,14 @@ auto PhysicalFile::read_binary_data() -> std::vector<std::byte> {
 }
 
 auto PhysicalFile::write_string_data(std::string_view data) -> bool {
+    if (!writable_) { return false; }
     std::ofstream fout(path_);
     if (!fout) { return false; }
     fout.write(data.data(), data.size());
     return true;
 }
 auto PhysicalFile::write_binary_data(CSpan<std::byte> data) -> bool {
+    if (!writable_) { return false; }
     std::ofstream fout(path_, std::ios::binary);
     if (!fout) { return false; }
     fout.write(reinterpret_cast<char const*>(data.data()), data.size());
@@ -383,6 +385,197 @@ auto PhysicalSubFileSystem::remove_file(std::string_view path) -> bool {
     auto full_path = root_path_ / path;
     if (std::filesystem::is_regular_file(full_path)) {
         std::filesystem::remove(full_path);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+namespace {
+
+struct MemoryFileData final {
+    std::vector<std::byte> data;
+};
+
+struct MemorySubFileSystemDirectory final {
+    auto create_dir(std::string_view path) -> Ptr<MemorySubFileSystemDirectory> {
+        auto normalized_path = normalize_path(path);
+        if (normalized_path.empty()) {
+            return unsafe_make_ref(this);
+        }
+
+        auto curr_dir = unsafe_make_ref(this);
+        auto p = normalized_path.find('/');
+        size_t last_p = 0;
+        while (true) {
+            bool is_end = p == std::string::npos;
+            p = is_end ? normalized_path.size() : p;
+            auto name = std::string_view{normalized_path.data() + last_p, p - last_p};
+            if (name == "..") {
+                return nullptr;
+            }
+            if (auto it = curr_dir->name_map_.find(name); it != curr_dir->name_map_.end()) {
+                curr_dir = it->second;
+                if (is_end) {
+                    return curr_dir;
+                }
+            } else {
+                if (curr_dir->file.has_value()) {
+                    return nullptr;
+                }
+                auto &dir = curr_dir->subdirs_.emplace_back();
+                it = curr_dir->name_map_.insert({std::string{name}, unsafe_make_ref(&dir)}).first;
+                curr_dir = it->second;
+                if (is_end) {
+                    return curr_dir;
+                }
+            }
+            last_p = p + 1;
+            p = normalized_path.find('/', last_p);
+        }
+    }
+
+    auto get_dir(std::string_view path) -> Ptr<MemorySubFileSystemDirectory> {
+        return get_dir_impl(this, path);
+    }
+    auto get_dir(std::string_view path) const -> CPtr<MemorySubFileSystemDirectory> {
+        return get_dir_impl(this, path);
+    }
+
+    auto is_empty_directory() const -> bool { return subdirs_.empty(); }
+
+    Option<MemoryFileData> file;
+
+private:
+    template <typename Self>
+    static auto get_dir_impl(Self *self, std::string_view path) -> Ptr<Self> {
+        auto normalized_path = normalize_path(path);
+        if (normalized_path.empty()) {
+            return unsafe_make_ref(self);
+        }
+
+        auto curr_dir = unsafe_make_ref(self);
+        auto p = normalized_path.find('/');
+        size_t last_p = 0;
+        while (true) {
+            bool is_end = p == std::string::npos;
+            p = is_end ? normalized_path.size() : p;
+            auto name = std::string_view{normalized_path.data() + last_p, p - last_p};
+            if (name == "..") {
+                return nullptr;
+            }
+            if (auto it = curr_dir->name_map_.find(name); it != curr_dir->name_map_.end()) {
+                curr_dir = it->second;
+                if (is_end) {
+                    return curr_dir;
+                }
+            } else {
+                return nullptr;
+            }
+            last_p = p + 1;
+            p = normalized_path.find('/', last_p);
+        }
+    }
+
+    std::list<MemorySubFileSystemDirectory> subdirs_;
+    StringHashMap<Ref<MemorySubFileSystemDirectory>> name_map_;
+};
+
+} // namespace
+
+struct MemoryFile::Impl final {
+    Ptr<MemoryFileData> file;
+
+    std::string filename;
+    bool writable;
+};
+
+MemoryFile::MemoryFile(std::string filename, bool writable) {
+    impl()->filename = std::move(filename);
+    impl()->writable = writable;
+}
+
+auto MemoryFile::is_writable() const -> bool {
+    return impl()->writable;
+}
+auto MemoryFile::filename() const -> std::string {
+    return impl()->filename;
+}
+auto MemoryFile::extension() const -> std::string {
+    return impl()->filename.substr(impl()->filename.rfind("."));
+}
+
+auto MemoryFile::read_string_data() -> std::string {
+    return {reinterpret_cast<char const*>(impl()->file->data.data()), impl()->file->data.size()};
+}
+auto MemoryFile::read_binary_data() -> std::vector<std::byte> {
+    return impl()->file->data;
+}
+
+auto MemoryFile::write_string_data(std::string_view data) -> bool {
+    if (!impl()->writable) { return false; }
+    impl()->file->data.resize(data.size());
+    std::memcpy(impl()->file->data.data(), data.data(), data.size());
+    return true;
+}
+auto MemoryFile::write_binary_data(CSpan<std::byte> data) -> bool {
+    if (!impl()->writable) { return false; }
+    impl()->file->data.resize(data.size());
+    std::memcpy(impl()->file->data.data(), data.data(), data.size());
+    return true;
+}
+
+
+struct MemorySubFileSystem::Impl final {
+    MemorySubFileSystemDirectory root;
+    bool writable;
+};
+
+MemorySubFileSystem::MemorySubFileSystem(bool writable) {
+    impl()->writable = writable;
+}
+
+auto MemorySubFileSystem::is_writable() const -> bool {
+    return impl()->writable;
+}
+
+auto MemorySubFileSystem::has_file(std::string_view path) const -> bool {
+    auto dir = impl()->root.get_dir(path);
+    return dir && dir->file.has_value();
+}
+auto MemorySubFileSystem::get_file(std::string_view path) const -> Option<Dyn<IFile>::Box> {
+    auto dir = impl()->root.get_dir(path);
+    if (dir && dir->file.has_value()) {
+        MemoryFile file{std::string{path.substr(path.rfind("/") + 1)}, impl()->writable};
+        file.impl()->file = const_cast<MemoryFileData*>(&dir->file.value());
+        return Dyn<IFile>::Box{std::move(file)};
+    } else {
+        return {};
+    }
+}
+
+auto MemorySubFileSystem::create_file(std::string_view path) -> Option<Dyn<IFile>::Box> {
+    if (!impl()->writable) { return {}; }
+
+    auto dir = impl()->root.create_dir(path);
+    if (!dir) { return {}; }
+    if (!dir->file.has_value() && dir->is_empty_directory()) {
+        dir->file = MemoryFileData{};
+    }
+    if (dir->file.has_value()) {
+        MemoryFile file{std::string{path.substr(path.rfind("/") + 1)}, impl()->writable};
+        file.impl()->file = &dir->file.value();
+        return Dyn<IFile>::Box{std::move(file)};
+    }
+    return {};
+}
+auto MemorySubFileSystem::remove_file(std::string_view path) -> bool {
+    if (!impl()->writable) { return false; }
+
+    auto dir = impl()->root.get_dir(path);
+    if (dir && dir->file.has_value()) {
+        dir->file.reset();
         return true;
     } else {
         return false;
