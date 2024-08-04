@@ -1,5 +1,6 @@
 #include <bisemutum/math/transform.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <bisemutum/runtime/scene_object.hpp>

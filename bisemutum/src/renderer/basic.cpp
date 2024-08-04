@@ -23,6 +23,7 @@
 #include "pass/ddgi_update.hpp"
 #include "pass/path_tracing.hpp"
 #include "pass/post_process.hpp"
+#include "pass/rasterization_order.hpp"
 
 namespace bi {
 
@@ -77,6 +78,11 @@ struct BasicRenderer::Impl final {
 
     auto render_camera(gfx::Camera const& camera, gfx::RenderGraph& rg) -> void {
         auto& settings = rt::find_volume_component_for(camera.position, default_settings).settings;
+
+        if (settings.debug.show_rasterization_order) {
+            rasterization_order_pass.render(camera, rg);
+            return;
+        }
 
         auto gpu_scene = g_engine->system_manager()->get_system_for_current_scene<gfx::GpuSceneSystem>();
         auto drawables = gpu_scene->get_all_drawables();
@@ -251,6 +257,8 @@ struct BasicRenderer::Impl final {
     DdgiUpdatePass ddgi_update_pass;
 
     PostProcessPass post_process_pass;
+
+    RasterizationOrderPass rasterization_order_pass;
 
     IndirectDiffuseSettings::Mode indirect_diffuse_mode = IndirectDiffuseSettings::Mode::none;
 };

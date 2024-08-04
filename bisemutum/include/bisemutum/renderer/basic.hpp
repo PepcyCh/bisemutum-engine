@@ -80,6 +80,10 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         bool accumulate = true;
     };
 
+    struct Debug final {
+        bool show_rasterization_order = false;
+    };
+
     struct Settings final {
         PipelineMode pipeline_mode = PipelineMode::deferred;
         ShadowSettings shadow;
@@ -87,6 +91,7 @@ struct BasicRenderer final : PImpl<BasicRenderer> {
         ReflectionSettings reflection;
         IndirectDiffuseSettings indirect_diffuse;
         PathTracingSettings path_tracing;
+        Debug debug;
     };
 
     BasicRenderer();
@@ -134,6 +139,10 @@ BI_SREFL(
     field(accumulate),
 )
 BI_SREFL(
+    type(BasicRenderer::Debug),
+    field(show_rasterization_order),
+)
+BI_SREFL(
     type(BasicRenderer::Settings),
     field(pipeline_mode),
     field(shadow),
@@ -141,6 +150,7 @@ BI_SREFL(
     field(reflection),
     field(indirect_diffuse),
     field(path_tracing),
+    field(debug),
 )
 
 struct BasicRendererOverrideVolume final {

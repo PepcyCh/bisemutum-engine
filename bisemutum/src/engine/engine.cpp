@@ -55,6 +55,7 @@ BI_SREFL(
 );
 
 struct ExecutableOptions final {
+    char const* graphics_api = nullptr;
     char const* project_file = nullptr;
     bool editor = false;
 };
@@ -67,6 +68,11 @@ auto parse_options(int argc, char** argv) -> ExecutableOptions {
             if (i + 1 < argc) {
                 ++i;
                 opt.project_file = argv[i];
+            }
+        } else if (strcmp(argv[i], "-graphics-api") == 0) {
+            if (i + 1 < argc) {
+                ++i;
+                opt.graphics_api = argv[i];
             }
         } else if (strcmp(argv[i], "-editor") == 0) {
             opt.editor = true;
@@ -122,6 +128,13 @@ struct Engine::Impl final {
                 render_target_format = 'rgba16_sfloat'
             )");
             file_system.create_file(project_info.asset_metadata_file);
+        }
+
+        if (opt.graphics_api) {
+            auto backend_opt = magic_enum::enum_cast<rhi::Backend>(opt.graphics_api);
+            if (backend_opt.has_value()) {
+                project_info.settings.graphics.backend = backend_opt.value();
+            }
         }
 
         auto asset_metadata_file = file_system.get_file(project_info.asset_metadata_file).value();

@@ -1,4 +1,6 @@
-add_requires("fmt", "spdlog", "miniz", "glm", "entt", "magic_enum")
+add_requires("fmt")
+add_requires("spdlog", {configs = {fmt_external = true}})
+add_requires("miniz", "glm", "entt", "magic_enum")
 add_requires("glfw", "directxshadercompiler", "crypto-algorithms")
 add_requires("nlohmann_json", "toml++", "assimp", "tinygltf", "mikktspace", "stb", "tinyexr")
 add_requires("imgui v1.89.9-docking", {configs = {glfw = true}})

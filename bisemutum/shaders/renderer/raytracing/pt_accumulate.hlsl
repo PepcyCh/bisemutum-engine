@@ -1,6 +1,6 @@
 #include <bisemutum/shaders/core/shader_params/compute.hlsl>
 
-[numthreads(16, 16,1 )]
+[numthreads(16, 16, 1)]
 void pt_accumulate_cs(uint3 global_thread_id : SV_DispatchThreadID) {
     const int2 pixel_coord = int2(global_thread_id.xy);
     if (any(pixel_coord >= tex_size)) return;
